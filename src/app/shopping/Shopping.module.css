@@ -1,0 +1,103 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  min-height: 80vh;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.addForm {
+  display: flex;
+  gap: 12px;
+  background: var(--glass-bg);
+  padding: 16px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--glass-border);
+}
+
+.addForm input {
+  flex: 1;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+}
+
+.itemInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkboxActive {
+  background: var(--primary);
+  color: white;
+}
+
+.itemName {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.deleteBtn {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.deleteBtn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Particle / Flying Animation Styles */
+.particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}

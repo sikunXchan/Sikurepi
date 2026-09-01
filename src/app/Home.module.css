@@ -1,0 +1,329 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 8px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.addFormWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addForm {
+  display: flex;
+  gap: 12px;
+}
+
+.addForm input {
+  flex: 1;
+}
+
+.addForm button {
+  white-space: nowrap;
+  border-radius: 14px;
+}
+
+.categorySelectRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.categorySelectLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.categorySelect {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  margin-top: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+  transition: all 0.2s ease;
+  will-change: transform, opacity;
+}
+
+@media (max-width: 768px) {
+  .listItem {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 18px 16px;
+  }
+
+  .deleteBtn {
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.listItem:hover {
+  border-color: var(--primary-light);
+  background: rgba(255, 120, 73, 0.08);
+}
+
+@media (hover: none) {
+  .listItem:hover {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+  }
+}
+
+.listItem span {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.listItem.pinned {
+  /* Spotlight/Accent Background */
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 120, 73, 0.15) 100%) !important;
+  border: 1px solid rgba(255, 120, 73, 0.4) !important;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(255, 120, 73, 0.25);
+  z-index: 10;
+}
+
+.listItem.pinned span {
+  color: #c2410c; /* Deeper accent color for pinned text */
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pinBtn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #64748b !important; /* Slate-500 */
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.pinBtn:hover {
+  background: white !important;
+  color: var(--primary) !important;
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+  border-color: var(--primary-light) !important;
+}
+
+.pinActive {
+  background: var(--gradient-primary) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 8px 30px rgba(255, 120, 73, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) scale(1.1) !important;
+}
+
+/* Dark mode override for pin button */
+:global(.cooking-mode) .pinBtn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #a8a29e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+:global(.cooking-mode) .pinBtn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  border-color: var(--primary-light) !important;
+}
+
+.deleteBtn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.deleteBtn:hover {
+  background: #ef4444 !important;
+  color: white !important;
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3) !important;
+  border-color: transparent !important;
+}
+
+/* Dark mode adjustment for delete button */
+:global(.cooking-mode) .deleteBtn {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+:global(.cooking-mode) .deleteBtn:hover {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+/* Category groups */
+.nameSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.itemCategoryRow {
+  margin-top: 3px;
+}
+
+.categoryBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.categoryBadge:hover {
+  background: rgba(255, 120, 73, 0.1);
+  color: var(--primary);
+  border-color: var(--primary-light);
+}
+
+.inlineCategory {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--primary-light);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  appearance: auto;
+}
+
+.addingNote {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: -12px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.categoryGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.categoryGroup {
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.categoryHeader {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.15s ease;
+}
+
+.categoryHeader:hover {
+  background: rgba(255, 120, 73, 0.06);
+}
+
+.categoryTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryCount {
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 120, 73, 0.12);
+  color: var(--primary);
+  padding: 1px 7px;
+  border-radius: 20px;
+}
+
+.categoryChevron {
+  font-size: 18px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 10px 10px;
+  overflow: hidden;
+}

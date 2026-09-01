@@ -1,0 +1,439 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1a1512;
+  color: #fef7f0;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 16px) 16px calc(env(safe-area-inset-bottom, 16px) + 12px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 16px;
+  flex-shrink: 0;
+}
+
+.headerText {
+  min-width: 0;
+  flex: 1;
+}
+
+.headerTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fef7f0;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerSubtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8b5cf6;
+  margin-top: 2px;
+}
+
+.closeBtn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fef7f0;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+.ingredientsBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fef7f0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: none;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.ingredientsBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+  transform: none;
+}
+
+.ingredientsBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+}
+
+.ingredientsSheet {
+  width: 100%;
+  max-height: 70vh;
+  background: #231e19;
+  border-radius: 24px 24px 0 0;
+  padding: 8px 20px calc(env(safe-area-inset-bottom, 16px) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.ingredientsSheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fef7f0;
+  flex-shrink: 0;
+}
+
+.ingredientsSheetList {
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ingredientsSheetList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 15px;
+  color: #fef7f0;
+}
+
+.ingredientsSheetList li:last-child {
+  border-bottom: none;
+}
+
+.ingredientsSheetAmount {
+  color: #a8a29e;
+  font-size: 13px;
+}
+
+/* Horizontal timeline */
+.timelineWrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 4px 16px;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timelineTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 12px;
+  min-width: max-content;
+}
+
+.timelineLineBg {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+.timelineLineFill {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  max-width: calc(100% - 24px);
+}
+
+.node {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: #2d2620;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  color: #a8a29e;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.node:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.nodeActive {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: white;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 5px rgba(255, 120, 73, 0.2);
+}
+
+.nodeDone {
+  background: rgba(32, 178, 170, 0.25);
+  border-color: #20b2aa;
+  color: #5fd4cd;
+}
+
+/* Step stage */
+.stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.stepCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  padding: 24px 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+}
+
+.stepLabel {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ff9d73;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 120, 73, 0.15);
+  color: #ffaa80;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.imageBox {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageWrap {
+  position: relative;
+  width: 100%;
+}
+
+.stepImage {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+}
+
+.imageRegenBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fef7f0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageRegenBtn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: none;
+  transform: none;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a8a29e;
+}
+
+.imageRetryBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fef7f0;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+.imageRetryBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+  transform: none;
+}
+
+.imageError {
+  font-size: 12px;
+  color: #f87171;
+}
+
+.stepText {
+  font-size: clamp(22px, 5.5vw, 32px);
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fef7f0;
+  max-width: 560px;
+}
+
+.timerBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.timerClock {
+  font-size: 40px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #fbbf24;
+}
+
+.timerBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 99px;
+  background: var(--gradient-cool);
+  font-size: 14px;
+}
+
+.tapHint {
+  font-size: 12px;
+  color: #a8a29e;
+  margin-top: 4px;
+}
+
+.finishedCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.finishedCard h2 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fef7f0;
+}
+
+.finishedCard p {
+  color: #a8a29e;
+  font-size: 15px;
+}
+
+.finishBtn {
+  margin-top: 12px;
+  padding: 14px 32px;
+  border-radius: 99px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding-top: 18px;
+  flex-shrink: 0;
+}
+
+.navBtn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .stepCard {
+    padding: 20px 14px;
+    gap: 16px;
+  }
+
+  .controls {
+    gap: 24px;
+  }
+}
