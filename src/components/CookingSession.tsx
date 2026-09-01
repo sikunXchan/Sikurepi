@@ -459,6 +459,8 @@ export default function CookingSession({
         <button className={styles.navBtn} onClick={goNext} disabled={finished}>
           {index === total - 1 ? <Check size={20} /> : <ChevronRight size={20} />}
         </button>
+      </div>
+
       {showCookedModal && (
         <CookedModal
           recipeTitle={title}

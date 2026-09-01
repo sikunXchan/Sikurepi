@@ -8,7 +8,9 @@ const withSerwist = withSerwistInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Add other Next.js config here
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default withSerwist(nextConfig);

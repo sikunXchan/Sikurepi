@@ -1,5 +1,3 @@
-﻿import { useEffect, useState } from 'react';
-
 const USER_ID_KEY = 'cooking_app_device_user_id';
 
 // クライアント側で一意の匿名UUIDを取得/生成
@@ -11,18 +9,7 @@ export function getOrCreateClientUserId(): string {
     userId = 'usr_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
     localStorage.setItem(USER_ID_KEY, userId);
   }
-  document.cookie = ${USER_ID_KEY}=; path=/; max-age=315360000; SameSite=Lax;
-  return userId;
-}
-
-// Reactコンポーネント用フック
-export function useUserId(): string {
-  const [userId, setUserId] = useState<string>('anonymous_user');
-
-  useEffect(() => {
-    setUserId(getOrCreateClientUserId());
-  }, []);
-
+  document.cookie = `${USER_ID_KEY}=${userId}; path=/; max-age=315360000; SameSite=Lax;`;
   return userId;
 }
 
@@ -43,7 +30,7 @@ export function getUserIdFromRequest(req: Request): string {
   }
 
   const cookieHeader = req.headers.get('cookie') || '';
-  const match = cookieHeader.match(new RegExp((?:^|;\\s*)=([^;]*)));
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${USER_ID_KEY}=([^;]*)`));
   if (match && match[1]) {
     return decodeURIComponent(match[1].trim());
   }

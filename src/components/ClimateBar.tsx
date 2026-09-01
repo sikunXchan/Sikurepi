@@ -1,24 +1,23 @@
-﻿use client;
+"use client";
 
-import { useState, useEffect } from react;
-import { getLocalClimateState, setLocalClimateState, ClimateState } from @/lib/storage;
-import { CLIMATE_PRESETS, getAutoTimeOfDay } from @/lib/climate;
-import { CloudSun, RefreshCw } from lucide-react;
-import styles from ./ClimateBar.module.css;
+import { useState, useEffect } from "react";
+import { getLocalClimateState, setLocalClimateState, ClimateState } from "@/lib/storage";
+import { CLIMATE_PRESETS, getAutoTimeOfDay } from "@/lib/climate";
+import { RefreshCw } from "lucide-react";
+import styles from "./ClimateBar.module.css";
 
 const CLIMATE_ICONS: Record<string, string> = {
-  猛暑・晴れ: ☀️,
-  雨・肌寒い: 🌧️,
-  冬の寒波: ❄️,
-  春・うららか: 🌸,
-  秋・快晴: 🍁,
+  "猛暑・晴れ": "☀️",
+  "雨・肌寒い": "🌧️",
+  "冬の寒波": "❄️",
+  "春・うららか": "🌸",
+  "秋・快晴": "🍁",
 };
 
 export default function ClimateBar() {
   const [climate, setClimate] = useState<ClimateState>(getLocalClimateState());
 
   useEffect(() => {
-    // 起動時に時間帯を自動更新
     const current = getLocalClimateState();
     const autoTime = getAutoTimeOfDay();
     if (current.timeOfDay !== autoTime) {
@@ -39,7 +38,7 @@ export default function ClimateBar() {
     setLocalClimateState(next);
   };
 
-  const icon = CLIMATE_ICONS[climate.condition] || 🌤️;
+  const icon = CLIMATE_ICONS[climate.condition] || "🌤️";
 
   return (
     <div className={styles.container}>
@@ -56,10 +55,10 @@ export default function ClimateBar() {
         </div>
       </div>
       <button
-        type=button
+        type="button"
         className={styles.switchBtn}
         onClick={cycleClimate}
-        title=気候を手動で切り替える
+        title="気候を手動で切り替える"
       >
         <RefreshCw size={13} />
         <span>切替</span>

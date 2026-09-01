@@ -1,4 +1,4 @@
-﻿import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -22,10 +22,10 @@ export async function generateWithRetry(
         if (retryable) {
           if (attempt < maxRetries - 1) {
             const delay = Math.pow(2, attempt) * 1000;
-            console.warn(Model  attempt  failed (), retrying in ms...);
+            console.warn(`Model ${model} attempt ${attempt + 1} failed (${status || code}), retrying in ${delay}ms...`);
             await new Promise((r) => setTimeout(r, delay));
           } else {
-            console.warn(All retries exhausted for model , trying next model...);
+            console.warn(`All retries exhausted for model ${model}, trying next model...`);
           }
         } else {
           throw err;

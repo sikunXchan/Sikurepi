@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
-import { getApiHeaders } from "@/lib/user";
+import { addLocalIngredient } from "@/lib/storage";
 import styles from "./Receipt.module.css";
 
 type ExtractedItem = {

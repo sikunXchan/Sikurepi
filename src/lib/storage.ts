@@ -1,4 +1,4 @@
-﻿// LocalStorage Unified Storage Service with JSON Backup & Restore
+// LocalStorage Unified Storage Service with JSON Backup & Restore
 
 export type Ingredient = {
   id: number;
@@ -67,14 +67,13 @@ const KEYS = {
   CLIMATE: 'lily_app_climate',
 };
 
-// ヘルパー：ブラウザ判定とローカルストレージ取得
 function getStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   try {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : defaultValue;
   } catch (e) {
-    console.error(Failed to read localStorage for key :, e);
+    console.error(`Failed to read localStorage for key ${key}:`, e);
     return defaultValue;
   }
 }
@@ -85,7 +84,7 @@ function setStorage<T>(key: string, value: T): void {
     localStorage.setItem(key, JSON.stringify(value));
     window.dispatchEvent(new Event('storage-updated'));
   } catch (e) {
-    console.error(Failed to write localStorage for key :, e);
+    console.error(`Failed to write localStorage for key ${key}:`, e);
   }
 }
 
@@ -326,7 +325,7 @@ export function exportBackupJSON(): void {
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = lily_cooking_backup_.json;
+  a.download = `lily_cooking_backup_${dateStr}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

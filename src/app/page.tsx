@@ -179,20 +179,6 @@ export default function Home() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
-        <div className={styles.categorySelectRow}>
-          <label className={styles.categorySelectLabel}>カテゴリ:</label>
-          <select
-            className={styles.categorySelect}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            disabled={adding}
-          >
-            {CATEGORY_ORDER.map(cat => (
-              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
-            ))}
-          </select>
-        </div>
-      </form>
 
       {loading && (
         <div className="flex justify-center mt-4">

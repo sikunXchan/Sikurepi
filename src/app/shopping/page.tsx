@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, Check, ShoppingBag } from "lucide-react";
+import { Plus, Trash2, Check, ShoppingBag, Loader2 } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   getLocalShoppingItems,
@@ -157,10 +157,9 @@ export default function ShoppingPage() {
           placeholder="買うものを入力 (例: 鶏むね肉、玉ねぎ)"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          disabled={adding}
         />
-        <button type="submit" disabled={adding || !newName.trim()}>
-          {adding ? <Loader2 className="spinner" size={20} /> : <Plus size={20} />}
+        <button type="submit" disabled={!newName.trim()}>
+          <Plus size={20} />
           追加
         </button>
       </form>
