@@ -6,16 +6,15 @@ import {
   setLocalUserProfile,
   UserProfile,
   DEFAULT_USER_PROFILE,
+  exportBackupJSON,
+  importBackupJSON,
   getLocalUserStats,
-  UserStats,
   getLocalSavedTips,
   deleteLocalSavedTip,
-  SavedTip,
-  exportBackupJSON,
-  importBackupJSON
+  UserStats,
+  SavedTip
 } from "@/lib/storage";
-import { X, Download, Upload, Check, Settings, Activity, Lightbulb, Database, Trash2 } from "lucide-react";
-import NutritionChart from "./NutritionChart";
+import { X, Download, Upload, Check, Trash2, Sparkles, Activity, Lightbulb, User, Database } from "lucide-react";
 import styles from "./ProfileSettingsModal.module.css";
 
 const TASTE_OPTIONS = [
@@ -37,6 +36,8 @@ const STYLE_OPTIONS = [
   "包丁・まな板最小限",
 ];
 
+type TabType = 'profile' | 'stats' | 'tips' | 'backup';
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -44,12 +45,11 @@ type Props = {
 };
 
 export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'stats' | 'tips' | 'backup'>('profile');
+  const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [stats, setStats] = useState<UserStats>(getLocalUserStats());
   const [tips, setTips] = useState<SavedTip[]>([]);
   const [excludedInput, setExcludedInput] = useState("");
-  const [addressInput, setAddressInput] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,7 +58,6 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
       const p = getLocalUserProfile();
       setProfile(p);
       setExcludedInput((p.excludedIngredients || []).join(", "));
-      setAddressInput(p.address || "");
       setStats(getLocalUserStats());
       setTips(getLocalSavedTips());
       setImportStatus(null);
@@ -68,23 +67,25 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
   if (!isOpen) return null;
 
   const handleServingsChange = (n: number) => {
-    setProfile(prev => ({ ...prev, servings: prev.servings === n ? null : n }));
+    setProfile(prev => ({ ...prev, servings: n }));
   };
 
   const toggleTaste = (taste: string) => {
     setProfile(prev => {
-      const list = prev.tastePreferences.includes(taste)
-        ? prev.tastePreferences.filter(t => t !== taste)
-        : [...prev.tastePreferences, taste];
+      const current = prev.tastePreferences || [];
+      const list = current.includes(taste)
+        ? current.filter(t => t !== taste)
+        : [...current, taste];
       return { ...prev, tastePreferences: list };
     });
   };
 
   const toggleStyle = (style: string) => {
     setProfile(prev => {
-      const list = prev.cookingStyles.includes(style)
-        ? prev.cookingStyles.filter(s => s !== style)
-        : [...prev.cookingStyles, style];
+      const current = prev.cookingStyles || [];
+      const list = current.includes(style)
+        ? current.filter(s => s !== style)
+        : [...current, style];
       return { ...prev, cookingStyles: list };
     });
   };
@@ -98,7 +99,6 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
     const updated: UserProfile = {
       ...profile,
       excludedIngredients: excludedList,
-      address: addressInput.trim(),
     };
 
     setLocalUserProfile(updated);
@@ -111,6 +111,10 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
     setTips(getLocalSavedTips());
   };
 
+  const handleDownloadBackup = () => {
+    exportBackupJSON();
+  };
+
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -118,55 +122,45 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      if (content) {
-        const res = importBackupJSON(content);
-        if (res.success) {
-          setImportStatus("🎉 データを完全復元しました！");
-          const p = getLocalUserProfile();
-          setProfile(p);
-          setExcludedInput((p.excludedIngredients || []).join(", "));
-          setAddressInput(p.address || "");
-          setStats(getLocalUserStats());
-          setTips(getLocalSavedTips());
-          if (onSaved) onSaved();
-        } else {
-          setImportStatus(`❌ 復元エラー: ${res.error}`);
-        }
+      const res = importBackupJSON(content);
+      if (res.success) {
+        setImportStatus("✅ データの復元に成功しました！");
+        setProfile(getLocalUserProfile());
+        setStats(getLocalUserStats());
+        setTips(getLocalSavedTips());
+        if (onSaved) onSaved();
+      } else {
+        setImportStatus(`❌ 復元失敗: ${res.error}`);
       }
     };
     reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // 全体平均PFCデータの算出
-  const totalCal = stats.total_calories || 0;
-  const avgNutrition = stats.total_cooked > 0 ? {
-    calories: Math.round(totalCal / stats.total_cooked),
-    protein_g: Math.round((stats.total_protein || 0) / stats.total_cooked),
-    fat_g: Math.round((stats.total_fat || 0) / stats.total_cooked),
-    carbs_g: Math.round((stats.total_carbs || 0) / stats.total_cooked),
-  } : null;
+  const totalPFC = (stats.total_protein || 0) * 4 + (stats.total_fat || 0) * 9 + (stats.total_carbs || 0) * 4;
+  const pPct = totalPFC > 0 ? Math.round(((stats.total_protein || 0) * 4 / totalPFC) * 100) : 0;
+  const fPct = totalPFC > 0 ? Math.round(((stats.total_fat || 0) * 9 / totalPFC) * 100) : 0;
+  const cPct = totalPFC > 0 ? Math.round(((stats.total_carbs || 0) * 4 / totalPFC) * 100) : 0;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.headerTitle}>
-            <h2>🐾 マイページ ＆ 設定</h2>
+            <span>⚙️</span>
+            <h2>設定・自炊データ</h2>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
-        {/* 4つのピル型タブ */}
-        <div className={styles.tabBar}>
+        <div className={styles.tabRow}>
           <button
             type="button"
             className={`${styles.tabBtn} ${activeTab === 'profile' ? styles.tabBtnActive : ''}`}
             onClick={() => setActiveTab('profile')}
           >
-            <Settings size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+            <User size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
             マイ設定
           </button>
           <button
@@ -191,226 +185,243 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
             onClick={() => setActiveTab('backup')}
           >
             <Database size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-            データ保存
+            保存
           </button>
         </div>
 
-        <div className={styles.body}>
-          {/* タブ 1: マイ設定 */}
-          {activeTab === 'profile' && (
-            <>
-              <p className={styles.description}>
-                ここで設定した内容は、レシピ提案時に常に自動でAIへ反映されます。（初期値は未入力です）
-              </p>
+        {activeTab === 'profile' && (
+          <div className={styles.body}>
+            <p className={styles.description}>
+              あなたの好みや環境を登録すると、AIシェフが毎回最適なレシピを自動提案します。
+            </p>
 
-              {/* 住所設定 */}
-              <div className={styles.section}>
-                <label className={styles.sectionLabel}>📍 お住まいの地域 (実天気自動取得用)</label>
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>📍 お住まいの地域（大雑把な住所）</label>
+              <input
+                type="text"
+                className={styles.input}
+                placeholder="例: 東京都、大阪市、福岡県など"
+                value={profile.address || ''}
+                onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
+              />
+              <span className={styles.hint}>※ 無料の気象APIでリアルタイムの天気・気温を自動反映するために使用します</span>
+            </div>
+
+            <div className={styles.section}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151' }}>
                 <input
-                  type="text"
-                  placeholder="例: 東京都、大阪府、北海道札幌市、福岡など"
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
+                  type="checkbox"
+                  checked={profile.enableClimate !== false}
+                  onChange={(e) => setProfile(prev => ({ ...prev, enableClimate: e.target.checked }))}
+                  style={{ width: 16, height: 16, accentColor: '#ff7849' }}
                 />
-                <span className={styles.hint}>※ 大雑把な市区町村名でOKです。気候バーにリアルタイム天気が反映されます。</span>
-              </div>
+                <span>🌤️ 気候・天気に連動したレシピ提案を有効にする</span>
+              </label>
+            </div>
 
-              {/* 分量 */}
-              <div className={styles.section}>
-                <label className={styles.sectionLabel}>🍽️ デフォルト分量 (人数)</label>
-                <div className={styles.servingsGrid}>
-                  {[1, 2, 3, 4].map(n => (
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>👥 基本の人数</label>
+              <div className={styles.servingsGrid}>
+                {[1, 2, 3, 4].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`${styles.servingsBtn} ${profile.servings === n ? styles.servingsBtnActive : ""}`}
+                    onClick={() => handleServingsChange(n)}
+                  >
+                    {n}人分
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>👅 味・栄養のこだわり</label>
+              <div className={styles.tagGrid}>
+                {TASTE_OPTIONS.map(taste => {
+                  const active = (profile.tastePreferences || []).includes(taste);
+                  return (
                     <button
-                      key={n}
+                      key={taste}
                       type="button"
-                      className={`${styles.servingsBtn} ${profile.servings === n ? styles.servingsBtnActive : ""}`}
-                      onClick={() => handleServingsChange(n)}
+                      className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
+                      onClick={() => toggleTaste(taste)}
                     >
-                      {n}人分
+                      {active ? `✓ ${taste}` : taste}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* 味の好み */}
-              <div className={styles.section}>
-                <label className={styles.sectionLabel}>🧂 味の好み・栄養方針</label>
-                <div className={styles.tagGrid}>
-                  {TASTE_OPTIONS.map(opt => {
-                    const active = profile.tastePreferences.includes(opt);
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
-                        onClick={() => toggleTaste(opt)}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 除外食材 */}
-              <div className={styles.section}>
-                <label className={styles.sectionLabel}>🚫 除外する食材 (アレルギー・苦手)</label>
-                <input
-                  type="text"
-                  placeholder="例: エビ, カニ, そば, パクチー, 辛い調味料"
-                  value={excludedInput}
-                  onChange={(e) => setExcludedInput(e.target.value)}
-                />
-                <span className={styles.hint}>※ カンマまたはスペース区切りで入力（AIが提案から完全除外します）</span>
-              </div>
-
-              {/* 調理スタイル */}
-              <div className={styles.section}>
-                <label className={styles.sectionLabel}>🍳 調理スタイル・設備</label>
-                <div className={styles.tagGrid}>
-                  {STYLE_OPTIONS.map(opt => {
-                    const active = profile.cookingStyles.includes(opt);
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
-                        onClick={() => toggleStyle(opt)}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* タブ 2: PFC統計 ＆ 自炊記録 */}
-          {activeTab === 'stats' && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div style={{ background: '#fff0f3', border: '1.5px solid #ffd1dc', borderRadius: 16, padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#a07888' }}>🍳 累計自炊回数</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#ff5c8a', marginTop: 2 }}>{stats.total_cooked} 回</div>
-                </div>
-                <div style={{ background: '#fff0f3', border: '1.5px solid #ffd1dc', borderRadius: 16, padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#a07888' }}>🔥 連続自炊ストリーク</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#ff5c8a', marginTop: 2 }}>{stats.streak_days} 日</div>
-                </div>
-              </div>
-
-              <div style={{ background: '#ffffff', border: '1.5px solid #ffd1dc', borderRadius: 20, padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#4a2835', marginBottom: 8 }}>
-                  📊 これまでの自炊 PFCバランス（1食あたり平均）
-                </div>
-                {avgNutrition ? (
-                  <>
-                    <NutritionChart nutrition={avgNutrition} />
-                    <div style={{ fontSize: 11, color: '#a07888', marginTop: 8, textAlign: 'center' }}>
-                      累計総カロリー: {stats.total_calories.toLocaleString()} kcal（計 {stats.total_cooked} 食）
-                    </div>
-                  </>
-                ) : (
-                  <p style={{ fontSize: 12, color: '#a07888', textAlign: 'center', padding: '20px 0' }}>
-                    まだ「この料理を作った！」記録がありません。<br />料理を作って記録するとPFCバランスが蓄積されます！
-                  </p>
-                )}
-              </div>
-
-              {stats.cooked_records && stats.cooked_records.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#4a2835' }}>📜 最近作った料理</div>
-                  {stats.cooked_records.slice(0, 5).map((rec) => (
-                    <div key={rec.id} style={{ background: '#fff8fa', border: '1px solid #ffd1dc', borderRadius: 12, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                      <span style={{ fontWeight: 700, color: '#4a2835' }}>{rec.recipe_title}</span>
-                      <span style={{ color: '#a07888', fontSize: 11 }}>{rec.calories} kcal ({rec.cooked_at.split('T')[0]})</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* タブ 3: 料理のコツ＆豆知識ライブラリ */}
-          {activeTab === 'tips' && (
-            <>
-              <p className={styles.description}>
-                AIが提案した料理のコツ・保存テクニック・栄養豆知識が自動でここに蓄積されます。
-              </p>
-
-              {tips.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {tips.map((t) => (
-                    <div
-                      key={t.id}
-                      style={{
-                        background: '#fff8fa',
-                        border: '1.5px solid #ffd1dc',
-                        borderRadius: 16,
-                        padding: '10px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        position: 'relative',
-                      }}
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>⏱️ 調理スタイル</label>
+              <div className={styles.tagGrid}>
+                {STYLE_OPTIONS.map(style => {
+                  const active = (profile.cookingStyles || []).includes(style);
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
+                      onClick={() => toggleStyle(style)}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, background: '#ffe5ec', color: '#ff5c8a', padding: '2px 8px', borderRadius: 9999 }}>
-                          {t.category}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTip(t.id)}
-                          style={{ background: 'none', border: 'none', color: '#c9a7b5', padding: 0, boxShadow: 'none', cursor: 'pointer' }}
-                          title="削除"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                      {active ? `✓ ${style}` : style}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>🚫 苦手・アレルギー・除外食材</label>
+              <input
+                type="text"
+                className={styles.input}
+                placeholder="例: エビ, パクチー, 辛いもの (カンマ区切り)"
+                value={excludedInput}
+                onChange={(e) => setExcludedInput(e.target.value)}
+              />
+              <span className={styles.hint}>※ AIがこれらの食材を含まないレシピを考案します</span>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'stats' && (
+          <div className={styles.body}>
+            <p className={styles.description}>
+              「この料理を作った！」ボタンを押すことで、全体のPFCバランスと調理実績がここに自動蓄積されます。
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🍳 累計自炊回数</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ff7849', marginTop: 2 }}>{stats.total_cooked} 回</div>
+              </div>
+              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🔥 累積総カロリー</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{(stats.total_calories || 0).toLocaleString()} kcal</div>
+              </div>
+            </div>
+
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+                📊 全体のPFCバランス（エネルギー比率）
+              </div>
+              {totalPFC > 0 ? (
+                <>
+                  <div style={{ display: 'flex', height: 14, borderRadius: 9999, overflow: 'hidden', marginBottom: 10 }}>
+                    <div style={{ width: `${pPct}%`, background: '#3b82f6' }} title={`Protein: ${pPct}%`} />
+                    <div style={{ width: `${fPct}%`, background: '#f59e0b' }} title={`Fat: ${fPct}%`} />
+                    <div style={{ width: `${cPct}%`, background: '#10b981' }} title={`Carbs: ${cPct}%`} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: 12, fontWeight: 700 }}>
+                    <span style={{ color: '#3b82f6' }}>P: {pPct}% ({(stats.total_protein || 0).toFixed(1)}g)</span>
+                    <span style={{ color: '#f59e0b' }}>F: {fPct}% ({(stats.total_fat || 0).toFixed(1)}g)</span>
+                    <span style={{ color: '#10b981' }}>C: {cPct}% ({(stats.total_carbs || 0).toFixed(1)}g)</span>
+                  </div>
+                </>
+              ) : (
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, textAlign: 'center' }}>
+                  料理を作るとここにPFC比率が集計されます
+                </p>
+              )}
+            </div>
+
+            <div className={styles.section}>
+              <label className={styles.sectionLabel}>🕒 最近の調理履歴</label>
+              {(stats.cooked_records && stats.cooked_records.length > 0) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+                  {stats.cooked_records.map((rec, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', padding: '8px 10px', borderRadius: 8, border: '1px solid #f3f4f6', fontSize: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#111827' }}>{rec.recipeTitle}</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(rec.date).toLocaleDateString('ja-JP')}</div>
                       </div>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#4a2835', margin: 0, lineHeight: 1.4 }}>
-                        {t.tip}
-                      </p>
+                      <div style={{ fontSize: 11, color: '#4b5563', fontWeight: 600, textAlign: 'right' }}>
+                        {rec.calories ? `${rec.calories}kcal` : ''}
+                        {rec.protein_g ? ` (P:${rec.protein_g}g)` : ''}
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 12, color: '#a07888', textAlign: 'center', padding: '30px 0' }}>
-                  まだ保存された豆知識はありません。<br />レシピを提案させると有益なコツが自動で集まります！
-                </p>
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>自炊記録はまだありません</p>
               )}
-            </>
-          )}
+            </div>
+          </div>
+        )}
 
-          {/* タブ 4: バックアップ＆復元 */}
-          {activeTab === 'backup' && (
+        {activeTab === 'tips' && (
+          <div className={styles.body}>
+            <p className={styles.description}>
+              AIシェフが提案した「料理のコツ＆豆知識」が自動でここに保存されます。いつでも復習に役立てられます。
+            </p>
+
+            {tips.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tips.map((t) => (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '10px 12px', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: 4, marginRight: 6 }}>
+                        {t.category}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.4 }}>
+                        {t.tip}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTip(t.id)}
+                      style={{ background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', padding: 2 }}
+                      title="削除"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: '#9ca3af' }}>
+                <Lightbulb size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
+                <p style={{ fontSize: 12 }}>レシピを生成すると、シェフのコツや豆知識がここに自動蓄積されます</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'backup' && (
+          <div className={styles.body}>
+            <p className={styles.description}>
+              冷蔵庫の在庫、買い物リスト、保存レシピ、PFC自炊統計、豆知識ライブラリをひとつのJSONファイルとして端末にダウンロード保存・復元できます。
+            </p>
+
             <div className={styles.backupSection}>
-              <label className={styles.sectionLabel}>💾 データバックアップ ＆ 復元</label>
-              <p className={styles.backupHint}>
-                全データ（冷蔵庫在庫・買い物リスト・履歴・マイ設定・自炊統計PFC・豆知識ライブラリ）をJSONファイルで丸ごと手元に保存・別端末へ復元できます。
-              </p>
-
               <div className={styles.backupActionRow}>
                 <button
                   type="button"
                   className={styles.downloadBtn}
-                  onClick={exportBackupJSON}
+                  onClick={handleDownloadBackup}
                 >
                   <Download size={15} />
-                  バックアップをダウンロード
+                  <span>JSONバックアップ保存</span>
                 </button>
 
-                <label className={styles.uploadBtn}>
+                <button
+                  type="button"
+                  className={styles.uploadBtn}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Upload size={15} />
-                  データを復元 (JSON)
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleFileImport}
-                    style={{ display: "none" }}
-                  />
-                </label>
+                  <span>JSONファイルから復元</span>
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  accept=".json,application/json"
+                  onChange={handleFileImport}
+                />
               </div>
 
               {importStatus && (
@@ -419,9 +430,10 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
+        {/* フッター (マイ設定時のみ保存ボタン表示) */}
         {activeTab === 'profile' && (
           <div className={styles.footer}>
             <button type="button" className={styles.saveBtn} onClick={handleSave}>

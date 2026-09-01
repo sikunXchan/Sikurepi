@@ -41,90 +41,61 @@ export function getAutoTimeOfDay(): string {
   return '夜食（胃にやさしい軽食）';
 }
 
-// WMO 天気コードを分かりやすい日本語と状態に変換
-function parseWmoWeather(code: number, temp: number): { condition: string; advice: string } {
-  let condition = '晴れ';
-  let advice = '季節の旬食材を活かしたヘルシーレシピを優先中';
-
-  if (code === 0) {
-    if (temp >= 30) {
-      condition = '猛暑・快晴';
-      advice = '熱中症予防・水分ミネラル＆さっぱり酸味（クエン酸）メニュー';
-    } else if (temp <= 8) {
-      condition = '快晴・寒気';
-      advice = '身体を芯から温める生姜や根菜のポカポカスープ';
-    } else {
-      condition = '快晴・過ごしやすい';
-      advice = '食欲をそそる彩り豊かなバランス栄養メニュー';
-    }
-  } else if (code >= 1 && code <= 3) {
-    if (temp >= 28) {
-      condition = '蒸し暑い曇り';
-      advice = '食欲不振予防・香味野菜（大葉・ミョウガ）や冷製さっぱり料理';
-    } else if (temp <= 10) {
-      condition = '曇り・冷え込み';
-      advice = '代謝アップ・煮込み料理やあったかスープ';
-    } else {
-      condition = 'うす曇り・快適';
-      advice = '食物繊維＆タンパク質たっぷりのスタミナメニュー';
-    }
-  } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
-    condition = temp <= 18 ? '雨・肌寒い' : '雨・しっとり';
-    advice = 'おうち時間をほっこり温める煮込み料理・スープパスタ・鍋物';
-  } else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
-    condition = '雪・厳しい寒波';
-    advice = '極上あったか鍋・身体を温める生姜・にんにく・根菜のポトフ';
-  } else if (code >= 95) {
-    condition = '雷雨・荒天';
-    advice = '時短ワンパン・包丁最小限のお手軽元気メニュー';
-  }
-
-  return { condition, advice };
-}
-
-// Open-Meteo API による無料リアルタイム天気取得
 export async function fetchRealWeather(address: string): Promise<ClimateState | null> {
-  const query = address.trim();
-  if (!query) return null;
+  if (!address || !address.trim()) return null;
 
   try {
-    // 1. Geocoding API で緯度経度を取得
-    const geoRes = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=ja&format=json`
-    );
-    if (!geoRes.ok) return null;
+    const geoQuery = encodeURIComponent(address.trim());
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${geoQuery}&count=1&language=ja&format=json`);
     const geoData = await geoRes.json();
-    if (!geoData.results || geoData.results.length === 0) return null;
 
-    const loc = geoData.results[0];
-    const lat = loc.latitude;
-    const lon = loc.longitude;
-    const cityName = loc.name || query;
+    if (!geoData.results || geoData.results.length === 0) {
+      return null;
+    }
 
-    // 2. Forecast API で現在の気温と天気コードを取得
+    const { latitude, longitude, name } = geoData.results[0];
+
     const weatherRes = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`
     );
-    if (!weatherRes.ok) return null;
     const weatherData = await weatherRes.json();
-    const current = weatherData.current;
-    if (!current) return null;
 
-    const temp = Math.round(current.temperature_2m);
-    const code = current.weather_code;
-    const { condition, advice } = parseWmoWeather(code, temp);
-    const timeOfDay = getAutoTimeOfDay();
+    if (!weatherData.current) return null;
+
+    const temp = Math.round(weatherData.current.temperature_2m);
+    const code = weatherData.current.weather_code;
+
+    let condition = '晴れ・快適';
+    let advice = '季節の旬食材を活かしたバランスの良い献立を提案中';
+
+    if (code >= 51 && code <= 67) {
+      condition = '雨・しっとり';
+      advice = '身体を温めるスープやほっと落ち着く煮込み料理がおすすめ';
+    } else if (code >= 71 && code <= 86) {
+      condition = '雪・寒い日';
+      advice = '身体の芯から温まるポカポカ鍋や生姜を使ったあったか料理';
+    } else if (code >= 95) {
+      condition = '雷雨・荒天';
+      advice = 'おうちで手早く作れる安心感のあるホッとする時短メニュー';
+    } else if (temp >= 30) {
+      condition = '猛暑・暑い日';
+      advice = '熱中症予防・さっぱり酸味やスタミナ満点メニュー';
+    } else if (temp <= 10) {
+      condition = '寒い日・冷え込み';
+      advice = '代謝UP・温かいスープや根菜たっぷりのポカポカ料理';
+    } else if (code >= 1 && code <= 3) {
+      condition = 'くもり・過ごしやすい';
+      advice = '栄養バランス抜群の彩り豊かなごちそうレシピ';
+    }
 
     return {
-      condition,
+      condition: `${name} (${condition})`,
       temperature: temp,
-      timeOfDay,
+      timeOfDay: getAutoTimeOfDay(),
       advice,
-      cityName,
-      isRealData: true,
     };
   } catch (e) {
-    console.error('Failed to fetch real weather from Open-Meteo:', e);
+    console.error('Weather fetch error:', e);
     return null;
   }
 }

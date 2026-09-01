@@ -6,52 +6,37 @@ import {
   setLocalClimateState,
   getLocalUserProfile,
   setLocalUserProfile,
-  ClimateState,
-  UserProfile
+  ClimateState
 } from "@/lib/storage";
 import { CLIMATE_PRESETS, getAutoTimeOfDay, fetchRealWeather } from "@/lib/climate";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Power } from "lucide-react";
 import styles from "./ClimateBar.module.css";
 
 const CLIMATE_ICONS: Record<string, string> = {
   "猛暑・晴れ": "☀️",
-  "猛暑・快晴": "☀️",
-  "快晴・過ごしやすい": "☀️",
-  "快晴・寒気": "❄️",
-  "うす曇り・快適": "⛅",
-  "蒸し暑い曇り": "☁️",
-  "曇り・冷え込み": "☁️",
   "雨・肌寒い": "🌧️",
-  "雨・しっとり": "🌧️",
-  "雪・厳しい寒波": "❄️",
   "冬の寒波": "❄️",
   "春・うららか": "🌸",
   "秋・快晴": "🍁",
-  "雷雨・荒天": "⚡",
-  "過ごしやすい": "🌤️",
 };
 
 export default function ClimateBar() {
   const [climate, setClimate] = useState<ClimateState>(getLocalClimateState());
-  const [profile, setProfile] = useState<UserProfile>(getLocalUserProfile());
-  const [loadingWeather, setLoadingWeather] = useState(false);
+  const [enableClimate, setEnableClimate] = useState(true);
 
   useEffect(() => {
-    loadAndSync();
-    const handleUpdate = () => loadAndSync();
+    loadState();
+    const handleUpdate = () => loadState();
     window.addEventListener("storage-updated", handleUpdate);
     return () => window.removeEventListener("storage-updated", handleUpdate);
   }, []);
 
-  const loadAndSync = async () => {
-    const p = getLocalUserProfile();
-    setProfile(p);
-    const c = getLocalClimateState();
+  const loadState = async () => {
+    const profile = getLocalUserProfile();
+    setEnableClimate(profile.enableClimate !== false);
 
-    if (p.address && p.enableClimate && !loadingWeather) {
-      setLoadingWeather(true);
-      const real = await fetchRealWeather(p.address);
-      setLoadingWeather(false);
+    if (profile.enableClimate !== false && profile.address) {
+      const real = await fetchRealWeather(profile.address);
       if (real) {
         setClimate(real);
         setLocalClimateState(real);
@@ -59,20 +44,22 @@ export default function ClimateBar() {
       }
     }
 
+    const current = getLocalClimateState();
     const autoTime = getAutoTimeOfDay();
-    if (c.timeOfDay !== autoTime) {
-      const updated = { ...c, timeOfDay: autoTime };
+    if (current.timeOfDay !== autoTime) {
+      const updated = { ...current, timeOfDay: autoTime };
       setClimate(updated);
       setLocalClimateState(updated);
     } else {
-      setClimate(c);
+      setClimate(current);
     }
   };
 
   const toggleClimateEnable = () => {
-    const updated = { ...profile, enableClimate: !profile.enableClimate };
-    setProfile(updated);
-    setLocalUserProfile(updated);
+    const profile = getLocalUserProfile();
+    const nextState = !enableClimate;
+    setEnableClimate(nextState);
+    setLocalUserProfile({ ...profile, enableClimate: nextState });
   };
 
   const cycleClimate = () => {
@@ -81,48 +68,47 @@ export default function ClimateBar() {
     const next = {
       ...CLIMATE_PRESETS[nextIdx],
       timeOfDay: climate.timeOfDay || getAutoTimeOfDay(),
-      cityName: profile.address || '',
-      isRealData: false,
     };
     setClimate(next);
     setLocalClimateState(next);
   };
 
-  const icon = CLIMATE_ICONS[climate.condition] || "🌤️";
+  const icon = climate.condition.includes("雨") ? "🌧️" :
+               climate.condition.includes("雪") ? "❄️" :
+               climate.condition.includes("暑") ? "☀️" :
+               climate.condition.includes("春") ? "🌸" :
+               climate.condition.includes("秋") ? "🍁" :
+               CLIMATE_ICONS[climate.condition] || "🌤️";
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${!enableClimate ? styles.disabledContainer : ''}`}>
       <div className={styles.left}>
-        <span className={styles.icon}>{profile.enableClimate ? icon : "💤"}</span>
+        <span className={styles.icon}>{enableClimate ? icon : '🚫'}</span>
         <div className={styles.info}>
           <div className={styles.titleRow}>
-            {profile.enableClimate ? (
-              <>
-                <span className={styles.conditionTitle}>
-                  {climate.cityName ? `${climate.cityName} · ` : ""}
-                  {climate.condition} ({climate.temperature}℃) · {climate.timeOfDay}
-                </span>
-                <span className={styles.autoBadge}>
-                  {climate.isRealData ? "📡 実天気連動中" : "気候連動中"}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className={styles.conditionTitle}>気候連動: オフ</span>
-                <span className={styles.offBadge}>無効中</span>
-              </>
-            )}
+            <span className={styles.conditionTitle}>
+              {enableClimate ? `${climate.condition} (${climate.temperature}℃) · ${climate.timeOfDay}` : '気候連動 OFF (通常提案)'}
+            </span>
+            <span className={enableClimate ? styles.autoBadge : styles.offBadge}>
+              {enableClimate ? '気候連動中' : '無効'}
+            </span>
           </div>
           <p className={styles.advice}>
-            {profile.enableClimate
-              ? climate.advice
-              : "気候を考慮せず、お好みの条件のみでレシピを提案します"}
+            {enableClimate ? climate.advice : '季節や気温を考慮せず、通常のバランスレシピを提案します'}
           </p>
         </div>
       </div>
-
-      <div className={styles.rightActions}>
-        {profile.enableClimate && (
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <button
+          type="button"
+          className={`${styles.switchBtn} ${!enableClimate ? styles.btnInactive : ''}`}
+          onClick={toggleClimateEnable}
+          title={enableClimate ? "気候連動をオフにする" : "気候連動をオンにする"}
+        >
+          <Power size={12} />
+          <span>{enableClimate ? 'ON' : 'OFF'}</span>
+        </button>
+        {enableClimate && (
           <button
             type="button"
             className={styles.switchBtn}
@@ -133,15 +119,6 @@ export default function ClimateBar() {
             <span>切替</span>
           </button>
         )}
-
-        {/* 可愛いピンクのON/OFFトグル */}
-        <div
-          className={`${styles.toggleSwitch} ${profile.enableClimate ? styles.toggleSwitchActive : ""}`}
-          onClick={toggleClimateEnable}
-          title={profile.enableClimate ? "気候連動をオフにする" : "気候連動をオンにする"}
-        >
-          <div className={styles.toggleKnob} />
-        </div>
       </div>
     </div>
   );

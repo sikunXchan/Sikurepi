@@ -26,18 +26,11 @@ type IngredientItem = {
 };
 
 type Props = {
-  title?: string;
-  steps?: string[];
+  title: string;
+  steps: string[];
   ingredients?: IngredientItem[];
-  recipe?: {
-    title: string;
-    steps: string[];
-    ingredients: { name: string; amount?: string }[];
-    nutrition?: any;
-  };
   autoGenerateImages?: boolean;
   onClose: () => void;
-  onShowToast?: (msg: string) => void;
 };
 
 type StepMeta = {
@@ -70,17 +63,12 @@ const stepVariants = {
 };
 
 export default function CookingSession({
-  title: rawTitle,
-  steps: rawSteps,
-  ingredients: rawIngredients,
-  recipe,
+  title,
+  steps,
+  ingredients,
   autoGenerateImages = false,
   onClose,
-  onShowToast,
 }: Props) {
-  const title = recipe?.title || rawTitle || "料理";
-  const steps = recipe?.steps || rawSteps || ["材料を準備します", "調理します", "完成です"];
-  const ingredients = (recipe?.ingredients || rawIngredients || []).map(i => ({ name: i.name, amount: i.amount || "" }));
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [finished, setFinished] = useState(false);

@@ -1,10 +1,12 @@
 .container {
   width: 100%;
-  background: #ffffff;
-  border: 2px solid #ffe3eb;
-  border-radius: 24px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.6));
+  border-radius: 20px;
   padding: 16px;
-  box-shadow: 0 8px 24px rgba(255, 92, 138, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
   overflow-x: auto;
 }
 
@@ -13,19 +15,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 10px 0;
+  gap: 16px;
+  padding: 6px 0;
 }
 
 .centerRoot {
-  background: linear-gradient(135deg, #ff758f 0%, #ff5c8a 50%, #ff477e 100%);
+  background: linear-gradient(135deg, #ff7849 0%, #ff5722 100%);
   color: white;
-  border: 3px solid #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 9999px;
-  padding: 12px 24px;
+  padding: 10px 20px;
   font-weight: 800;
-  font-size: 15px;
-  box-shadow: 0 6px 18px rgba(255, 92, 138, 0.4);
+  font-size: 14px;
+  box-shadow: 0 4px 14px rgba(255, 120, 73, 0.35);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -34,37 +36,37 @@
 .branchGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 14px;
+  gap: 12px;
   width: 100%;
 }
 
 .branchCard {
-  background: #fff8fa;
-  border: 2px solid #ffd1dc;
-  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 120, 73, 0.18);
+  border-radius: 16px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 3px 8px rgba(255, 92, 138, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .branchHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px dashed #ffb7ca;
+  border-bottom: 1px dashed rgba(255, 120, 73, 0.25);
   padding-bottom: 6px;
   font-weight: 700;
   font-size: 12px;
-  color: #8c3b58;
+  color: #374151;
 }
 
 .branchCount {
-  background: #ff5c8a;
+  background: #ff7849;
   color: white;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   border-radius: 9999px;
   padding: 1px 6px;
 }
@@ -77,35 +79,37 @@
 
 .leafNode {
   background: #ffffff;
-  border: 1.5px solid #ffe3eb;
+  border: 1px solid #e5e7eb;
   border-radius: 9999px;
   padding: 4px 10px;
   font-size: 11px;
-  font-weight: 700;
-  color: #4a2835;
+  font-weight: 600;
+  color: #374151;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 4px rgba(255, 92, 138, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .leafNode:hover {
-  transform: translateY(-2px);
-  border-color: #ff5c8a;
+  transform: translateY(-1px);
+  border-color: #ff7849;
+  box-shadow: 0 3px 8px rgba(255, 120, 73, 0.15);
 }
 
 .leafNode.pinned {
-  border-color: #ff5c8a;
-  background: #ffeef2;
-  color: #e0245e;
+  border-color: #ff7849;
+  background: rgba(255, 120, 73, 0.08);
+  color: #ea580c;
+  font-weight: 700;
 }
 
 .deleteBtn {
   background: none;
   border: none;
-  color: #c9a7b5;
+  color: #9ca3af;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -116,6 +120,6 @@
 }
 
 .deleteBtn:hover {
-  color: #ff477e;
+  color: #ef4444;
   transform: none;
 }

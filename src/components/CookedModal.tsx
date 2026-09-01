@@ -2,37 +2,42 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Sparkles, Loader2 } from "lucide-react";
+import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { consumeLocalIngredients, recordLocalCookingDone, NutritionData } from "@/lib/storage";
 import styles from "./CookedModal.module.css";
 
+type RecipeLike = {
+  title: string;
+  ingredients: { name: string; amount?: string }[];
+  nutrition?: NutritionData | null;
+};
+
 type Props = {
+  recipe?: RecipeLike;
   recipeTitle?: string;
   ingredients?: { name: string; amount?: string }[];
-  recipe?: {
-    title: string;
-    ingredients: { name: string; amount?: string }[];
-    nutrition?: NutritionData | null;
-  };
+  nutrition?: NutritionData | null;
   onClose: () => void;
-  onSuccess?: () => void;
   onCompleted?: () => void;
+  onSuccess?: () => void;
 };
 
 export default function CookedModal({
-  recipeTitle,
-  ingredients: rawIngredients,
   recipe,
+  recipeTitle: propTitle,
+  ingredients: propIngredients,
+  nutrition: propNutrition,
   onClose,
-  onSuccess,
   onCompleted,
+  onSuccess
 }: Props) {
-  const finalTitle = recipe?.title || recipeTitle || "料理";
-  const finalIngredients = recipe?.ingredients || rawIngredients || [];
+  const title = recipe?.title || propTitle || "料理";
+  const rawIngredients = recipe?.ingredients || propIngredients || [];
+  const nutrition = recipe?.nutrition || propNutrition || null;
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(
-    new Set(finalIngredients.map((i) => i.name))
+    new Set(rawIngredients.map((i) => i.name))
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -54,22 +59,20 @@ export default function CookedModal({
       if (toConsume.length > 0) {
         consumedCount = consumeLocalIngredients(toConsume);
       }
-
-      // PFC統計および調理記録を累積更新
-      recordLocalCookingDone(consumedCount, finalTitle, recipe?.nutrition);
+      recordLocalCookingDone(consumedCount, title, nutrition || undefined);
 
       setDone(true);
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ["#ff758f", "#52b788", "#ffb703", "#ff5c8a"],
+        colors: ["#ff7849", "#20b2aa", "#10b981", "#fbbf24"],
       });
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
       setTimeout(() => {
-        if (onSuccess) onSuccess();
         if (onCompleted) onCompleted();
+        if (onSuccess) onSuccess();
         onClose();
       }, 1000);
     } catch (e) {
@@ -101,7 +104,7 @@ export default function CookedModal({
               <div className={styles.header}>
                 <div className={styles.headerTitle}>
                   <Sparkles size={18} className={styles.sparkleIcon} />
-                  <h3>「{recipeTitle}」を調理しました！</h3>
+                  <h3>「{title}」を調理しました！</h3>
                 </div>
                 <button className={styles.closeBtn} onClick={onClose}>
                   <X size={18} />
@@ -113,7 +116,7 @@ export default function CookedModal({
               </p>
 
               <div className={styles.itemList}>
-                {ingredients.map((item, idx) => {
+                {rawIngredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
                   return (
                     <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.itemRowActive : ""}`}>

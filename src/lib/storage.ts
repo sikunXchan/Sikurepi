@@ -27,9 +27,6 @@ export type SavedRecipe = {
   id: number;
   title: string;
   time: string;
-  difficulty?: 'かんたん' | 'ふつう' | 'むずかしい';
-  rating?: number;
-  category_tag?: 'メイン' | 'デザート' | 'その他';
   ingredients: { name: string; amount: string }[];
   steps: string[];
   tips: string;
@@ -40,13 +37,12 @@ export type SavedRecipe = {
 };
 
 export type CookedRecord = {
-  id: number;
-  recipe_title: string;
-  cooked_at: string;
-  calories: number;
-  protein_g: number;
-  fat_g: number;
-  carbs_g: number;
+  date: string;
+  recipeTitle: string;
+  calories?: number;
+  protein_g?: number;
+  fat_g?: number;
+  carbs_g?: number;
 };
 
 export type UserStats = {
@@ -62,20 +58,24 @@ export type UserStats = {
   cooked_records: CookedRecord[];
 };
 
+export type UserProfile = {
+  servings: number;
+  tastePreferences: string[];
+  excludedIngredients: string[];
+  cookingStyles: string[];
+  allergies: string[];
+  kitchenAppliances: string[];
+  targetCalories: number | null;
+  targetProtein: number | null;
+  address: string;
+  enableClimate: boolean;
+};
+
 export type SavedTip = {
   id: string;
   category: string;
   tip: string;
-  saved_at: string;
-};
-
-export type UserProfile = {
-  servings: number | null;
-  tastePreferences: string[];
-  excludedIngredients: string[];
-  cookingStyles: string[];
-  address: string;
-  enableClimate: boolean;
+  created_at: string;
 };
 
 export type ClimateState = {
@@ -83,8 +83,6 @@ export type ClimateState = {
   temperature: number;
   timeOfDay: string;
   advice: string;
-  cityName?: string;
-  isRealData?: boolean;
 };
 
 const KEYS = {
@@ -94,7 +92,7 @@ const KEYS = {
   STATS: 'lily_app_user_stats',
   PROFILE: 'lily_app_user_profile',
   CLIMATE: 'lily_app_climate',
-  SAVED_TIPS: 'lily_app_saved_tips',
+  TIPS: 'lily_app_saved_tips',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -131,13 +129,9 @@ export function getLocalIngredients(): Ingredient[] {
 
 export function addLocalIngredient(name: string, category: string = 'その他'): Ingredient {
   const list = getLocalIngredients();
-  const clean = name.trim();
-  const existing = list.find(i => i.name.toLowerCase() === clean.toLowerCase());
-  if (existing) return existing;
-
   const newItem: Ingredient = {
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    name: clean,
+    id: Date.now(),
+    name: name.trim(),
     is_pinned: false,
     category,
     created_at: new Date().toISOString(),
@@ -151,47 +145,39 @@ export function deleteLocalIngredient(id: number): void {
   setStorage(KEYS.INVENTORY, list.filter(i => i.id !== id));
 }
 
-export function toggleLocalIngredientPin(id: number): Ingredient | null {
+export function toggleLocalIngredientPin(id: number): void {
   const list = getLocalIngredients();
-  const target = list.find(i => i.id === id);
-  if (!target) return null;
-
   const updated = list.map(i => i.id === id ? { ...i, is_pinned: !i.is_pinned } : i);
-  updated.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
   setStorage(KEYS.INVENTORY, updated);
-  return target;
 }
 
-export function updateLocalIngredientCategory(id: number, category: string): void {
+export function consumeLocalIngredients(ingredientNames: string[]): number {
   const list = getLocalIngredients();
-  setStorage(KEYS.INVENTORY, list.map(i => i.id === id ? { ...i, category } : i));
-}
-
-export function consumeLocalIngredients(names: string[]): number {
-  if (!names || names.length === 0) return 0;
-  const list = getLocalIngredients();
-  const toRemove = new Set(names.map(n => n.trim().toLowerCase()));
-  const filtered = list.filter(i => !toRemove.has(i.name.trim().toLowerCase()));
-  const consumedCount = list.length - filtered.length;
-  setStorage(KEYS.INVENTORY, filtered);
+  const normalizedTargets = new Set(ingredientNames.map(n => n.trim().toLowerCase()));
+  const remaining = list.filter(item => {
+    const itemName = item.name.trim().toLowerCase();
+    const shouldRemove = Array.from(normalizedTargets).some(t => itemName.includes(t) || t.includes(itemName));
+    return !shouldRemove;
+  });
+  const consumedCount = list.length - remaining.length;
+  setStorage(KEYS.INVENTORY, remaining);
   return consumedCount;
 }
 
 // --- 買い物リスト (Shopping) ---
 
 export function getLocalShoppingItems(): ShoppingItem[] {
-  return getStorage<ShoppingItem[]>(KEYS.SHOPPING, []);
+  return getStorage<ShoppingItem[]>(KEYS.SHOPPING, [
+    { id: 1, name: '牛乳', category: '卵・乳製品', is_completed: false, created_at: new Date().toISOString() },
+    { id: 2, name: '玉ねぎ', category: '野菜・果物', is_completed: false, created_at: new Date().toISOString() },
+  ]);
 }
 
 export function addLocalShoppingItem(name: string, category: string = 'その他'): ShoppingItem {
   const list = getLocalShoppingItems();
-  const clean = name.trim();
-  const existing = list.find(i => i.name.toLowerCase() === clean.toLowerCase() && !i.is_completed);
-  if (existing) return existing;
-
   const newItem: ShoppingItem = {
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    name: clean,
+    id: Date.now(),
+    name: name.trim(),
     category,
     is_completed: false,
     created_at: new Date().toISOString(),
@@ -205,15 +191,13 @@ export function deleteLocalShoppingItem(id: number): void {
   setStorage(KEYS.SHOPPING, list.filter(i => i.id !== id));
 }
 
-export function toggleLocalShoppingItem(id: number): ShoppingItem | null {
+export function toggleLocalShoppingItem(id: number): void {
   const list = getLocalShoppingItems();
-  const item = list.find(i => i.id === id);
-  if (!item) return null;
+  const target = list.find(i => i.id === id);
+  if (!target) return;
 
-  // 購入完了したら冷蔵庫（在庫）に自動追加してリストから削除
-  addLocalIngredient(item.name, item.category);
   deleteLocalShoppingItem(id);
-  return item;
+  addLocalIngredient(target.name, target.category === '精肉' ? '肉' : target.category === '鮮魚' ? '魚介類' : target.category === '野菜・果物' ? '野菜' : 'その他');
 }
 
 // --- 保存レシピ (Saved Recipes) ---
@@ -226,7 +210,7 @@ export function saveLocalRecipe(recipe: Omit<SavedRecipe, 'id' | 'saved_at'>): S
   const list = getLocalSavedRecipes();
   const newItem: SavedRecipe = {
     ...recipe,
-    id: Date.now() + Math.floor(Math.random() * 1000),
+    id: Date.now(),
     saved_at: new Date().toISOString(),
   };
   setStorage(KEYS.SAVED_RECIPES, [newItem, ...list]);
@@ -243,12 +227,12 @@ export function getRecentLocalRecipeNames(limit = 5): string[] {
   return list.slice(0, limit).map(r => r.title);
 }
 
-// --- 統計 ＆ ゲーミフィケーション (Stats) ---
+// --- 統計 ＆ PFC記録 (Stats) ---
 
 export function getLocalUserStats(): UserStats {
   return getStorage<UserStats>(KEYS.STATS, {
-    streak_days: 0,
-    last_cooked_date: null,
+    streak_days: 1,
+    last_cooked_date: new Date().toISOString().split('T')[0],
     total_cooked: 0,
     saved_food_count: 0,
     chef_level: 1,
@@ -260,11 +244,7 @@ export function getLocalUserStats(): UserStats {
   });
 }
 
-export function recordLocalCookingDone(
-  consumedCount = 0,
-  recipeTitle?: string,
-  nutrition?: NutritionData | null
-): UserStats {
+export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
   let newStreak = stats.streak_days;
@@ -273,12 +253,8 @@ export function recordLocalCookingDone(
     const lastDate = new Date(stats.last_cooked_date);
     const todayDate = new Date(today);
     const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-
-    if (diffDays === 1) {
-      newStreak += 1;
-    } else if (diffDays > 1) {
-      newStreak = 1;
-    }
+    if (diffDays === 1) newStreak += 1;
+    else if (diffDays > 1) newStreak = 1;
   } else {
     newStreak = 1;
   }
@@ -287,23 +263,19 @@ export function recordLocalCookingDone(
   const newSavedFood = stats.saved_food_count + consumedCount;
   const newLevel = Math.max(1, Math.min(10, Math.floor(Math.sqrt(newTotal * 2)) + 1));
 
-  const cal = nutrition?.calories || 0;
-  const pro = nutrition?.protein_g || 0;
-  const fat = nutrition?.fat_g || 0;
-  const carb = nutrition?.carbs_g || 0;
+  const addCals = nutrition?.calories || 0;
+  const addProtein = nutrition?.protein_g || 0;
+  const addFat = nutrition?.fat_g || 0;
+  const addCarbs = nutrition?.carbs_g || 0;
 
-  const newRecords: CookedRecord[] = recipeTitle ? [
-    {
-      id: Date.now(),
-      recipe_title: recipeTitle,
-      cooked_at: new Date().toISOString(),
-      calories: cal,
-      protein_g: pro,
-      fat_g: fat,
-      carbs_g: carb,
-    },
-    ...(stats.cooked_records || []).slice(0, 49),
-  ] : (stats.cooked_records || []);
+  const newRecord: CookedRecord = {
+    date: new Date().toISOString(),
+    recipeTitle,
+    calories: addCals,
+    protein_g: addProtein,
+    fat_g: addFat,
+    carbs_g: addCarbs,
+  };
 
   const updated: UserStats = {
     streak_days: newStreak,
@@ -311,61 +283,27 @@ export function recordLocalCookingDone(
     total_cooked: newTotal,
     saved_food_count: newSavedFood,
     chef_level: newLevel,
-    total_calories: (stats.total_calories || 0) + cal,
-    total_protein: (stats.total_protein || 0) + pro,
-    total_fat: (stats.total_fat || 0) + fat,
-    total_carbs: (stats.total_carbs || 0) + carb,
-    cooked_records: newRecords,
+    total_calories: (stats.total_calories || 0) + addCals,
+    total_protein: (stats.total_protein || 0) + addProtein,
+    total_fat: (stats.total_fat || 0) + addFat,
+    total_carbs: (stats.total_carbs || 0) + addCarbs,
+    cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 50),
   };
   setStorage(KEYS.STATS, updated);
   return updated;
 }
 
-// --- 料理のコツ ＆ 豆知識ライブラリ (Saved Tips) ---
-
-export function getLocalSavedTips(): SavedTip[] {
-  return getStorage<SavedTip[]>(KEYS.SAVED_TIPS, []);
-}
-
-export function addLocalSavedTips(tips: { category: string; tip: string }[]): number {
-  if (!tips || tips.length === 0) return 0;
-  const current = getLocalSavedTips();
-  const existingSet = new Set(current.map(t => t.tip.trim()));
-  let addedCount = 0;
-  const newItems: SavedTip[] = [];
-
-  for (const t of tips) {
-    const clean = t.tip.trim();
-    if (clean && !existingSet.has(clean)) {
-      existingSet.add(clean);
-      newItems.push({
-        id: `tip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        category: t.category || '調理のコツ',
-        tip: clean,
-        saved_at: new Date().toISOString(),
-      });
-      addedCount++;
-    }
-  }
-
-  if (newItems.length > 0) {
-    setStorage(KEYS.SAVED_TIPS, [...newItems, ...current]);
-  }
-  return addedCount;
-}
-
-export function deleteLocalSavedTip(id: string): void {
-  const current = getLocalSavedTips();
-  setStorage(KEYS.SAVED_TIPS, current.filter(t => t.id !== id));
-}
-
-// --- クッキングプロファイル (User Profile) ---
+// --- クッキングプロファイル (User Profile: 初期値は未入力) ---
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  servings: null,
+  servings: 2,
   tastePreferences: [],
   excludedIngredients: [],
   cookingStyles: [],
+  allergies: [],
+  kitchenAppliances: [],
+  targetCalories: null,
+  targetProtein: null,
   address: '',
   enableClimate: true,
 };
@@ -378,16 +316,39 @@ export function setLocalUserProfile(profile: UserProfile): void {
   setStorage(KEYS.PROFILE, profile);
 }
 
+// --- 料理のコツ＆豆知識ライブラリ (Saved Tips) ---
+
+export function getLocalSavedTips(): SavedTip[] {
+  return getStorage<SavedTip[]>(KEYS.TIPS, []);
+}
+
+export function saveLocalTip(category: string, tip: string): void {
+  if (!tip || !tip.trim()) return;
+  const list = getLocalSavedTips();
+  if (list.some(t => t.tip.trim() === tip.trim())) return;
+
+  const newTip: SavedTip = {
+    id: `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    category: category || 'コツ',
+    tip: tip.trim(),
+    created_at: new Date().toISOString(),
+  };
+  setStorage(KEYS.TIPS, [newTip, ...list].slice(0, 100));
+}
+
+export function deleteLocalSavedTip(id: string): void {
+  const list = getLocalSavedTips();
+  setStorage(KEYS.TIPS, list.filter(t => t.id !== id));
+}
+
 // --- 気候設定 (Climate State) ---
 
 export function getLocalClimateState(): ClimateState {
   return getStorage<ClimateState>(KEYS.CLIMATE, {
-    condition: '過ごしやすい',
-    temperature: 22,
+    condition: '猛暑・晴れ',
+    temperature: 33,
     timeOfDay: '夕食',
-    advice: '旬の食材を活かしたヘルシーレシピを優先中',
-    cityName: '',
-    isRealData: false,
+    advice: '熱中症予防・塩分＆さっぱり酸味レシピを優先中',
   });
 }
 
@@ -406,7 +367,7 @@ export type AppBackupPayload = {
   stats: UserStats;
   profile: UserProfile;
   climate: ClimateState;
-  savedTips: SavedTip[];
+  tips?: SavedTip[];
 };
 
 export function exportBackupJSON(): void {
@@ -421,7 +382,7 @@ export function exportBackupJSON(): void {
     stats: getLocalUserStats(),
     profile: getLocalUserProfile(),
     climate: getLocalClimateState(),
-    savedTips: getLocalSavedTips(),
+    tips: getLocalSavedTips(),
   };
 
   const jsonStr = JSON.stringify(payload, null, 2);
@@ -453,7 +414,7 @@ export function importBackupJSON(jsonStr: string): { success: boolean; error?: s
     if (data.stats && typeof data.stats === 'object') setStorage(KEYS.STATS, data.stats);
     if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
     if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
-    if (Array.isArray(data.savedTips)) setStorage(KEYS.SAVED_TIPS, data.savedTips);
+    if (Array.isArray(data.tips)) setStorage(KEYS.TIPS, data.tips);
 
     window.dispatchEvent(new Event('storage-updated'));
     return { success: true };

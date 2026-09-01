@@ -5,21 +5,26 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      ingredients,
-      pinnedIngredients,
+      ingredients = [],
+      pinnedIngredients = [],
       conditions,
       instruction,
       servings,
       climate,
       profile,
+      userProfile,
       recentHistory,
+      mode,
     } = body;
 
-    if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
-      return NextResponse.json({ error: 'Ingredients array required' }, { status: 400 });
-    }
+    const actualProfile = userProfile || profile;
+    const isFreeMode = mode === 'free' || !ingredients || ingredients.length === 0;
 
-    const pinnedSection = pinnedIngredients && pinnedIngredients.length > 0
+    const ingredientsSection = isFreeMode
+      ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
+      : `【現在の在庫食材】\n${ingredients.join(', ')}\n`;
+
+    const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
       ? `\n【ピン留め食材（これらを必ず主役・または必須で使用してください！）】\n${pinnedIngredients.join(', ')}\n`
       : '';
 
@@ -43,15 +48,15 @@ export async function POST(req: Request) {
 
     // ユーザープロファイル（マイ一括設定）セクション
     let profileSection = '';
-    if (profile) {
-      const taste = profile.tastePreferences && profile.tastePreferences.length > 0
-        ? `・味の好み/栄養方針: ${profile.tastePreferences.join('、')}\n`
+    if (actualProfile) {
+      const taste = actualProfile.tastePreferences && actualProfile.tastePreferences.length > 0
+        ? `・味の好み/栄養方針: ${actualProfile.tastePreferences.join('、')}\n`
         : '';
-      const excluded = profile.excludedIngredients && profile.excludedIngredients.length > 0
-        ? `・【絶対除外（アレルギー・苦手）】: ${profile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
+      const excluded = actualProfile.excludedIngredients && actualProfile.excludedIngredients.length > 0
+        ? `・【絶対除外（アレルギー・苦手）】: ${actualProfile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
         : '';
-      const styles = profile.cookingStyles && profile.cookingStyles.length > 0
-        ? `・調理スタイル/設備: ${profile.cookingStyles.join('、')}\n`
+      const styles = actualProfile.cookingStyles && actualProfile.cookingStyles.length > 0
+        ? `・調理スタイル/設備: ${actualProfile.cookingStyles.join('、')}\n`
         : '';
       if (taste || excluded || styles) {
         profileSection = `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${styles}`;
@@ -62,14 +67,13 @@ export async function POST(req: Request) {
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
       : '';
 
-    const targetServings = servings || profile?.servings || 2;
+    const targetServings = servings || actualProfile?.servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
-    const seasoningSection = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。これらは在庫食材に含まれていなくても構いません。\n`;
+    const seasoningSection = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
 
-    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の在庫食材を使い、現在の気候やユーザーの好みにぴったりな、家庭で再現できる「本当においしく、栄養バランスの取れた」レシピを複数提案してください。
-【現在の在庫食材】
-${ingredients.join(', ')}
+    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
+${ingredientsSection}
 ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
 
 【重要・厳守事項】

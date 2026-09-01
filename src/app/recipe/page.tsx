@@ -1,21 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ChefHat,
-  Loader2,
-  Bookmark,
-  Check,
-  Pin,
-  Lightbulb,
-  PlayCircle,
-  Sparkles,
-  ShoppingBag,
-  Settings,
-  Clock,
-  Plus,
-  Utensils
-} from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Utensils, Pin, Lightbulb, PlayCircle, Sparkles, ShoppingCart, Settings, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -27,12 +13,14 @@ import {
   getLocalIngredients,
   getLocalUserProfile,
   getLocalClimateState,
+  getLocalSavedRecipes,
   saveLocalRecipe,
   addLocalShoppingItem,
-  addLocalSavedTips,
   getRecentLocalRecipeNames,
+  saveLocalTip,
   Ingredient,
   UserProfile,
+  ClimateState,
   NutritionData
 } from "@/lib/storage";
 import styles from "./Recipe.module.css";
@@ -47,9 +35,6 @@ type Recipe = {
   time: string;
   genre?: string;
   climate_badge?: string;
-  difficulty?: 'かんたん' | 'ふつう' | 'むずかしい';
-  rating?: number;
-  category_tag?: 'メイン' | 'デザート' | 'その他';
   ingredients: RecipeItem[];
   steps: string[];
   tips: string;
@@ -62,14 +47,20 @@ type CookingTip = {
   tip: string;
 };
 
-const TEMPLATE_PRESETS = [
-  { label: "🍱 栄養満点お弁当", prompt: "冷めても美味しく、汁気が出ない栄養バランス満点のお弁当おかず" },
-  { label: "⏱ 10分クイック時短", prompt: "フライパンまたはレンジで10分以内にサッと作れる絶品時短メニュー" },
-  { label: "🍲 からだ温まるヘルシー鍋・スープ", prompt: "野菜たっぷりで身体が芯から温まるヘルシーなスープ・鍋仕立て" },
-  { label: "🍰 休日おうちカフェスイーツ", prompt: "おうちにある材料で手軽に作れる可愛いカフェ風デザート・おやつ" },
-  { label: "💪 高タンパク・スタミナ飯", prompt: "タンパク質30g以上で脂質控えめ、筋肉と代謝を喜ばせるスタミナ料理" },
-  { label: "🎉 特別な日のごちそう", prompt: "彩り華やかで家族や友達が喜ぶプチ贅沢ディナー" },
+const TEMPLATES = [
+  { label: '⏳ 10分時短', query: '10分以内で手早く作れる時短おかず' },
+  { label: '🍱 お弁当用', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
+  { label: '💪 ガッツリ肉', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
+  { label: '🥗 ヘルシー・低糖質', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
+  { label: '🍲 鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
+  { label: '🍰 簡単スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
 ];
+
+const TIP_CATEGORY_COLORS: Record<string, string> = {
+  '保存方法': '#20b2aa',
+  '調理のコツ': '#ff7849',
+  '栄養豆知識': '#8b5cf6',
+};
 
 export default function RecipePage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -78,10 +69,13 @@ export default function RecipePage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const [expandedIndex, setExpandedIndex] = useState<number>(0);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [creationMode, setCreationMode] = useState<'inventory' | 'free'>('inventory');
   const [instruction, setInstruction] = useState("");
-  const [creationMode, setCreationMode] = useState<'free' | 'inventory'>('free');
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>([]);
+  const [showTips, setShowTips] = useState(false);
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -98,7 +92,8 @@ export default function RecipePage() {
     const list = getLocalIngredients();
     setIngredients(list);
     setUserProfile(getLocalUserProfile());
-    setSelectedIngredientIds(list.filter(i => i.is_pinned).map(i => i.id));
+    const pinned = list.filter(i => i.is_pinned).map(i => i.id);
+    setSelectedIngredientIds(prev => prev.length === 0 ? pinned : prev);
   };
 
   const showToast = (msg: string) => {
@@ -106,41 +101,44 @@ export default function RecipePage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
-    setInstruction(preset.prompt);
-    showToast(`テンプレート「${preset.label}」をセットしました`);
-  };
-
   const toggleIngredientSelection = (id: number) => {
     setSelectedIngredientIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
-  const handleGenerate = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleApplyTemplate = (query: string) => {
+    setInstruction(query);
+  };
+
+  const handleGenerate = async () => {
     setLoading(true);
     setErrorMsg("");
     setRecipes([]);
     setCookingTips([]);
+    setSavedSet(new Set());
 
     try {
-      const climate = getLocalClimateState();
-      const recentRecipes = getRecentLocalRecipeNames(5);
-
-      const targetIngredients = creationMode === 'inventory'
-        ? ingredients.filter(i => selectedIngredientIds.length === 0 || selectedIngredientIds.includes(i.id)).map(i => i.name)
+      const selectedNames = creationMode === 'inventory'
+        ? ingredients.filter(i => selectedIngredientIds.length === 0 ? true : selectedIngredientIds.includes(i.id)).map(i => i.name)
         : [];
 
+      const currentClimate = getLocalClimateState();
+      const recentRecipes = getRecentLocalRecipeNames(5);
+
       const payload = {
-        ingredients: targetIngredients,
+        ingredients: selectedNames,
         instruction: instruction.trim() || undefined,
-        servings: userProfile.servings || undefined,
+        servings: userProfile.servings || 2,
+        userProfile: {
+          ...userProfile,
+          tastePreferences: userProfile.tastePreferences || [],
+          excludedIngredients: userProfile.excludedIngredients || [],
+          cookingStyles: userProfile.cookingStyles || [],
+        },
+        climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         recentRecipes,
-        tastePreferences: userProfile.tastePreferences.length > 0 ? userProfile.tastePreferences : undefined,
-        excludedIngredients: userProfile.excludedIngredients.length > 0 ? userProfile.excludedIngredients : undefined,
-        cookingStyles: userProfile.cookingStyles.length > 0 ? userProfile.cookingStyles : undefined,
-        climate: userProfile.enableClimate ? climate : undefined,
+        mode: creationMode === 'free' ? 'free' : 'inventory',
       };
 
       const res = await fetch("/api/recipes", {
@@ -149,36 +147,29 @@ export default function RecipePage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        throw new Error("レシピの作成に失敗しました");
-      }
-
       const data = await res.json();
-      const generatedList: Recipe[] = (data.recipes || []).map((r: any) => ({
-        ...r,
-        difficulty: r.difficulty || (r.time?.includes("10") ? "かんたん" : "ふつう"),
-        rating: r.rating || 5,
-        category_tag: r.category_tag || (r.title?.includes("ケーキ") || r.title?.includes("スイーツ") ? "デザート" : "メイン"),
-      }));
-      setRecipes(generatedList);
-
-      if (Array.isArray(data.cooking_tips) && data.cooking_tips.length > 0) {
-        setCookingTips(data.cooking_tips);
-        const added = addLocalSavedTips(data.cooking_tips);
-        if (added > 0) {
-          showToast(`💡 ${added}件の料理のコツをマイページに保存しました！`);
-        }
+      if (!res.ok) {
+        throw new Error(data.error || "レシピの生成に失敗しました");
       }
 
-      confetti({
-        particleCount: 60,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#ff758f', '#ffb703', '#52b788'],
-      });
+      if (data.recipes && data.recipes.length > 0) {
+        setRecipes(data.recipes);
+        setExpandedIndex(0);
+      } else {
+        throw new Error("レシピが見つかりませんでした。条件を変えてお試しください。");
+      }
+
+      if (data.cooking_tips && data.cooking_tips.length > 0) {
+        setCookingTips(data.cooking_tips);
+        setShowTips(true);
+        // Tips を豆知識ライブラリへ自動蓄積
+        data.cooking_tips.forEach((t: CookingTip) => {
+          saveLocalTip(t.category, t.tip);
+        });
+      }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "通信エラーが発生しました");
+      setErrorMsg(err.message || "エラーが発生しました");
     } finally {
       setLoading(false);
     }
@@ -188,13 +179,11 @@ export default function RecipePage() {
     const r = recipes[index];
     if (!r) return;
 
+    setSavingIndex(index);
     try {
       saveLocalRecipe({
         title: r.title,
         time: r.time,
-        difficulty: r.difficulty || 'ふつう',
-        rating: r.rating || 5,
-        category_tag: r.category_tag || 'メイン',
         ingredients: r.ingredients,
         steps: r.steps,
         tips: r.tips,
@@ -204,122 +193,160 @@ export default function RecipePage() {
       });
 
       setSavedSet(prev => new Set(prev).add(index));
-      showToast(`💖 「${r.title}」をお気に入りに保存しました！`);
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#ff7849', '#20b2aa', '#fbbf24', '#f472b6'],
+      });
+      showToast(`💾 「${r.title}」をレシピ履歴に保存しました！`);
     } catch (e) {
       console.error(e);
       showToast("保存に失敗しました");
+    } finally {
+      setSavingIndex(null);
     }
   };
 
-  const handleAddToShopping = (ingName: string) => {
-    addLocalShoppingItem(ingName);
-    showToast(`🛒 「${ingName}」を買い物リストに追加しました！`);
+  const handleAddToShopping = (ingredientName: string) => {
+    addLocalShoppingItem(ingredientName);
+    showToast(`🛒 「${ingredientName}」を買い物リストに追加しました！`);
   };
 
   return (
     <div className={styles.container}>
       {toastMessage && (
         <div style={{
-          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(74, 40, 53, 0.95)', color: 'white', padding: '8px 18px',
-          borderRadius: 9999, fontSize: 12, fontWeight: 700, zIndex: 9999, pointerEvents: 'none',
+          position: 'fixed',
+          top: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(31, 41, 55, 0.95)',
+          color: 'white',
+          padding: '8px 18px',
+          borderRadius: 9999,
+          fontSize: 12,
+          fontWeight: 700,
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+          zIndex: 9999,
+          pointerEvents: 'none',
         }}>
           {toastMessage}
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 className={styles.title} style={{ margin: 0, fontSize: 22, color: '#ff5c8a', fontWeight: 900 }}>
-          🍳 AIレシピ提案
-        </h1>
+      {/* ヘッダーエリア */}
+      <div className={styles.header}>
+        <h1 className={styles.title}>🍳 AIレシピ提案</h1>
         <button
           type="button"
+          className={styles.settingsBtn}
           onClick={() => setIsSettingsOpen(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, background: '#ffffff',
-            border: '2px solid #ffd1dc', borderRadius: 9999, padding: '6px 14px',
-            fontSize: 12, fontWeight: 800, color: '#8c3b58', cursor: 'pointer',
-          }}
+          title="マイ設定"
         >
-          <Settings size={14} color="#ff5c8a" />
-          <span>マイ設定・統計</span>
+          <Settings size={18} />
+          <span>マイ設定</span>
         </button>
       </div>
 
       <ClimateBar />
 
+      {/* AI作成モード切り替え (在庫から作成 ⇄ 自由作成) */}
       <div style={{
-        display: 'flex', background: '#ffffff', border: '2px solid #ffd1dc',
-        borderRadius: 9999, padding: 4, gap: 4,
+        display: 'flex',
+        background: 'rgba(255, 255, 255, 0.8)',
+        border: '1px solid rgba(255, 120, 73, 0.2)',
+        borderRadius: 12,
+        padding: 3,
+        gap: 4,
+        marginBottom: 12,
       }}>
-        <button
-          type="button"
-          onClick={() => setCreationMode('free')}
-          style={{
-            flex: 1,
-            background: creationMode === 'free' ? 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)' : 'transparent',
-            color: creationMode === 'free' ? 'white' : '#8c3b58',
-            border: 'none', borderRadius: 9999, padding: '8px 12px',
-            fontSize: 12, fontWeight: 800, cursor: 'pointer',
-          }}
-        >
-          <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          自由作成 ＆ テンプレート
-        </button>
         <button
           type="button"
           onClick={() => setCreationMode('inventory')}
           style={{
             flex: 1,
-            background: creationMode === 'inventory' ? 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)' : 'transparent',
-            color: creationMode === 'inventory' ? 'white' : '#8c3b58',
-            border: 'none', borderRadius: 9999, padding: '8px 12px',
-            fontSize: 12, fontWeight: 800, cursor: 'pointer',
+            background: creationMode === 'inventory' ? 'var(--gradient-primary)' : 'transparent',
+            color: creationMode === 'inventory' ? 'white' : 'var(--text-muted)',
+            border: 'none',
+            borderRadius: 9,
+            padding: '8px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            textAlign: 'center',
           }}
         >
-          <Utensils size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          ❄️ 冷蔵庫の在庫を使う ({ingredients.length})
+          🧺 冷蔵庫の在庫から作成
+        </button>
+        <button
+          type="button"
+          onClick={() => setCreationMode('free')}
+          style={{
+            flex: 1,
+            background: creationMode === 'free' ? 'var(--gradient-primary)' : 'transparent',
+            color: creationMode === 'free' ? 'white' : 'var(--text-muted)',
+            border: 'none',
+            borderRadius: 9,
+            padding: '8px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          ✨ 在庫縛りなし・自由作成
         </button>
       </div>
 
-      <div className="card">
+      {/* 設定・リクエストフォーム */}
+      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+        {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#8c3b58', marginBottom: 6 }}>
-            ✨ ワンタップ・おすすめテンプレート
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', marginBottom: 6 }}>
+            💡 おすすめテンプレート:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TEMPLATE_PRESETS.map(preset => (
+            {TEMPLATES.map((tmpl, i) => (
               <button
-                key={preset.label}
+                key={i}
                 type="button"
-                onClick={() => handleSelectTemplate(preset)}
+                onClick={() => handleApplyTemplate(tmpl.query)}
                 style={{
-                  background: '#fff0f3', border: '1.5px solid #ffd1dc', color: '#4a2835',
-                  padding: '5px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : '#ffffff',
+                  color: instruction === tmpl.query ? 'var(--primary)' : 'var(--foreground)',
+                  border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
                 }}
               >
-                {preset.label}
+                {tmpl.label}
               </button>
             ))}
           </div>
         </div>
 
+        {/* 自由リクエスト入力 */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 12, fontWeight: 800, color: '#4a2835', display: 'block', marginBottom: 4 }}>
-            📝 リクエストや気分（自由に入力できます）
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: 4 }}>
+            📝 リクエスト・気分（自由に入力できます）
           </label>
           <textarea
             rows={2}
-            placeholder="例: 子供が喜ぶチーズを使った料理、フライパン1つのパスタ、さっぱりした副菜など"
+            placeholder="例: 子供が喜ぶチーズ料理、フライパン1つで作れるパスタ、さっぱりした副菜など"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #ffd1dc' }}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13 }}
           />
         </div>
 
+        {/* 在庫選択 (在庫モード時のみ) */}
         {creationMode === 'inventory' && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#4a2835', marginBottom: 6 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', marginBottom: 6 }}>
               🧺 使いたい食材を選択（未選択時は全在庫からAIが判断）:
             </div>
             {ingredients.length > 0 ? (
@@ -332,10 +359,14 @@ export default function RecipePage() {
                       type="button"
                       onClick={() => toggleIngredientSelection(ing.id)}
                       style={{
-                        background: isSelected ? '#ff5c8a' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#4a2835',
-                        border: '1.5px solid #ffd1dc', padding: '4px 10px',
-                        borderRadius: 9999, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        background: isSelected ? 'var(--primary)' : '#ffffff',
+                        color: isSelected ? '#ffffff' : 'var(--foreground)',
+                        border: '1px solid var(--border)',
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
                       }}
                     >
                       {ing.is_pinned && '📌 '}
@@ -345,8 +376,8 @@ export default function RecipePage() {
                 })}
               </div>
             ) : (
-              <p style={{ fontSize: 11, color: '#a07888' }}>
-                冷蔵庫に食材がありません。「自由作成」モードでレシピを作成できます。
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                冷蔵庫に食材がありません。「自由作成」モードをご利用いただくか、在庫画面から追加してください。
               </p>
             )}
           </div>
@@ -354,13 +385,10 @@ export default function RecipePage() {
 
         <button
           type="button"
-          onClick={() => handleGenerate()}
+          onClick={handleGenerate}
           disabled={loading}
-          style={{
-            width: '100%', padding: '12px', fontSize: 15, fontWeight: 800,
-            background: 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)',
-            color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer',
-          }}
+          className="btn-primary"
+          style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 700 }}
         >
           {loading ? (
             <>
@@ -370,191 +398,214 @@ export default function RecipePage() {
           ) : (
             <>
               <Sparkles size={18} />
-              ✨ AIにレシピを作ってもらう！
+              ✨ AIにレシピを提案してもらう！
             </>
           )}
         </button>
       </div>
 
       {errorMsg && (
-        <div style={{ background: '#fff0f3', border: '1.5px solid #ff758f', borderRadius: 16, padding: '12px', color: '#e0245e', fontSize: 13, fontWeight: 700, textAlign: 'center' }}>
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
           {errorMsg}
         </div>
       )}
 
+      {/* レシピ一覧表示 */}
       {recipes.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#ff5c8a', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>🎀</span> AIが考案したレシピ ({recipes.length}品)
-          </div>
+          {recipes.map((recipe, index) => {
+            const isExpanded = expandedIndex === index;
+            const isSaved = savedSet.has(index);
 
-          {recipes.map((recipe, idx) => {
-            const isSaved = savedSet.has(idx);
             return (
-              <div key={idx} className="card">
-                {/* ヘッダー: タイトル・難易度・カテゴリタグ */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, background: '#ffe5ec', color: '#ff5c8a', padding: '2px 8px', borderRadius: 9999 }}>
-                        {recipe.category_tag || 'メイン'}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 800, background: '#d8f3dc', color: '#2d6a4f', padding: '2px 8px', borderRadius: 9999 }}>
-                        👨‍🍳 {recipe.difficulty || 'かんたん'}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#ffb703' }}>
-                        {'★'.repeat(recipe.rating || 5)}
-                      </span>
+              <div key={index} className={styles.recipeCard}>
+                <div
+                  className={styles.cardHeader}
+                  onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
+                >
+                  <div className={styles.titleInfo}>
+                    <div className={styles.badgeRow}>
+                      {recipe.genre && (
+                        <span className={styles.genreBadge}>{recipe.genre}</span>
+                      )}
+                      {recipe.climate_badge && (
+                        <span className={styles.climateBadge}>🌤️ {recipe.climate_badge}</span>
+                      )}
                     </div>
-                    <h2 style={{ fontSize: 18, fontWeight: 900, color: '#4a2835', margin: 0 }}>
-                      {recipe.title}
-                    </h2>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#a07888', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Clock size={12} />
-                      {recipe.time}
-                    </div>
+                    <h2 className={styles.recipeTitle}>{recipe.title}</h2>
+                    <span className={styles.recipeTime}>⏱ {recipe.time}</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSaveRecipe(idx)}
-                    style={{
-                      background: isSaved ? '#f1f3f5' : '#ffb703',
-                      color: isSaved ? '#868e96' : 'white',
-                      border: 'none',
-                      borderRadius: 9999,
-                      padding: '6px 12px',
-                      fontSize: 11,
-                      fontWeight: 800,
-                      boxShadow: isSaved ? 'none' : '0 3px 10px rgba(255, 183, 3, 0.35)',
-                      cursor: isSaved ? 'default' : 'pointer',
-                    }}
-                  >
-                    {isSaved ? (
-                      <>
-                        <Check size={13} />
-                        保存済み
-                      </>
-                    ) : (
-                      <>
-                        <Bookmark size={13} />
-                        保存する 🐾
-                      </>
-                    )}
-                  </button>
+                  <div className={styles.headerActions}>
+                    <button
+                      type="button"
+                      className={isSaved ? styles.savedBtn : styles.saveBtn}
+                      onClick={(e) => { e.stopPropagation(); handleSaveRecipe(index); }}
+                      disabled={isSaved || savingIndex === index}
+                    >
+                      {isSaved ? <Check size={14} /> : <Bookmark size={14} />}
+                      {isSaved ? "保存済み" : "保存"}
+                    </button>
+                    <button className={styles.expandBtn}>
+                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+                  </div>
                 </div>
 
-                {/* 栄養成分PFC */}
-                {recipe.nutrition && (
-                  <div style={{ marginBottom: 12 }}>
-                    <NutritionChart nutrition={recipe.nutrition} />
-                  </div>
-                )}
-
-                {/* 材料リスト (メモ帳風カード) */}
-                <div style={{ background: '#fff8fa', border: '1.5px solid #ffd1dc', borderRadius: 18, padding: 12, marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#8c3b58', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>👨‍🍳 材料 (タップで買い物リストへ追加)</span>
-                    <span style={{ fontSize: 10, color: '#a07888' }}>🛒 追加</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {recipe.ingredients.map((ing, iIdx) => (
-                      <div
-                        key={iIdx}
-                        onClick={() => handleAddToShopping(ing.name)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '4px 8px',
-                          background: '#ffffff',
-                          border: '1px dashed #ffd1dc',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          cursor: 'pointer',
-                        }}
-                        title="タップして買い物リストに追加"
-                      >
-                        <span style={{ fontWeight: 700, color: '#4a2835' }}>• {ing.name}</span>
-                        <span style={{ color: '#8c3b58', fontWeight: 600 }}>{ing.amount}</span>
+                {isExpanded && (
+                  <div className={styles.cardContent}>
+                    {recipe.nutrition && (
+                      <div className={styles.nutritionSection}>
+                        <NutritionChart nutrition={recipe.nutrition} />
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
 
-                {/* 作り方手順 */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#ff5c8a', marginBottom: 6 }}>
-                    🎀 作り方
-                  </div>
-                  <ol style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.6, color: '#4a2835' }}>
-                    {recipe.steps.map((step, sIdx) => (
-                      <li key={sIdx} style={{ marginBottom: 4 }}>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+                    {/* 材料リスト ＋ 買い物リスト追加 */}
+                    <div className={styles.section}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <h3>材料・調味料</h3>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>タップで買い物リストへ追加 🛒</span>
+                      </div>
+                      <ul className={styles.ingredientList}>
+                        {recipe.ingredients.map((item, i) => (
+                          <li
+                            key={i}
+                            onClick={() => handleAddToShopping(item.name)}
+                            style={{ cursor: 'pointer' }}
+                            title="タップして買い物リストに追加"
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span>• {item.name}</span>
+                              <Plus size={12} color="var(--primary)" />
+                            </span>
+                            <span className="text-muted">{item.amount}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                {/* 料理のコツ＆Tips */}
-                {recipe.tips && (
-                  <div style={{ background: '#fff0f3', borderLeft: '4px solid #ff5c8a', padding: '8px 12px', borderRadius: '0 12px 12px 0', fontSize: 11, color: '#4a2835', marginBottom: 14, lineHeight: 1.4 }}>
-                    💡 <strong>シェフのコツ:</strong> {recipe.tips}
+                    {/* 作り方 */}
+                    <div className={styles.section}>
+                      <div className={styles.sectionHeader}>
+                        <h3>作り方</h3>
+                        <button
+                          className={styles.startCookingBtn}
+                          onClick={(e) => { e.stopPropagation(); setCookingRecipeIndex(index); }}
+                        >
+                          <PlayCircle size={16} />
+                          クッキングモード
+                        </button>
+                      </div>
+                      <ol className={styles.stepList}>
+                        {recipe.steps.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    {recipe.tips && (
+                      <div className={styles.tipsBox}>
+                        <strong>💡 シェフのコツ: </strong> {recipe.tips}
+                      </div>
+                    )}
+
+                    {/* 調理完了ボタン (在庫消費 & PFC累積) */}
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                      <button
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          background: 'linear-gradient(135deg, #ff7849 0%, #ff5722 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 12,
+                          padding: '12px 14px',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 3px 10px rgba(255, 120, 73, 0.25)',
+                        }}
+                        onClick={() => setCookedModalRecipe(recipe)}
+                      >
+                        🍳 この料理を作った！（在庫を減らしPFCを記録）
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                {/* アクションボタン */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setCookingRecipeIndex(idx)}
-                    style={{
-                      flex: 1,
-                      background: 'linear-gradient(135deg, #74c69d 0%, #52b788 100%)',
-                      boxShadow: '0 4px 12px rgba(82, 183, 136, 0.35)',
-                    }}
-                  >
-                    <PlayCircle size={15} />
-                    クッキングモード
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCookedModalRecipe(recipe)}
-                    style={{
-                      flex: 1,
-                      background: 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)',
-                    }}
-                  >
-                    🍳 この料理を作った！
-                  </button>
-                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* クッキングセッション */}
-      {cookingRecipeIndex !== null && recipes[cookingRecipeIndex] && (
-        <CookingSession
-          recipe={recipes[cookingRecipeIndex]}
-          onClose={() => setCookingRecipeIndex(null)}
-          onShowToast={showToast}
-        />
+      {/* 豆知識セクション */}
+      {!loading && cookingTips.length > 0 && (
+        <div className={styles.cookingTipsSection}>
+          <button
+            className={styles.cookingTipsHeader}
+            onClick={() => setShowTips(!showTips)}
+          >
+            <span className={styles.cookingTipsTitle}>
+              <Lightbulb size={18} color="#8b5cf6" />
+              料理のコツ &amp; 豆知識（ライブラリに保存済み）
+            </span>
+            {showTips ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+
+          <AnimatePresence>
+            {showTips && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className={styles.cookingTipsList}
+              >
+                {cookingTips.map((tip, i) => (
+                  <div key={i} className={styles.cookingTipItem}>
+                    <span
+                      className={styles.tipCategoryBadge}
+                      style={{ background: `${TIP_CATEGORY_COLORS[tip.category] || '#8b5cf6'}20`, color: TIP_CATEGORY_COLORS[tip.category] || '#8b5cf6' }}
+                    >
+                      {tip.category}
+                    </span>
+                    <p className={styles.tipText}>{tip.tip}</p>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
+      {/* クッキングセッション */}
+      <AnimatePresence>
+        {cookingRecipeIndex !== null && recipes[cookingRecipeIndex] && (
+          <CookingSession
+            title={recipes[cookingRecipeIndex].title}
+            steps={recipes[cookingRecipeIndex].steps}
+            ingredients={recipes[cookingRecipeIndex].ingredients}
+            onClose={() => setCookingRecipeIndex(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* 調理完了モーダル */}
-      {cookedModalRecipe && (
-        <CookedModal
-          recipe={cookedModalRecipe}
-          onClose={() => setCookedModalRecipe(null)}
-          onCompleted={() => {
-            loadLocalData();
-            showToast("🎉 調理を記録し、PFC統計を更新しました！");
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {cookedModalRecipe && (
+          <CookedModal
+            recipe={cookedModalRecipe}
+            onClose={() => setCookedModalRecipe(null)}
+            onCompleted={() => {
+              loadLocalData();
+              showToast("🎉 自炊記録とお使いの在庫を更新しました！");
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <ProfileSettingsModal
         isOpen={isSettingsOpen}
@@ -564,5 +615,3 @@ export default function RecipePage() {
     </div>
   );
 }
-
-
