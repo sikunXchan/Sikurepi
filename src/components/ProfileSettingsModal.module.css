@@ -1,8 +1,8 @@
-﻿.overlay {
+.overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(74, 40, 53, 0.45);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -18,21 +18,22 @@
 .modal {
   background: #ffffff;
   width: 100%;
-  max-width: 480px;
-  max-height: 85vh;
-  border-top-left-radius: 28px;
-  border-top-right-radius: 28px;
+  max-width: 520px;
+  max-height: 88vh;
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 -10px 40px rgba(255, 92, 138, 0.25);
   overflow: hidden;
+  border: 2px solid #ffd1dc;
   animation: slideUp 0.25s ease-out;
 }
 
 @media (min-width: 640px) {
   .modal {
-    border-radius: 28px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    border-radius: 32px;
+    box-shadow: 0 20px 50px rgba(255, 92, 138, 0.3);
   }
 }
 
@@ -46,7 +47,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #ffeef2;
+  background: #fff8fa;
 }
 
 .headerTitle {
@@ -55,32 +57,62 @@
   gap: 8px;
 }
 
-.headerTitle span {
-  font-size: 20px;
-}
-
 .headerTitle h2 {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 800;
+  color: #4a2835;
   margin: 0;
 }
 
 .closeBtn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #c9a7b5;
   cursor: pointer;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: none;
 }
 
 .closeBtn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: #ffeef2;
+  color: #ff5c8a;
+  transform: none;
+}
+
+/* ピル型タブバー */
+.tabBar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #fff5f7;
+  border-bottom: 1px solid #ffd1dc;
+  overflow-x: auto;
+}
+
+.tabBtn {
+  flex: 1;
+  white-space: nowrap;
+  background: #ffffff;
+  border: 1.5px solid #ffd1dc;
+  color: #8c3b58;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.tabBtnActive {
+  background: #ff5c8a;
+  color: white;
+  border-color: #ff5c8a;
+  box-shadow: 0 3px 10px rgba(255, 92, 138, 0.35);
 }
 
 .body {
@@ -88,7 +120,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .description {

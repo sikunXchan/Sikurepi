@@ -27,6 +27,9 @@ export type SavedRecipe = {
   id: number;
   title: string;
   time: string;
+  difficulty?: 'かんたん' | 'ふつう' | 'むずかしい';
+  rating?: number;
+  category_tag?: 'メイン' | 'デザート' | 'その他';
   ingredients: { name: string; amount: string }[];
   steps: string[];
   tips: string;
@@ -36,26 +39,52 @@ export type SavedRecipe = {
   saved_at: string;
 };
 
+export type CookedRecord = {
+  id: number;
+  recipe_title: string;
+  cooked_at: string;
+  calories: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+};
+
 export type UserStats = {
   streak_days: number;
   last_cooked_date: string | null;
   total_cooked: number;
   saved_food_count: number;
   chef_level: number;
+  total_calories: number;
+  total_protein: number;
+  total_fat: number;
+  total_carbs: number;
+  cooked_records: CookedRecord[];
+};
+
+export type SavedTip = {
+  id: string;
+  category: string;
+  tip: string;
+  saved_at: string;
 };
 
 export type UserProfile = {
-  servings: number;
-  tastePreferences: string[]; // 例: [うす味・減塩, 高タンパク]
-  excludedIngredients: string[]; // 例: [エビ, パクチー]
-  cookingStyles: string[]; // 例: [15分以内の時短, フライパン1つ]
+  servings: number | null;
+  tastePreferences: string[];
+  excludedIngredients: string[];
+  cookingStyles: string[];
+  address: string;
+  enableClimate: boolean;
 };
 
 export type ClimateState = {
-  condition: string; // 猛暑・晴れ, 雨・肌寒い, 冬の寒波, 春・うららか, 秋・快晴
-  temperature: number; // ℃
-  timeOfDay: string; // 朝食, 昼食, 夕食, 夜食
+  condition: string;
+  temperature: number;
+  timeOfDay: string;
   advice: string;
+  cityName?: string;
+  isRealData?: boolean;
 };
 
 const KEYS = {
@@ -65,6 +94,7 @@ const KEYS = {
   STATS: 'lily_app_user_stats',
   PROFILE: 'lily_app_user_profile',
   CLIMATE: 'lily_app_climate',
+  SAVED_TIPS: 'lily_app_saved_tips',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -217,15 +247,24 @@ export function getRecentLocalRecipeNames(limit = 5): string[] {
 
 export function getLocalUserStats(): UserStats {
   return getStorage<UserStats>(KEYS.STATS, {
-    streak_days: 1,
-    last_cooked_date: new Date().toISOString().split('T')[0],
-    total_cooked: 1,
-    saved_food_count: 3,
+    streak_days: 0,
+    last_cooked_date: null,
+    total_cooked: 0,
+    saved_food_count: 0,
     chef_level: 1,
+    total_calories: 0,
+    total_protein: 0,
+    total_fat: 0,
+    total_carbs: 0,
+    cooked_records: [],
   });
 }
 
-export function recordLocalCookingDone(consumedCount = 0): UserStats {
+export function recordLocalCookingDone(
+  consumedCount = 0,
+  recipeTitle?: string,
+  nutrition?: NutritionData | null
+): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
   let newStreak = stats.streak_days;
@@ -248,24 +287,87 @@ export function recordLocalCookingDone(consumedCount = 0): UserStats {
   const newSavedFood = stats.saved_food_count + consumedCount;
   const newLevel = Math.max(1, Math.min(10, Math.floor(Math.sqrt(newTotal * 2)) + 1));
 
+  const cal = nutrition?.calories || 0;
+  const pro = nutrition?.protein_g || 0;
+  const fat = nutrition?.fat_g || 0;
+  const carb = nutrition?.carbs_g || 0;
+
+  const newRecords: CookedRecord[] = recipeTitle ? [
+    {
+      id: Date.now(),
+      recipe_title: recipeTitle,
+      cooked_at: new Date().toISOString(),
+      calories: cal,
+      protein_g: pro,
+      fat_g: fat,
+      carbs_g: carb,
+    },
+    ...(stats.cooked_records || []).slice(0, 49),
+  ] : (stats.cooked_records || []);
+
   const updated: UserStats = {
     streak_days: newStreak,
     last_cooked_date: today,
     total_cooked: newTotal,
     saved_food_count: newSavedFood,
     chef_level: newLevel,
+    total_calories: (stats.total_calories || 0) + cal,
+    total_protein: (stats.total_protein || 0) + pro,
+    total_fat: (stats.total_fat || 0) + fat,
+    total_carbs: (stats.total_carbs || 0) + carb,
+    cooked_records: newRecords,
   };
   setStorage(KEYS.STATS, updated);
   return updated;
 }
 
+// --- 料理のコツ ＆ 豆知識ライブラリ (Saved Tips) ---
+
+export function getLocalSavedTips(): SavedTip[] {
+  return getStorage<SavedTip[]>(KEYS.SAVED_TIPS, []);
+}
+
+export function addLocalSavedTips(tips: { category: string; tip: string }[]): number {
+  if (!tips || tips.length === 0) return 0;
+  const current = getLocalSavedTips();
+  const existingSet = new Set(current.map(t => t.tip.trim()));
+  let addedCount = 0;
+  const newItems: SavedTip[] = [];
+
+  for (const t of tips) {
+    const clean = t.tip.trim();
+    if (clean && !existingSet.has(clean)) {
+      existingSet.add(clean);
+      newItems.push({
+        id: `tip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        category: t.category || '調理のコツ',
+        tip: clean,
+        saved_at: new Date().toISOString(),
+      });
+      addedCount++;
+    }
+  }
+
+  if (newItems.length > 0) {
+    setStorage(KEYS.SAVED_TIPS, [...newItems, ...current]);
+  }
+  return addedCount;
+}
+
+export function deleteLocalSavedTip(id: string): void {
+  const current = getLocalSavedTips();
+  setStorage(KEYS.SAVED_TIPS, current.filter(t => t.id !== id));
+}
+
 // --- クッキングプロファイル (User Profile) ---
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  servings: 2,
-  tastePreferences: ['うす味・減塩', '高タンパク'],
-  excludedIngredients: ['エビ', 'カニ', 'パクチー'],
-  cookingStyles: ['15分以内の時短', 'フライパン1つ'],
+  servings: null,
+  tastePreferences: [],
+  excludedIngredients: [],
+  cookingStyles: [],
+  address: '',
+  enableClimate: true,
 };
 
 export function getLocalUserProfile(): UserProfile {
@@ -280,10 +382,12 @@ export function setLocalUserProfile(profile: UserProfile): void {
 
 export function getLocalClimateState(): ClimateState {
   return getStorage<ClimateState>(KEYS.CLIMATE, {
-    condition: '猛暑・晴れ',
-    temperature: 33,
+    condition: '過ごしやすい',
+    temperature: 22,
     timeOfDay: '夕食',
-    advice: '熱中症予防・塩分＆さっぱり酸味レシピを優先中',
+    advice: '旬の食材を活かしたヘルシーレシピを優先中',
+    cityName: '',
+    isRealData: false,
   });
 }
 
@@ -294,7 +398,7 @@ export function setLocalClimateState(state: ClimateState): void {
 // --- バックアップ (Download JSON) & 復元 (Upload JSON) ---
 
 export type AppBackupPayload = {
-  version: '1.0';
+  version: '2.0';
   exportedAt: string;
   inventory: Ingredient[];
   shopping: ShoppingItem[];
@@ -302,13 +406,14 @@ export type AppBackupPayload = {
   stats: UserStats;
   profile: UserProfile;
   climate: ClimateState;
+  savedTips: SavedTip[];
 };
 
 export function exportBackupJSON(): void {
   if (typeof window === 'undefined') return;
 
   const payload: AppBackupPayload = {
-    version: '1.0',
+    version: '2.0',
     exportedAt: new Date().toISOString(),
     inventory: getLocalIngredients(),
     shopping: getLocalShoppingItems(),
@@ -316,6 +421,7 @@ export function exportBackupJSON(): void {
     stats: getLocalUserStats(),
     profile: getLocalUserProfile(),
     climate: getLocalClimateState(),
+    savedTips: getLocalSavedTips(),
   };
 
   const jsonStr = JSON.stringify(payload, null, 2);
@@ -347,6 +453,7 @@ export function importBackupJSON(jsonStr: string): { success: boolean; error?: s
     if (data.stats && typeof data.stats === 'object') setStorage(KEYS.STATS, data.stats);
     if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
     if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
+    if (Array.isArray(data.savedTips)) setStorage(KEYS.SAVED_TIPS, data.savedTips);
 
     window.dispatchEvent(new Event('storage-updated'));
     return { success: true };

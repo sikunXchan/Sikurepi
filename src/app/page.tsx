@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Plus, Loader2, ShoppingBag, Pin, Settings } from "lucide-react";
+import { Plus, Pin, Trash2, Settings, Network, List } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import InventoryMindMap from "@/components/InventoryMindMap";
 import {
   getLocalIngredients,
   addLocalIngredient,
   deleteLocalIngredient,
   toggleLocalIngredientPin,
-  updateLocalIngredientCategory,
   Ingredient
 } from "@/lib/storage";
 import styles from "./Home.module.css";
@@ -34,9 +34,9 @@ export default function Home() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
-  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'mindmap' | 'list'>('mindmap');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -48,7 +48,11 @@ export default function Home() {
 
   const loadIngredients = () => {
     setIngredients(getLocalIngredients());
-    setLoading(false);
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
   };
 
   const handleAdd = (e: React.FormEvent) => {
@@ -57,18 +61,20 @@ export default function Home() {
     if (!cleanName) return;
 
     if (ingredients.some(i => i.name.toLowerCase() === cleanName.toLowerCase())) {
-      alert("その食材はすでに在庫にあります。");
+      showToast("⚠️ その食材はすでに冷蔵庫にあります");
       return;
     }
 
     addLocalIngredient(cleanName, selectedCategory);
     setNewName("");
     loadIngredients();
+    showToast(`✨ 「${cleanName}」を冷蔵庫に追加しました！`);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: number, name: string) => {
     deleteLocalIngredient(id);
     loadIngredients();
+    showToast(`🗑️ 「${name}」を削除しました`);
   };
 
   const handleTogglePin = (item: Ingredient) => {
@@ -79,17 +85,10 @@ export default function Home() {
         spread: 70,
         origin: { y: 0.6 },
         shapes: ['star'],
-        colors: ['#FFD700', '#FFA500', '#FF7849'],
+        colors: ['#ff758f', '#ffb703', '#ff5c8a'],
       });
     }
     toggleLocalIngredientPin(item.id);
-    loadIngredients();
-  };
-
-  const handleChangeCategory = (item: Ingredient, newCategory: string) => {
-    setEditingCategoryId(null);
-    if (newCategory === item.category) return;
-    updateLocalIngredientCategory(item.id, newCategory);
     loadIngredients();
   };
 
@@ -102,28 +101,39 @@ export default function Home() {
     });
   };
 
-  // Group ingredients by category
   const grouped = CATEGORY_ORDER.reduce<Record<string, Ingredient[]>>((acc, cat) => {
     const items = ingredients.filter(i => (i.category || 'その他') === cat);
     if (items.length > 0) acc[cat] = items;
     return acc;
   }, {});
 
-  const knownCategories = new Set(CATEGORY_ORDER);
-  ingredients.forEach(i => {
-    const cat = i.category || 'その他';
-    if (!knownCategories.has(cat)) {
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(i);
-    }
-  });
-
-  const hasIngredients = ingredients.length > 0;
-
   return (
     <div className={styles.container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h1 className={styles.title} style={{ margin: 0 }}>🧊 冷蔵庫の在庫</h1>
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(74, 40, 53, 0.95)',
+          color: 'white',
+          padding: '8px 18px',
+          borderRadius: 9999,
+          fontSize: 12,
+          fontWeight: 700,
+          boxShadow: '0 8px 24px rgba(255, 92, 138, 0.3)',
+          zIndex: 9999,
+          pointerEvents: 'none',
+        }}>
+          {toastMessage}
+        </div>
+      )}
+
+      {/* ヘッダー */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <h1 className={styles.title} style={{ margin: 0, fontSize: 22, color: '#ff5c8a', fontWeight: 900 }}>
+          ❄️ 冷蔵庫の在庫
+        </h1>
         <button
           type="button"
           onClick={() => setIsSettingsOpen(true)}
@@ -131,62 +141,115 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: 12,
-            padding: '6px 12px',
+            background: '#ffffff',
+            border: '2px solid #ffd1dc',
+            borderRadius: 9999,
+            padding: '6px 14px',
             fontSize: 12,
-            fontWeight: 700,
-            color: '#4b5563',
+            fontWeight: 800,
+            color: '#8c3b58',
+            boxShadow: '0 2px 8px rgba(255, 92, 138, 0.1)',
             cursor: 'pointer',
           }}
         >
-          <Settings size={15} color="#ff7849" />
-          <span>マイ設定・保存</span>
+          <Settings size={14} color="#ff5c8a" />
+          <span>マイ設定・統計</span>
         </button>
       </div>
 
       <ChefProfileBadge />
 
-      <form onSubmit={handleAdd} className={styles.addFormWrapper}>
-        <div className={styles.addForm}>
-          <input
-            type="text"
-            placeholder="新しい食材を追加 (例: トマト)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <button type="submit" disabled={!newName.trim()}>
-            <Plus size={20} />
-            追加
-          </button>
-        </div>
-        <div className={styles.categorySelectRow}>
-          <label className={styles.categorySelectLabel}>カテゴリ:</label>
-          <select
-            className={styles.categorySelect}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            {CATEGORY_ORDER.map(cat => (
-              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
-            ))}
-          </select>
-        </div>
-      </form>
+      {/* 食材追加フォーム */}
+      <div className="card" style={{ padding: 14 }}>
+        <form onSubmit={handleAdd} className={styles.addFormWrapper}>
+          <div className={styles.addForm}>
+            <input
+              type="text"
+              placeholder="食材名を入力 (例: トマト、豚バラ肉)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <button type="submit" disabled={!newName.trim()}>
+              <Plus size={18} />
+              追加
+            </button>
+          </div>
+          <div className={styles.categorySelectRow}>
+            <label className={styles.categorySelectLabel}>カテゴリ:</label>
+            <select
+              className={styles.categorySelect}
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {CATEGORY_ORDER.map(cat => (
+                <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
+              ))}
+            </select>
+          </div>
+        </form>
+      </div>
 
-      <ProfileSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {/* 表示切替ピルタブ (マインドマップ ⇄ リスト) */}
+      <div style={{
+        display: 'flex',
+        background: '#ffffff',
+        border: '2px solid #ffd1dc',
+        borderRadius: 9999,
+        padding: 4,
+        gap: 4,
+        marginBottom: 12,
+      }}>
+        <button
+          type="button"
+          onClick={() => setViewMode('mindmap')}
+          style={{
+            flex: 1,
+            background: viewMode === 'mindmap' ? 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)' : 'transparent',
+            color: viewMode === 'mindmap' ? 'white' : '#8c3b58',
+            border: 'none',
+            borderRadius: 9999,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 800,
+            boxShadow: viewMode === 'mindmap' ? '0 3px 10px rgba(255, 92, 138, 0.35)' : 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <Network size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          マインドマップ表示
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('list')}
+          style={{
+            flex: 1,
+            background: viewMode === 'list' ? 'linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%)' : 'transparent',
+            color: viewMode === 'list' ? 'white' : '#8c3b58',
+            border: 'none',
+            borderRadius: 9999,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 800,
+            boxShadow: viewMode === 'list' ? '0 3px 10px rgba(255, 92, 138, 0.35)' : 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <List size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          リスト表示
+        </button>
+      </div>
 
-      {loading && (
-        <div className="flex justify-center mt-4">
-          <Loader2 className="spinner" size={32} color="var(--primary)" />
-        </div>
+      {/* マインドマップ表示 */}
+      {viewMode === 'mindmap' && (
+        <InventoryMindMap
+          ingredients={ingredients}
+          onUpdated={loadIngredients}
+          onShowToast={showToast}
+        />
       )}
 
-      {!loading && hasIngredients && (
+      {/* リスト表示 */}
+      {viewMode === 'list' && (
         <div className={styles.categoryGroups}>
           {Object.entries(grouped).map(([category, items]) => {
             const isCollapsed = collapsedCategories.has(category);
@@ -214,70 +277,35 @@ export default function Home() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <AnimatePresence initial={false}>
-                        {items.map((item) => (
-                          <motion.li
-                            key={item.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 500,
-                              damping: 30,
-                              opacity: { duration: 0.2 }
-                            }}
-                            className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
-                          >
-                            <div className={styles.nameSection}>
-                              {item.is_pinned && <Pin size={14} fill="#ef4444" color="#ef4444" style={{ marginRight: 6 }} />}
-                              <div>
-                                <span>{item.name}</span>
-                                <div className={styles.itemCategoryRow}>
-                                  {editingCategoryId === item.id ? (
-                                    <select
-                                      className={styles.inlineCategory}
-                                      value={item.category || 'その他'}
-                                      onChange={(e) => handleChangeCategory(item, e.target.value)}
-                                      onBlur={() => setEditingCategoryId(null)}
-                                      autoFocus
-                                    >
-                                      {CATEGORY_ORDER.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <button
-                                      className={styles.categoryBadge}
-                                      onClick={() => setEditingCategoryId(item.id)}
-                                      title="カテゴリを変更"
-                                    >
-                                      {CATEGORY_ICONS[item.category || 'その他']} {item.category || 'その他'}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className={styles.actions}>
-                              <button
-                                className={`${styles.pinBtn} ${item.is_pinned ? styles.pinActive : ""}`}
-                                onClick={() => handleTogglePin(item)}
-                                title={item.is_pinned ? "ピンを外す" : "ピン留め（必須指定）"}
-                              >
-                                <span style={{ fontSize: '20px' }}>📍</span>
-                              </button>
-                              <button
-                                className={styles.deleteBtn}
-                                onClick={() => handleDelete(item.id)}
-                                aria-label="削除"
-                              >
-                                <Trash2 size={22} strokeWidth={2.5} color="#ef4444" />
-                              </button>
-                            </div>
-                          </motion.li>
-                        ))}
-                      </AnimatePresence>
+                      {items.map((item) => (
+                        <li
+                          key={item.id}
+                          className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
+                        >
+                          <div className={styles.nameSection}>
+                            {item.is_pinned && <Pin size={14} fill="#ff477e" color="#ff477e" style={{ marginRight: 6 }} />}
+                            <span>{item.name}</span>
+                          </div>
+                          <div className={styles.actions}>
+                            <button
+                              type="button"
+                              className={`${styles.pinBtn} ${item.is_pinned ? styles.pinActive : ""}`}
+                              onClick={() => handleTogglePin(item)}
+                              title="ピン留め"
+                            >
+                              <Pin size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.deleteBtn}
+                              onClick={() => handleDelete(item.id, item.name)}
+                              title="削除"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
                     </motion.ul>
                   )}
                 </AnimatePresence>
@@ -287,10 +315,9 @@ export default function Home() {
         </div>
       )}
 
-      {!loading && !hasIngredients && (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-          <ShoppingBag size={48} style={{ marginBottom: 12, opacity: 0.5 }} />
-          <p>在庫がありません。追加してください。</p>
+      {ingredients.length === 0 && (
+        <div style={{ textAlign: "center", padding: "40px 0", color: "#a07888" }}>
+          <p style={{ fontSize: 13, fontWeight: 700 }}>冷蔵庫に食材がありません。上のフォームから追加してください 🐾</p>
         </div>
       )}
     </div>

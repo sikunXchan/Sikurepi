@@ -5,253 +5,185 @@
 }
 
 .title {
-  font-size: 28px;
+  font-size: 22px;
+  font-weight: 900;
+  color: #ff5c8a;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* 検索バー */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 2px solid #ffd1dc;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  box-shadow: 0 4px 14px rgba(255, 92, 138, 0.08);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a2835;
+  outline: none;
+  box-shadow: none;
+}
+
+.searchInput:focus {
+  border: none;
+  box-shadow: none;
+}
+
+/* ピル型カテゴリタブ */
+.tabRow {
+  display: flex;
+  background: #ffffff;
+  border: 2px solid #ffd1dc;
+  border-radius: 9999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.tabBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #8c3b58;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
   font-weight: 800;
-  text-align: center;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.emptyState {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-muted);
-}
-
-.emptyState p {
-  margin-top: 12px;
-  font-size: 15px;
-}
-
-.recipeCard {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: var(--glass-shadow);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, opacity;
-}
-
-.recipeCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 50px rgba(255, 120, 73, 0.12);
-}
-
-.recipeIcon {
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-.recipeIconFallback {
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
-  background: rgba(255, 120, 73, 0.08);
-  border: 1px dashed rgba(255, 120, 73, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.cardContent {
-  padding: 16px 20px;
-}
-
-.cardTopRow {
-  display: flex;
-  align-items: center;
-  padding: 14px 16px;
   cursor: pointer;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.tabBtnActive {
+  background: linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%);
+  color: white;
+  box-shadow: 0 3px 10px rgba(255, 92, 138, 0.35);
+}
+
+/* カードスタイル */
+.recipeCard {
+  background: #ffffff;
+  border: 2px solid #ffe3eb;
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(255, 92, 138, 0.08);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.titleInfo {
-  flex: 1;
+.cardHeader {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.categoryBadge {
+  font-size: 10px;
+  font-weight: 800;
+  background: #ffe5ec;
+  color: #ff5c8a;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.diffEasy {
+  font-size: 10px;
+  font-weight: 800;
+  background: #d8f3dc;
+  color: #2d6a4f;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.diffNormal {
+  font-size: 10px;
+  font-weight: 800;
+  background: #fefae0;
+  color: #d4a373;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.diffHard {
+  font-size: 10px;
+  font-weight: 800;
+  background: #ffccd5;
+  color: #c9184a;
+  padding: 2px 8px;
+  border-radius: 9999px;
 }
 
 .recipeTitle {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 900;
+  color: #4a2835;
   margin: 0;
-  color: var(--foreground);
 }
 
-.recipeTime {
-  font-size: 13px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.savedDate {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-
-.cardActions {
-  display: flex;
-  gap: 8px;
-  padding: 0 16px 14px;
-}
-
-.recookBtn {
-  flex: 1;
-  background: var(--gradient-cool);
-  color: white;
-  padding: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(32, 178, 170, 0.3);
-}
-
-.recookBtn:hover {
-  box-shadow: 0 4px 18px rgba(32, 178, 170, 0.4);
-}
-
-.deleteBtn {
-  background: transparent;
-  color: var(--text-muted);
-  padding: 10px 14px;
-  border-radius: 12px;
-  box-shadow: none;
-  border: 1px solid var(--border);
-}
-
-.deleteBtn:hover {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.05);
-  box-shadow: none;
-}
-
-.expandBtn {
-  background: transparent;
-  color: var(--text-muted);
-  padding: 6px;
-  box-shadow: none;
-}
-
-.expandBtn:hover {
-  color: var(--primary);
-  box-shadow: none;
-}
-
-.detailBody {
-  padding: 0 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.section h3 {
-  font-size: 14px;
+.recipeMeta {
+  font-size: 11px;
   font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--primary);
+  color: #a07888;
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.section h3::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.ingredientList {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ingredientList li {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  padding-bottom: 4px;
-  border-bottom: 1px dashed var(--border);
-}
-
-.ingredientList li:last-child {
-  border-bottom: none;
-}
-
-.stepList {
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-  font-size: 14px;
-  line-height: 1.6;
+  margin-top: 2px;
 }
 
-.tipsBox {
-  background: rgba(255, 120, 73, 0.06);
-  border-left: 4px solid var(--primary);
-  padding: 12px 14px;
-  border-radius: 0 12px 12px 0;
-  font-size: 13px;
-  line-height: 1.5;
+.actionRow {
+  display: flex;
+  gap: 8px;
 }
 
-@media (max-width: 768px) {
-  .recipeCard {
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-  }
-
-  .recipeCard:hover {
-    transform: none;
-    box-shadow: var(--glass-shadow);
-  }
-
-  .recookBtn, .deleteBtn, .expandBtn {
-    min-height: 44px;
-  }
-}
-.remakeBtn {
-  flex: 1.2;
-  background: var(--gradient-primary);
+.cookBtn {
+  flex: 1;
+  background: linear-gradient(135deg, #ff758f 0%, #ff5c8a 100%);
   color: white;
-  padding: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(255, 120, 73, 0.3);
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: none;
 }
 
-.remakeBtn:hover {
-  box-shadow: 0 6px 20px rgba(255, 120, 73, 0.4);
-  transform: translateY(-1px);
-}
-
-.remakeBtn:disabled {
-  background: #e5e7eb;
-  color: #9ca3af;
+.deleteBtn {
+  background: none;
+  border: 1.5px solid #ffd1dc;
+  color: #c9a7b5;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  cursor: pointer;
   box-shadow: none;
-  cursor: not-allowed;
+}
+
+.deleteBtn:hover {
+  border-color: #ff5c8a;
+  color: #ff5c8a;
+  transform: none;
 }
 
 .modalOverlay {

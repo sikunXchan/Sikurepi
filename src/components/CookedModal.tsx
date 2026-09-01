@@ -2,21 +2,37 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { Check, X, Sparkles, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { consumeLocalIngredients, recordLocalCookingDone } from "@/lib/storage";
+import { consumeLocalIngredients, recordLocalCookingDone, NutritionData } from "@/lib/storage";
 import styles from "./CookedModal.module.css";
 
 type Props = {
-  recipeTitle: string;
-  ingredients: { name: string; amount?: string }[];
+  recipeTitle?: string;
+  ingredients?: { name: string; amount?: string }[];
+  recipe?: {
+    title: string;
+    ingredients: { name: string; amount?: string }[];
+    nutrition?: NutritionData | null;
+  };
   onClose: () => void;
   onSuccess?: () => void;
+  onCompleted?: () => void;
 };
 
-export default function CookedModal({ recipeTitle, ingredients, onClose, onSuccess }: Props) {
+export default function CookedModal({
+  recipeTitle,
+  ingredients: rawIngredients,
+  recipe,
+  onClose,
+  onSuccess,
+  onCompleted,
+}: Props) {
+  const finalTitle = recipe?.title || recipeTitle || "料理";
+  const finalIngredients = recipe?.ingredients || rawIngredients || [];
+
   const [selectedItems, setSelectedItems] = useState<Set<string>>(
-    new Set(ingredients.map((i) => i.name))
+    new Set(finalIngredients.map((i) => i.name))
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -38,19 +54,22 @@ export default function CookedModal({ recipeTitle, ingredients, onClose, onSucce
       if (toConsume.length > 0) {
         consumedCount = consumeLocalIngredients(toConsume);
       }
-      recordLocalCookingDone(consumedCount);
+
+      // PFC統計および調理記録を累積更新
+      recordLocalCookingDone(consumedCount, finalTitle, recipe?.nutrition);
 
       setDone(true);
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ["#ff7849", "#20b2aa", "#10b981", "#fbbf24"],
+        colors: ["#ff758f", "#52b788", "#ffb703", "#ff5c8a"],
       });
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
       setTimeout(() => {
         if (onSuccess) onSuccess();
+        if (onCompleted) onCompleted();
         onClose();
       }, 1000);
     } catch (e) {

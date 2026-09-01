@@ -1,389 +1,243 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, History, ChevronDown, ChevronUp, RefreshCw, BookOpen, ChefHat, Search, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
+import { Trash2, Search, X, Clock, PlayCircle, Utensils, Heart } from "lucide-react";
 import NutritionChart from "@/components/NutritionChart";
+import CookingSession from "@/components/CookingSession";
+import CookedModal from "@/components/CookedModal";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
-  saveLocalRecipe,
   SavedRecipe
 } from "@/lib/storage";
 import styles from "./History.module.css";
 
-const GENRE_OPTIONS = ['和食', '洋食', '中華', 'アジア料理', 'イタリアン', 'フレンチ', 'その他'];
-const TIME_OPTIONS = [
-  { label: 'すべて', value: '' },
-  { label: '10分以内', value: '10' },
-  { label: '30分以内', value: '30' },
-  { label: '60分以内', value: '60' },
-];
-
 export default function HistoryPage() {
-  const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [remakingId, setRemakingId] = useState<number | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [targetId, setTargetId] = useState<number | null>(null);
-
-  // Search/filter state
-  const [searchText, setSearchText] = useState('');
-  const [filterGenre, setFilterGenre] = useState('');
-  const [filterTimeMax, setFilterTimeMax] = useState('');
+  const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
+  const [activeTab, setActiveTab] = useState<'すべて' | 'メイン' | 'デザート'>('すべて');
+  const [searchText, setSearchText] = useState("");
+  const [selectedRecipe, setSelectedRecipe] = useState<SavedRecipe | null>(null);
+  const [cookingSessionRecipe, setCookingSessionRecipe] = useState<SavedRecipe | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadRecipes();
-    const handleUpdate = () => loadRecipes();
+    loadData();
+    const handleUpdate = () => loadData();
     window.addEventListener("storage-updated", handleUpdate);
     return () => window.removeEventListener("storage-updated", handleUpdate);
   }, []);
 
-  const loadRecipes = () => {
-    setAllRecipes(getLocalSavedRecipes());
-    setLoading(false);
+  const loadData = () => {
+    setRecipes(getLocalSavedRecipes());
   };
 
-  // Client-side filtering
-  const filteredRecipes = allRecipes.filter(recipe => {
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      const inTitle = recipe.title.toLowerCase().includes(q);
-      const inIngredients = Array.isArray(recipe.ingredients) &&
-        recipe.ingredients.some(i => i.name.toLowerCase().includes(q));
-      if (!inTitle && !inIngredients) return false;
-    }
-    if (filterGenre && recipe.genre !== filterGenre) return false;
-    if (filterTimeMax) {
-      const match = (recipe.time || '').match(/(\d+)/);
-      if (match && parseInt(match[1], 10) > parseInt(filterTimeMax, 10)) return false;
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleDelete = (id: number, title: string) => {
+    deleteLocalSavedRecipe(id);
+    loadData();
+    showToast(`🗑️ 「${title}」を削除しました`);
+  };
+
+  const filtered = recipes.filter(r => {
+    if (activeTab === 'メイン' && r.category_tag === 'デザート') return false;
+    if (activeTab === 'デザート' && r.category_tag !== 'デザート') return false;
+
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      const matchTitle = r.title.toLowerCase().includes(q);
+      const matchIng = r.ingredients?.some(i => i.name.toLowerCase().includes(q));
+      if (!matchTitle && !matchIng) return false;
     }
     return true;
   });
 
-  const hasFilters = searchText || filterGenre || filterTimeMax;
-
-  const clearFilters = () => {
-    setSearchText('');
-    setFilterGenre('');
-    setFilterTimeMax('');
-  };
-
-  const confirmDelete = (id: number) => {
-    setTargetId(id);
-    setModalOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (targetId === null) return;
-    deleteLocalSavedRecipe(targetId);
-    if (expandedId === targetId) setExpandedId(null);
-    setModalOpen(false);
-    setTargetId(null);
-    loadRecipes();
-  };
-
-  const handleRecook = (id: number) => {
-    setUpdatingId(id);
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.7 },
-      colors: ['#ff7849', '#20b2aa', '#fbbf24', '#f472b6'],
-    });
-    setUpdatingId(null);
-  };
-
-  const handleRemake = async (recipe: SavedRecipe) => {
-    setRemakingId(recipe.id);
-    try {
-      const res = await fetch("/api/recipes/remake", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipe }),
-      });
-      const remakeData = await res.json();
-      if (!res.ok) throw new Error(remakeData.error || "リメイクに失敗しました");
-
-      const saved = saveLocalRecipe({
-        title: remakeData.title,
-        time: remakeData.time,
-        ingredients: remakeData.ingredients,
-        steps: remakeData.steps,
-        tips: remakeData.tips,
-        image_url: null,
-        nutrition: remakeData.nutrition || null,
-        genre: remakeData.genre || null,
-      });
-
-      setAllRecipes([saved, ...allRecipes]);
-      setExpandedId(saved.id);
-
-      confetti({
-        particleCount: 80,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#ff7849', '#f472b6', '#8b5cf6'],
-      });
-    } catch (e: any) {
-      console.error(e);
-      alert(e.message);
-    } finally {
-      setRemakingId(null);
-    }
-  };
-
-  const getRecipeIcon = (recipe: SavedRecipe) => {
-    const timeStr = recipe.time || "";
-    const match = timeStr.match(/(\d+)/);
-    const minutes = match ? parseInt(match[0], 10) : 10;
-    return minutes <= 9 ? "/sub.png" : "/main.png";
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>📚 レシピ履歴</h1>
-
-      {/* Search & Filter */}
-      <div className={styles.searchSection}>
-        <div className={styles.searchBar}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            placeholder="料理名・食材名で検索…"
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            className={styles.searchInput}
-          />
-          {searchText && (
-            <button className={styles.clearBtn} onClick={() => setSearchText('')}>
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        <div className={styles.filterRow}>
-          <select
-            value={filterGenre}
-            onChange={e => setFilterGenre(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="">ジャンル: すべて</option>
-            {GENRE_OPTIONS.map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-
-          <select
-            value={filterTimeMax}
-            onChange={e => setFilterTimeMax(e.target.value)}
-            className={styles.filterSelect}
-          >
-            {TIME_OPTIONS.map(t => (
-              <option key={t.value} value={t.value}>
-                {t.value ? `⏱ ${t.label}` : '時間: すべて'}
-              </option>
-            ))}
-          </select>
-
-          {hasFilters && (
-            <button className={styles.clearFiltersBtn} onClick={clearFilters}>
-              <X size={13} /> リセット
-            </button>
-          )}
-        </div>
-
-        {hasFilters && (
-          <p className={styles.filterResult}>
-            {filteredRecipes.length} 件 / 全{allRecipes.length}件
-          </p>
-        )}
-      </div>
-
-      <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className={styles.modalContent}
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            >
-              <div className={styles.modalIcon}>
-                <Trash2 size={32} />
-              </div>
-              <h2 className={styles.modalTitle}>本当に削除しますか？</h2>
-              <p className={styles.modalText}>
-                このレシピを履歴から削除します。<br />この操作は取り消せません。
-              </p>
-              <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
-                  キャンセル
-                </button>
-                <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
-                  削除する
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {loading && (
-        <div className="flex justify-center mt-4">
-          <Loader2 className="spinner" size={32} color="var(--primary)" />
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(74, 40, 53, 0.95)',
+          color: 'white',
+          padding: '8px 18px',
+          borderRadius: 9999,
+          fontSize: 12,
+          fontWeight: 700,
+          boxShadow: '0 8px 24px rgba(255, 92, 138, 0.3)',
+          zIndex: 9999,
+          pointerEvents: 'none',
+        }}>
+          {toastMessage}
         </div>
       )}
 
-      {!loading && (
-        <>
-          {filteredRecipes.map((recipe) => {
-            const isExpanded = expandedId === recipe.id;
-            return (
-              <div key={recipe.id} className={styles.recipeCard}>
-                <div
-                  className={styles.cardTopRow}
-                  onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
+      <h1 className={styles.title}>❤️ お気に入り・レシピ履歴</h1>
+
+      {/* 検索バー */}
+      <div className={styles.searchBar}>
+        <Search size={16} color="#ff5c8a" />
+        <input
+          type="text"
+          placeholder="レシピや食材を検索... 🐾"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className={styles.searchInput}
+        />
+        {searchText && (
+          <button
+            type="button"
+            onClick={() => setSearchText("")}
+            style={{ background: 'none', border: 'none', color: '#c9a7b5', padding: 0, boxShadow: 'none', cursor: 'pointer' }}
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* ピル型カテゴリタブ (すべて / メイン / デザート) */}
+      <div className={styles.tabRow}>
+        {(['すべて', 'メイン', 'デザート'] as const).map(tab => (
+          <button
+            key={tab}
+            type="button"
+            className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* レシピ一覧 */}
+      {filtered.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {filtered.map(recipe => (
+            <div key={recipe.id} className={styles.recipeCard}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <div className={styles.badgeRow}>
+                    <span className={styles.categoryBadge}>
+                      {recipe.category_tag || 'メイン'}
+                    </span>
+                    <span className={
+                      recipe.difficulty === 'むずかしい' ? styles.diffHard :
+                      recipe.difficulty === 'ふつう' ? styles.diffNormal : styles.diffEasy
+                    }>
+                      👨‍🍳 {recipe.difficulty || 'かんたん'}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#ffb703' }}>
+                      {'★'.repeat(recipe.rating || 5)}
+                    </span>
+                  </div>
+
+                  <h2 className={styles.recipeTitle}>{recipe.title}</h2>
+                  <div className={styles.recipeMeta}>
+                    <Clock size={12} />
+                    <span>{recipe.time}</span>
+                    <span>• 📅 {recipe.saved_at.split('T')[0]}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.deleteBtn}
+                  onClick={() => handleDelete(recipe.id, recipe.title)}
+                  title="削除"
                 >
-                  <img
-                    src={getRecipeIcon(recipe)}
-                    alt={recipe.title}
-                    className={styles.recipeIcon}
-                  />
-
-                  <div className={styles.titleInfo}>
-                    <h2 className={styles.recipeTitle}>{recipe.title}</h2>
-                    <div className={styles.recipeMetaRow}>
-                      <span className={styles.recipeTime}>⏱ {recipe.time}</span>
-                      {recipe.genre && (
-                        <span className={styles.genreBadge}>{recipe.genre}</span>
-                      )}
-                    </div>
-                    <div className={styles.savedDate}>
-                      📅 {formatDate(recipe.saved_at)}
-                    </div>
-                  </div>
-
-                  <button className={styles.expandBtn}>
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                  </button>
-                </div>
-
-                <div className={styles.cardActions}>
-                  <button
-                    className={styles.remakeBtn}
-                    onClick={(e) => { e.stopPropagation(); handleRemake(recipe); }}
-                    disabled={remakingId === recipe.id}
-                  >
-                    {remakingId === recipe.id ? (
-                      <Loader2 className="spinner" size={14} />
-                    ) : (
-                      <ChefHat size={14} />
-                    )}
-                    この残りでリメイク！
-                  </button>
-                  <button
-                    className={styles.recookBtn}
-                    onClick={(e) => { e.stopPropagation(); handleRecook(recipe.id); }}
-                    disabled={updatingId === recipe.id}
-                    title="今日作った"
-                  >
-                    {updatingId === recipe.id ? (
-                      <Loader2 className="spinner" size={14} />
-                    ) : (
-                      <RefreshCw size={14} />
-                    )}
-                    再作成
-                  </button>
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={(e) => { e.stopPropagation(); confirmDelete(recipe.id); }}
-                    disabled={deletingId === recipe.id}
-                  >
-                    {deletingId === recipe.id ? (
-                      <Loader2 className="spinner" size={14} />
-                    ) : (
-                      <Trash2 size={14} />
-                    )}
-                  </button>
-                </div>
-
-                {isExpanded && (
-                  <div className={styles.detailBody}>
-                    {recipe.nutrition && (
-                      <div className={styles.nutritionSection}>
-                        <h3 className={styles.nutritionTitle}>📊 栄養バランス</h3>
-                        <NutritionChart nutrition={recipe.nutrition} />
-                      </div>
-                    )}
-
-                    <div className={styles.section}>
-                      <h3>材料・調味料</h3>
-                      <ul className={styles.ingredientList}>
-                        {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => (
-                          <li key={i}>
-                            <span>{item.name}</span>
-                            <span className="text-muted">{item.amount}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className={styles.section}>
-                      <h3>作り方</h3>
-                      <ol className={styles.stepList}>
-                        {(Array.isArray(recipe.steps) ? recipe.steps : []).map((step, i) => (
-                          <li key={i}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-
-                    {recipe.tips && (
-                      <div className={styles.tipsBox}>
-                        <strong>💡 ポイント: </strong> {recipe.tips}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  <Trash2 size={13} />
+                </button>
               </div>
-            );
-          })}
 
-          {filteredRecipes.length === 0 && allRecipes.length > 0 && (
-            <div className={styles.emptyState}>
-              <Search size={48} style={{ opacity: 0.4 }} />
-              <p>条件に合うレシピが見つかりませんでした</p>
-              <button className={styles.clearFiltersBtn2} onClick={clearFilters}>フィルターをリセット</button>
-            </div>
-          )}
+              {/* 栄養バランスPFC */}
+              {recipe.nutrition && (
+                <div>
+                  <NutritionChart nutrition={recipe.nutrition} />
+                </div>
+              )}
 
-          {allRecipes.length === 0 && (
-            <div className={styles.emptyState}>
-              <BookOpen size={48} style={{ opacity: 0.5 }} />
-              <p>保存されたレシピはありません</p>
+              {/* 材料 */}
+              <div style={{ background: '#fff8fa', border: '1.5px solid #ffd1dc', borderRadius: 16, padding: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#8c3b58', marginBottom: 4 }}>
+                  👨‍🍳 材料
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
+                  {(recipe.ingredients || []).map((ing, iIdx) => (
+                    <span key={iIdx} style={{ background: '#ffffff', border: '1px solid #ffd1dc', padding: '2px 8px', borderRadius: 9999, color: '#4a2835', fontWeight: 600 }}>
+                      {ing.name} ({ing.amount})
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* アクションボタン */}
+              <div className={styles.actionRow}>
+                <button
+                  type="button"
+                  onClick={() => setCookingSessionRecipe(recipe)}
+                  style={{
+                    background: 'linear-gradient(135deg, #74c69d 0%, #52b788 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 9999,
+                    padding: '8px 12px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <PlayCircle size={14} />
+                  クッキング
+                </button>
+
+                {/* 履歴画面の「この料理を作った！」ボタン */}
+                <button
+                  type="button"
+                  className={styles.cookBtn}
+                  onClick={() => setSelectedRecipe(recipe)}
+                >
+                  🍳 この料理を作った！（記録）
+                </button>
+              </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '50px 0', color: '#a07888' }}>
+          <Heart size={40} style={{ opacity: 0.3, marginBottom: 8 }} />
+          <p style={{ fontSize: 13, fontWeight: 700 }}>
+            {recipes.length === 0 ? "まだ保存されたレシピがありません" : "該当するレシピが見つかりませんでした"}
+          </p>
+        </div>
+      )}
+
+      {/* 調理完了モーダル */}
+      {selectedRecipe && (
+        <CookedModal
+          recipe={selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
+          onCompleted={() => {
+            loadData();
+            showToast("🎉 調理を記録し、PFC統計を更新しました！");
+          }}
+        />
+      )}
+
+      {/* クッキングセッション */}
+      {cookingSessionRecipe && (
+        <CookingSession
+          recipe={cookingSessionRecipe}
+          onClose={() => setCookingSessionRecipe(null)}
+          onShowToast={showToast}
+        />
       )}
     </div>
   );

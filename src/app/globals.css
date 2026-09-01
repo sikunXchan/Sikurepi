@@ -1,62 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --background: #fef7f0;
-  --background-secondary: #fff5eb;
-  --foreground: #2d2a26;
-  --primary: #ff7849;
-  --primary-light: #ffaa80;
-  --primary-hover: #ff6230;
-  --secondary: #20b2aa;
-  --secondary-light: #5fd4cd;
-  --accent: #f97316;
-  --accent-pink: #f472b6;
-  --border: rgba(255, 120, 73, 0.15);
-  --border-radius: 16px;
-  --card-bg: rgba(255, 255, 255, 0.7);
+  --background: #fff5f7;
+  --background-secondary: #fff0f3;
+  --foreground: #4a2835;
+  --primary: #ff5c8a;
+  --primary-light: #ff85a1;
+  --primary-hover: #e04372;
+  --primary-subtle: #ffe5ec;
+  --secondary: #52b788;
+  --secondary-light: #74c69d;
+  --accent-yellow: #ffb703;
+  --accent-purple: #c77dff;
+  --border: rgba(255, 92, 138, 0.2);
+  --border-radius: 20px;
+  --border-radius-pill: 9999px;
+  --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
-  --text-muted: #9ca3af;
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 8px 32px rgba(255, 120, 73, 0.08);
-  --gradient-primary: linear-gradient(135deg, #ff7849 0%, #f97316 50%, #fb923c 100%);
-  --gradient-warm: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%);
-  --gradient-cool: linear-gradient(135deg, #20b2aa 0%, #5fd4cd 50%, #99f6e4 100%);
-  --gradient-hero: linear-gradient(135deg, #fff7ed 0%, #fef3c7 30%, #ffe4e6 60%, #fce7f3 100%);
-}
-
-.cooking-mode {
-  --background: #1a1512;
-  --background-secondary: #231e19;
-  --foreground: #fef7f0;
-  --border: rgba(255, 120, 73, 0.25);
-  --card-bg: rgba(45, 38, 32, 0.7);
-  --card-bg-solid: #2d2620;
-  --text-muted: #a8a29e;
-  --glass-bg: rgba(35, 30, 25, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --gradient-hero: linear-gradient(135deg, #1a1512 0%, #231e19 100%);
-}
-
-.cooking-mode body {
-  background: var(--background) !important;
-  color: var(--foreground) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1a1512;
-    --background-secondary: #231e19;
-    --foreground: #fef7f0;
-    --border: rgba(255, 120, 73, 0.2);
-    --card-bg: rgba(45, 38, 32, 0.7);
-    --card-bg-solid: #2d2620;
-    --text-muted: #a8a29e;
-    --glass-bg: rgba(45, 38, 32, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  }
+  --text-muted: #a07888;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 10px 30px rgba(255, 92, 138, 0.12);
+  --pill-shadow: 0 4px 14px rgba(255, 92, 138, 0.32);
+  --gradient-primary: linear-gradient(135deg, #ff758f 0%, #ff5c8a 50%, #ff477e 100%);
+  --gradient-yellow: linear-gradient(135deg, #ffd166 0%, #ffb703 100%);
+  --gradient-green: linear-gradient(135deg, #95d5b2 0%, #52b788 100%);
+  --gradient-hero: linear-gradient(180deg, #fff5f7 0%, #ffeef2 50%, #ffe5ec 100%);
 }
 
 * {
@@ -74,7 +43,7 @@ body {
   background: var(--gradient-hero);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'M PLUS Rounded 1c', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -87,22 +56,23 @@ a {
   text-decoration: none;
 }
 
+/* ぷっくりピル型ボタンスタイル */
 button {
   background: var(--gradient-primary);
   color: white;
-  border: none;
-  padding: 12px 22px;
-  border-radius: var(--border-radius);
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  font-weight: 600;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  padding: 10px 22px;
+  border-radius: var(--border-radius-pill);
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(255, 120, 73, 0.3);
+  box-shadow: var(--pill-shadow);
   position: relative;
   overflow: hidden;
 }
@@ -110,23 +80,23 @@ button {
 button::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+  border-radius: var(--border-radius-pill);
+  pointer-events: none;
 }
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(255, 120, 73, 0.4);
-}
-
-button:hover::before {
-  opacity: 1;
+  box-shadow: 0 6px 20px rgba(255, 92, 138, 0.45);
 }
 
 button:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 2px 8px rgba(255, 92, 138, 0.3);
 }
 
 button:disabled {
@@ -136,48 +106,52 @@ button:disabled {
   box-shadow: none;
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
-  padding: 14px 16px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--border-radius);
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding: 12px 18px;
+  border: 2px solid #ffd1dc;
+  border-radius: var(--border-radius-pill);
+  background: #ffffff;
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
   outline: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(255, 92, 138, 0.05);
 }
 
-input:focus, textarea:focus {
+textarea {
+  border-radius: 18px;
+}
+
+input:focus, textarea:focus, select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(255, 120, 73, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 92, 138, 0.2);
 }
 
 input::placeholder, textarea::placeholder {
-  color: var(--text-muted);
+  color: #c9a7b5;
 }
 
 .container {
   flex: 1;
-  max-width: 600px;
+  max-width: 620px;
   width: 100%;
   margin: 0 auto;
-  padding: 20px;
-  padding-bottom: 100px;
+  padding: 16px;
+  padding-bottom: 110px;
 }
 
+/* メモ帳風・可愛いカードスタイル */
 .card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  padding: 16px;
+  background: #ffffff;
+  border: 2px solid #ffe3eb;
+  border-radius: 24px;
+  padding: 18px;
   margin-bottom: 16px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 8px 24px rgba(255, 92, 138, 0.08);
+  position: relative;
 }
 
 /* Utilities */
