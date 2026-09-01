@@ -35,6 +35,7 @@ type Recipe = {
   time: string;
   genre?: string;
   climate_badge?: string;
+  dish_badge?: string;
   ingredients: RecipeItem[];
   steps: string[];
   tips: string;
@@ -54,6 +55,7 @@ const TEMPLATES = [
   { label: '🥗 ヘルシー・低糖質', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
   { label: '🍲 鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
   { label: '🍰 簡単スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { label: '🍽️ 洗い物ラクラク', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ];
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
@@ -190,6 +192,7 @@ export default function RecipePage() {
         image_url: r.image_url,
         nutrition: r.nutrition || null,
         genre: r.genre || null,
+        dish_badge: r.dish_badge || null,
       });
 
       setSavedSet(prev => new Set(prev).add(index));
@@ -430,6 +433,9 @@ export default function RecipePage() {
                       )}
                       {recipe.climate_badge && (
                         <span className={styles.climateBadge}>🌤️ {recipe.climate_badge}</span>
+                      )}
+                      {recipe.dish_badge && (
+                        <span className={styles.climateBadge}>{recipe.dish_badge}</span>
                       )}
                     </div>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>

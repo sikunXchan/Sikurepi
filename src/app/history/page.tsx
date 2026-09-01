@@ -254,6 +254,9 @@ export default function HistoryPage() {
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{recipe.genre}</span>
                       )}
+                      {recipe.dish_badge && (
+                        <span className={styles.genreBadge}>{recipe.dish_badge}</span>
+                      )}
                     </div>
                     <div className={styles.savedDate}>
                       📅 {formatDate(recipe.saved_at)}

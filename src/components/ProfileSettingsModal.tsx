@@ -236,6 +236,29 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
             </div>
 
             <div className={styles.section}>
+              <label className={styles.sectionLabel}>🎯 1日のPFC目標（週間献立の栄養バランスに使用）</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="number"
+                  min={0}
+                  className={styles.input}
+                  placeholder="目標カロリー（例: 2000）"
+                  value={profile.targetCalories ?? ''}
+                  onChange={(e) => setProfile(prev => ({ ...prev, targetCalories: e.target.value ? Number(e.target.value) : null }))}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  className={styles.input}
+                  placeholder="目標タンパク質g（例: 75）"
+                  value={profile.targetProtein ?? ''}
+                  onChange={(e) => setProfile(prev => ({ ...prev, targetProtein: e.target.value ? Number(e.target.value) : null }))}
+                />
+              </div>
+              <span className={styles.hint}>※ 空欄の場合、厚生労働省「日本人の食事摂取基準」の目安（2000kcal、たんぱく質エネルギー比13〜20%）から自動算出します</span>
+            </div>
+
+            <div className={styles.section}>
               <label className={styles.sectionLabel}>👅 味・栄養のこだわり</label>
               <div className={styles.tagGrid}>
                 {TASTE_OPTIONS.map(taste => {

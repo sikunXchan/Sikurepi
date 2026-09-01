@@ -4,6 +4,56 @@ export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const DEFAULT_AI_MODELS = ['models/gemini-2.5-flash', 'models/gemini-3.5-flash'];
 
+export const SEASONING_SECTION = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
+
+export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に短いタグで示してください（例：「🍽️ 洗い物少なめ（2点）」「🍽️ 洗い物やや多め（5点）」）。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
+
+export type RecipeProfile = {
+  tastePreferences?: string[];
+  excludedIngredients?: string[];
+  cookingStyles?: string[];
+  servings?: number;
+  targetCalories?: number | null;
+  targetProtein?: number | null;
+};
+
+export type ClimateInfo = {
+  condition?: string;
+  temperature?: number;
+  timeOfDay?: string;
+  advice?: string;
+};
+
+// ユーザープロファイル（マイ一括設定）セクションを組み立てる
+export function buildProfileSection(profile: RecipeProfile | null | undefined): string {
+  if (!profile) return '';
+  const taste = profile.tastePreferences && profile.tastePreferences.length > 0
+    ? `・味の好み/栄養方針: ${profile.tastePreferences.join('、')}\n`
+    : '';
+  const excluded = profile.excludedIngredients && profile.excludedIngredients.length > 0
+    ? `・【絶対除外（アレルギー・苦手）】: ${profile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
+    : '';
+  const styles = profile.cookingStyles && profile.cookingStyles.length > 0
+    ? `・調理スタイル/設備: ${profile.cookingStyles.join('、')}\n`
+    : '';
+  if (!taste && !excluded && !styles) return '';
+  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${styles}`;
+}
+
+// 気候・環境連動セクションを組み立てる
+export function buildClimateSection(climate: ClimateInfo | null | undefined): string {
+  if (!climate) return '';
+  const cond = climate.condition || '通常';
+  const temp = climate.temperature !== undefined ? `${climate.temperature}℃` : '';
+  const tod = climate.timeOfDay || '';
+  const advice = climate.advice || '';
+  return `\n【現在の気候・気温・時間帯（最重要：身体の状態に合わせてレシピを最適化してください）】
+・気候/天気: ${cond} (${temp})
+・時間帯: ${tod}
+・気候アドバイス方針: ${advice}
+※ 気候や気温に合わせた調理法（例：猛暑ならさっぱり冷製・酸味・水分ミネラル補給、寒い日ならあったかスープや生姜、夜遅い時間なら消化の良いヘルシーメニュー等）を自然に取り入れてください。\n`;
+}
+
 export async function generateWithRetry(
   aiInstance: any,
   config: any,

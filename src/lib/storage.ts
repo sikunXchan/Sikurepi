@@ -33,6 +33,7 @@ export type SavedRecipe = {
   image_url: string | null;
   nutrition: NutritionData | null;
   genre: string | null;
+  dish_badge?: string | null;
   saved_at: string;
 };
 
@@ -71,6 +72,27 @@ export type UserProfile = {
   enableClimate: boolean;
 };
 
+// --- 週間献立プラン (Weekly Meal Plan) ---
+
+export type MealSlot = 'lunch' | 'dinner';
+
+export type PlannedRecipe = {
+  title: string;
+  time: string;
+  genre?: string | null;
+  dish_badge?: string | null;
+  ingredients: { name: string; amount: string }[];
+  steps: string[];
+  tips: string;
+  nutrition?: NutritionData | null;
+};
+
+export type WeeklyPlanEntry = {
+  date: string; // 'YYYY-MM-DD'
+  mealSlot: MealSlot;
+  recipe: PlannedRecipe;
+};
+
 export type SavedTip = {
   id: string;
   category: string;
@@ -93,6 +115,7 @@ const KEYS = {
   PROFILE: 'lily_app_user_profile',
   CLIMATE: 'lily_app_climate',
   TIPS: 'lily_app_saved_tips',
+  WEEK_PLAN: 'lily_app_week_plan',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -293,6 +316,33 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
   return updated;
 }
 
+// --- 週間献立プラン (Weekly Meal Plan) ---
+
+export function getLocalWeekPlan(): WeeklyPlanEntry[] {
+  return getStorage<WeeklyPlanEntry[]>(KEYS.WEEK_PLAN, []);
+}
+
+// 既存の同じ日付・スロットは上書きし、それ以外は保持したままマージする
+export function setLocalWeekPlanEntries(entries: WeeklyPlanEntry[]): void {
+  const merged = [...getLocalWeekPlan()];
+  for (const entry of entries) {
+    const idx = merged.findIndex(e => e.date === entry.date && e.mealSlot === entry.mealSlot);
+    if (idx >= 0) merged[idx] = entry;
+    else merged.push(entry);
+  }
+  setStorage(KEYS.WEEK_PLAN, merged);
+}
+
+export function removeLocalWeekPlanEntry(date: string, mealSlot: MealSlot): void {
+  const list = getLocalWeekPlan();
+  setStorage(KEYS.WEEK_PLAN, list.filter(e => !(e.date === date && e.mealSlot === mealSlot)));
+}
+
+export function clearLocalWeekPlanRange(dates: string[]): void {
+  const list = getLocalWeekPlan();
+  setStorage(KEYS.WEEK_PLAN, list.filter(e => !dates.includes(e.date)));
+}
+
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
@@ -368,6 +418,7 @@ export type AppBackupPayload = {
   profile: UserProfile;
   climate: ClimateState;
   tips?: SavedTip[];
+  weekPlan?: WeeklyPlanEntry[];
 };
 
 export function exportBackupJSON(): void {
@@ -383,6 +434,7 @@ export function exportBackupJSON(): void {
     profile: getLocalUserProfile(),
     climate: getLocalClimateState(),
     tips: getLocalSavedTips(),
+    weekPlan: getLocalWeekPlan(),
   };
 
   const jsonStr = JSON.stringify(payload, null, 2);
@@ -415,6 +467,7 @@ export function importBackupJSON(jsonStr: string): { success: boolean; error?: s
     if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
     if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
     if (Array.isArray(data.tips)) setStorage(KEYS.TIPS, data.tips);
+    if (Array.isArray(data.weekPlan)) setStorage(KEYS.WEEK_PLAN, data.weekPlan);
 
     window.dispatchEvent(new Event('storage-updated'));
     return { success: true };
