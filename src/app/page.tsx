@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Plus, Loader2, ShoppingBag, Pin } from "lucide-react";
+import { Trash2, Plus, Loader2, ShoppingBag, Pin, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
-import { getApiHeaders } from "@/lib/user";
+import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import {
+  getLocalIngredients,
+  addLocalIngredient,
+  deleteLocalIngredient,
+  toggleLocalIngredientPin,
+  updateLocalIngredientCategory,
+  Ingredient
+} from "@/lib/storage";
 import styles from "./Home.module.css";
-
-type Ingredient = {
-  id: number;
-  name: string;
-  is_pinned: boolean;
-  category: string;
-};
 
 const CATEGORY_ICONS: Record<string, string> = {
   '野菜': '🥦',
@@ -34,31 +35,23 @@ export default function Home() {
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [pinningId, setPinningId] = useState<number | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    fetchIngredients();
+    loadIngredients();
+    const handleUpdate = () => loadIngredients();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => window.removeEventListener("storage-updated", handleUpdate);
   }, []);
 
-  const fetchIngredients = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/inventory", { headers: getApiHeaders() });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setIngredients(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  const loadIngredients = () => {
+    setIngredients(getLocalIngredients());
+    setLoading(false);
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = newName.trim();
     if (!cleanName) return;
@@ -68,54 +61,18 @@ export default function Home() {
       return;
     }
 
-    setAdding(true);
-    try {
-      const res = await fetch("/api/inventory", {
-        method: "POST",
-        headers: getApiHeaders(),
-        body: JSON.stringify({ name: cleanName, category: selectedCategory }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || "追加に失敗しました");
-        return;
-      }
-      const data = await res.json();
-      if (data && data.id) {
-        setIngredients([data, ...ingredients]);
-        setNewName("");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("エラーが発生しました");
-    } finally {
-      setAdding(false);
-    }
+    addLocalIngredient(cleanName, selectedCategory);
+    setNewName("");
+    loadIngredients();
   };
 
-  const handleDelete = async (id: number) => {
-    const previous = ingredients;
-    setIngredients(prev => prev.filter(i => i.id !== id));
-    try {
-      const res = await fetch(`/api/inventory/${id}`, {
-        method: "DELETE",
-        headers: getApiHeaders(),
-      });
-      if (!res.ok) {
-        setIngredients(previous);
-        alert("削除に失敗しました");
-      }
-    } catch (e) {
-      console.error(e);
-      setIngredients(previous);
-      alert("エラーが発生しました");
-    }
+  const handleDelete = (id: number) => {
+    deleteLocalIngredient(id);
+    loadIngredients();
   };
 
-  const handleTogglePin = async (item: Ingredient) => {
-    setPinningId(item.id);
+  const handleTogglePin = (item: Ingredient) => {
     const pinState = !item.is_pinned;
-
     if (pinState) {
       confetti({
         particleCount: 40,
@@ -125,47 +82,15 @@ export default function Home() {
         colors: ['#FFD700', '#FFA500', '#FF7849'],
       });
     }
-
-    setIngredients(prev => {
-      const next = prev.map(i => i.id === item.id ? { ...i, is_pinned: pinState } : i);
-      return [...next].sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
-    });
-
-    try {
-      const res = await fetch(`/api/inventory/${item.id}`, {
-        method: "PATCH",
-        headers: getApiHeaders(),
-        body: JSON.stringify({ is_pinned: pinState }),
-      });
-
-      if (!res.ok) throw new Error("Failed");
-    } catch (e) {
-      console.error(e);
-      fetchIngredients();
-    } finally {
-      setPinningId(null);
-    }
+    toggleLocalIngredientPin(item.id);
+    loadIngredients();
   };
 
-  const handleChangeCategory = async (item: Ingredient, newCategory: string) => {
+  const handleChangeCategory = (item: Ingredient, newCategory: string) => {
     setEditingCategoryId(null);
     if (newCategory === item.category) return;
-
-    setIngredients(prev => prev.map(i => i.id === item.id ? { ...i, category: newCategory } : i));
-
-    try {
-      const res = await fetch(`/api/inventory/${item.id}`, {
-        method: "PATCH",
-        headers: getApiHeaders(),
-        body: JSON.stringify({ category: newCategory }),
-      });
-      if (!res.ok) {
-        setIngredients(prev => prev.map(i => i.id === item.id ? { ...i, category: item.category } : i));
-      }
-    } catch (e) {
-      console.error(e);
-      setIngredients(prev => prev.map(i => i.id === item.id ? { ...i, category: item.category } : i));
-    }
+    updateLocalIngredientCategory(item.id, newCategory);
+    loadIngredients();
   };
 
   const toggleCategory = (category: string) => {
@@ -184,7 +109,6 @@ export default function Home() {
     return acc;
   }, {});
 
-  // Uncategorized that don't match known order
   const knownCategories = new Set(CATEGORY_ORDER);
   ingredients.forEach(i => {
     const cat = i.category || 'その他';
@@ -198,7 +122,30 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>🧊 冷蔵庫の在庫</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h1 className={styles.title} style={{ margin: 0 }}>🧊 冷蔵庫の在庫</h1>
+        <button
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#4b5563',
+            cursor: 'pointer',
+          }}
+        >
+          <Settings size={15} color="#ff7849" />
+          <span>マイ設定・保存</span>
+        </button>
+      </div>
+
       <ChefProfileBadge />
 
       <form onSubmit={handleAdd} className={styles.addFormWrapper}>
@@ -208,13 +155,30 @@ export default function Home() {
             placeholder="新しい食材を追加 (例: トマト)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            disabled={adding}
           />
-          <button type="submit" disabled={adding || !newName.trim()}>
-            {adding ? <Loader2 className="spinner" size={20} /> : <Plus size={20} />}
+          <button type="submit" disabled={!newName.trim()}>
+            <Plus size={20} />
             追加
           </button>
         </div>
+        <div className={styles.categorySelectRow}>
+          <label className={styles.categorySelectLabel}>カテゴリ:</label>
+          <select
+            className={styles.categorySelect}
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {CATEGORY_ORDER.map(cat => (
+              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
+            ))}
+          </select>
+        </div>
+      </form>
+
+      <ProfileSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
         <div className={styles.categorySelectRow}>
           <label className={styles.categorySelectLabel}>カテゴリ:</label>
           <select
@@ -313,14 +277,9 @@ export default function Home() {
                               <button
                                 className={`${styles.pinBtn} ${item.is_pinned ? styles.pinActive : ""}`}
                                 onClick={() => handleTogglePin(item)}
-                                disabled={pinningId === item.id}
                                 title={item.is_pinned ? "ピンを外す" : "ピン留め（必須指定）"}
                               >
-                                {pinningId === item.id ? (
-                                  <Loader2 className="spinner" size={20} strokeWidth={2.5} />
-                                ) : (
-                                  <span style={{ fontSize: '20px' }}>📍</span>
-                                )}
+                                <span style={{ fontSize: '20px' }}>📍</span>
                               </button>
                               <button
                                 className={styles.deleteBtn}

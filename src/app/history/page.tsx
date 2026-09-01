@@ -5,33 +5,13 @@ import { Loader2, Trash2, History, ChevronDown, ChevronUp, RefreshCw, BookOpen, 
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
-import { getApiHeaders } from "@/lib/user";
+import {
+  getLocalSavedRecipes,
+  deleteLocalSavedRecipe,
+  saveLocalRecipe,
+  SavedRecipe
+} from "@/lib/storage";
 import styles from "./History.module.css";
-
-type RecipeItem = {
-  name: string;
-  amount: string;
-};
-
-type NutritionData = {
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-};
-
-type SavedRecipe = {
-  id: number;
-  title: string;
-  time: string;
-  ingredients: RecipeItem[];
-  steps: string[];
-  tips: string;
-  image_url: string | null;
-  nutrition: NutritionData | null;
-  genre: string | null;
-  saved_at: string;
-};
 
 const GENRE_OPTIONS = ['和食', '洋食', '中華', 'アジア料理', 'イタリアン', 'フレンチ', 'その他'];
 const TIME_OPTIONS = [
@@ -57,22 +37,15 @@ export default function HistoryPage() {
   const [filterTimeMax, setFilterTimeMax] = useState('');
 
   useEffect(() => {
-    fetchRecipes();
+    loadRecipes();
+    const handleUpdate = () => loadRecipes();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => window.removeEventListener("storage-updated", handleUpdate);
   }, []);
 
-  const fetchRecipes = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/saved-recipes", { headers: getApiHeaders() });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setAllRecipes(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  const loadRecipes = () => {
+    setAllRecipes(getLocalSavedRecipes());
+    setLoading(false);
   };
 
   // Client-side filtering
@@ -105,54 +78,24 @@ export default function HistoryPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (targetId === null) return;
-    const id = targetId;
+    deleteLocalSavedRecipe(targetId);
+    if (expandedId === targetId) setExpandedId(null);
     setModalOpen(false);
-    setDeletingId(id);
-    try {
-      await fetch(`/api/saved-recipes/${id}`, {
-        method: "DELETE",
-        headers: getApiHeaders(),
-      });
-      setAllRecipes(allRecipes.filter(r => r.id !== id));
-      if (expandedId === id) setExpandedId(null);
-    } catch (e) {
-      console.error(e);
-      alert("削除に失敗しました");
-    } finally {
-      setDeletingId(null);
-      setTargetId(null);
-    }
+    setTargetId(null);
+    loadRecipes();
   };
 
-  const handleRecook = async (id: number) => {
+  const handleRecook = (id: number) => {
     setUpdatingId(id);
-    try {
-      const res = await fetch(`/api/saved-recipes/${id}`, {
-        method: "PATCH",
-        headers: getApiHeaders(),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setAllRecipes(prev => {
-          const filtered = prev.filter(r => r.id !== id);
-          return [updated, ...filtered];
-        });
-
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 },
-          colors: ['#ff7849', '#20b2aa', '#fbbf24', '#f472b6'],
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      alert("更新に失敗しました");
-    } finally {
-      setUpdatingId(null);
-    }
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.7 },
+      colors: ['#ff7849', '#20b2aa', '#fbbf24', '#f472b6'],
+    });
+    setUpdatingId(null);
   };
 
   const handleRemake = async (recipe: SavedRecipe) => {
@@ -160,31 +103,32 @@ export default function HistoryPage() {
     try {
       const res = await fetch("/api/recipes/remake", {
         method: "POST",
-        headers: getApiHeaders(),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipe }),
       });
       const remakeData = await res.json();
-
       if (!res.ok) throw new Error(remakeData.error || "リメイクに失敗しました");
 
-      const saveRes = await fetch("/api/saved-recipes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...remakeData, image_url: null }),
+      const saved = saveLocalRecipe({
+        title: remakeData.title,
+        time: remakeData.time,
+        ingredients: remakeData.ingredients,
+        steps: remakeData.steps,
+        tips: remakeData.tips,
+        image_url: null,
+        nutrition: remakeData.nutrition || null,
+        genre: remakeData.genre || null,
       });
 
-      if (saveRes.ok) {
-        const saved = await saveRes.json();
-        setAllRecipes([saved, ...allRecipes]);
-        setExpandedId(saved.id);
+      setAllRecipes([saved, ...allRecipes]);
+      setExpandedId(saved.id);
 
-        confetti({
-          particleCount: 80,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ['#ff7849', '#f472b6', '#8b5cf6'],
-        });
-      }
+      confetti({
+        particleCount: 80,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#ff7849', '#f472b6', '#8b5cf6'],
+      });
     } catch (e: any) {
       console.error(e);
       alert(e.message);

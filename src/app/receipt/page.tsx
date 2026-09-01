@@ -99,7 +99,7 @@ export default function ReceiptPage() {
     ]);
   };
 
-  const handleSaveToInventory = async () => {
+  const handleSaveToInventory = () => {
     const validItems = extractedList.filter(i => i.name.trim() !== '');
     if (validItems.length === 0) return;
 
@@ -107,12 +107,8 @@ export default function ReceiptPage() {
     try {
       let count = 0;
       for (const item of validItems) {
-        const res = await fetch("/api/inventory", {
-          method: "POST",
-          headers: getApiHeaders(),
-          body: JSON.stringify({ name: item.name.trim(), category: item.category }),
-        });
-        if (res.ok) count++;
+        addLocalIngredient(item.name.trim(), item.category);
+        count++;
       }
 
       setRegisteredCount(count);

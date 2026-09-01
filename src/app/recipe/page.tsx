@@ -1,21 +1,28 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment, useRef } from "react";
-import { ChefHat, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Utensils, Pin, Users, Lightbulb, PlayCircle, Sparkles, ShoppingCart, Flame } from "lucide-react";
+import { useEffect, useState, Fragment } from "react";
+import { ChefHat, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Utensils, Pin, Lightbulb, PlayCircle, Sparkles, ShoppingCart, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { CookingModeToggle } from "@/components/CookingModeToggle";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
-import { getApiHeaders } from "@/lib/user";
+import ClimateBar from "@/components/ClimateBar";
+import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import {
+  getLocalIngredients,
+  getLocalUserProfile,
+  getLocalClimateState,
+  getLocalSavedRecipes,
+  saveLocalRecipe,
+  addLocalShoppingItem,
+  getRecentLocalRecipeNames,
+  Ingredient,
+  UserProfile,
+  ClimateState
+} from "@/lib/storage";
 import styles from "./Recipe.module.css";
-
-type Ingredient = {
-  id: number;
-  name: string;
-  is_pinned: boolean;
-};
 
 type RecipeItem = {
   name: string;
@@ -33,6 +40,7 @@ type Recipe = {
   title: string;
   time: string;
   genre?: string;
+  climate_badge?: string;
   ingredients: RecipeItem[];
   steps: string[];
   tips: string;
@@ -48,9 +56,9 @@ type CookingTip = {
 const CONDITION_OPTIONS = [
   { id: "low-cal", label: "低カロリー", icon: "🍃" },
   { id: "party", label: "パーティメニュー", icon: "🎉" },
-  { id: "gentle", label: "🤒お腹にやさしい", icon: "" },
-  { id: "protein", label: "💪ガッツリ高タンパク", icon: "" },
-  { id: "fast", label: "⏳超時短 (10分以内)", icon: "" },
+  { id: "gentle", label: "お腹にやさしい", icon: "🤒" },
+  { id: "protein", label: "ガッツリ高タンパク", icon: "💪" },
+  { id: "fast", label: "超時短 (10分以内)", icon: "⏳" },
 ];
 
 const SERVINGS_OPTIONS = [5, 4, 3, 2, 1];
@@ -63,6 +71,7 @@ const TIP_CATEGORY_COLORS: Record<string, string> = {
 
 export default function RecipePage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
@@ -79,38 +88,28 @@ export default function RecipePage() {
   const [cookingAutoImages, setCookingAutoImages] = useState(false);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    fetchIngredients();
+    loadLocalData();
+    const handleUpdate = () => loadLocalData();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => window.removeEventListener("storage-updated", handleUpdate);
+  }, []);
+
+  const loadLocalData = () => {
+    setIngredients(getLocalIngredients());
+    const prof = getLocalUserProfile();
+    setUserProfile(prof);
+    if (servings === null && prof.servings) {
+      setServings(prof.servings);
+    }
+
     try {
       const saved = localStorage.getItem("cooking_app_last_recipes");
       if (saved) setRecipes(JSON.parse(saved));
       const savedTips = localStorage.getItem("cooking_app_last_tips");
       if (savedTips) setCookingTips(JSON.parse(savedTips));
-    } catch (e) {
-      console.error("Failed to load from localStorage", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("cooking_app_model", selectedModel);
-    if (selectedModel === 'lily-1.1') {
-      fetchHistoryWithNutrition();
-    }
-  const fetchIngredients = async () => {
-    try {
-      const res = await fetch("/api/inventory", { headers: getApiHeaders() });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        const seen = new Set<string>();
-        const deduplicated = data.filter((item: Ingredient) => {
-          const normalized = item.name.trim().toLowerCase();
-          if (seen.has(normalized)) return false;
-          seen.add(normalized);
-          return true;
-        });
-        setIngredients(deduplicated);
-      }
     } catch (e) {
       console.error(e);
     }
@@ -121,19 +120,9 @@ export default function RecipePage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const addToShoppingList = async (itemName: string) => {
-    try {
-      const res = await fetch("/api/shopping", {
-        method: "POST",
-        headers: getApiHeaders(),
-        body: JSON.stringify({ name: itemName }),
-      });
-      if (res.ok) {
-        showToast(`🛒 「${itemName}」を買い物リストに追加しました！`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  const addToShoppingList = (itemName: string) => {
+    addLocalShoppingItem(itemName);
+    showToast(`🛒 「${itemName}」を買い物リストに追加しました！`);
   };
 
   const toggleCondition = (label: string) => {
@@ -150,17 +139,23 @@ export default function RecipePage() {
 
     const ingredientNames = ingredients.map(i => i.name);
     const pinnedNames = ingredients.filter(i => i.is_pinned).map(i => i.name);
+    const climate = getLocalClimateState();
+    const profile = getLocalUserProfile();
+    const recentHistory = getRecentLocalRecipeNames(5);
 
     try {
       const res = await fetch("/api/recipes", {
         method: "POST",
-        headers: getApiHeaders(),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ingredients: ingredientNames,
           pinnedIngredients: pinnedNames,
           conditions: selectedConditions,
           instruction,
-          servings,
+          servings: servings || profile.servings || 2,
+          climate,
+          profile,
+          recentHistory,
         })
       });
       const data = await res.json();
@@ -199,34 +194,24 @@ export default function RecipePage() {
     return minutes <= 9 ? "/sub.png" : "/main.png";
   };
 
-  const handleSave = async (index: number) => {
+  const handleSave = (index: number) => {
     const recipe = recipes[index];
     if (!recipe || savedSet.has(index)) return;
 
     setSavingIndex(index);
     try {
-      const res = await fetch("/api/saved-recipes", {
-        method: "POST",
-        headers: getApiHeaders(),
-        body: JSON.stringify({
-          title: recipe.title,
-          time: recipe.time ?? '',
-          ingredients: recipe.ingredients ?? [],
-          steps: recipe.steps ?? [],
-          tips: recipe.tips ?? '',
-          image_url: null,
-          nutrition: recipe.nutrition ?? null,
-          genre: recipe.genre ?? null,
-        }),
+      saveLocalRecipe({
+        title: recipe.title,
+        time: recipe.time ?? '',
+        ingredients: recipe.ingredients ?? [],
+        steps: recipe.steps ?? [],
+        tips: recipe.tips ?? '',
+        image_url: null,
+        nutrition: recipe.nutrition ?? null,
+        genre: recipe.genre ?? null,
       });
-
-      if (res.ok) {
-        setSavedSet(prev => new Set(prev).add(index));
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "保存に失敗しました");
-      }
-    } catch (e: any) {
+      setSavedSet(prev => new Set(prev).add(index));
+      showToast(`⭐ 「${recipe.title}」をお気に入りに保存しました！`);
     } catch (e: any) {
       console.error(e);
       alert("保存エラー: " + e.message);
@@ -266,7 +251,74 @@ export default function RecipePage() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>🍳 AIレシピ提案</h1>
-        <CookingModeToggle />
+        <button
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#4b5563',
+            cursor: 'pointer',
+          }}
+        >
+          <Settings size={15} color="#ff7849" />
+          <span>マイ設定</span>
+        </button>
+      </div>
+
+      {/* 気候・天気スマート連動バー */}
+      <ClimateBar />
+
+      {/* マイ設定の適用状況要約 */}
+      <div style={{
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: 14,
+        padding: '10px 14px',
+        marginBottom: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>
+            🛡️ あなたのマイ設定（自動適用中）
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            style={{ fontSize: 11, fontWeight: 600, color: '#ea580c', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            変更する
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ fontSize: 11, background: 'white', border: '1px solid #e2e8f0', padding: '2px 8px', borderRadius: 12, color: '#334155' }}>
+            🍽️ {userProfile.servings}人分
+          </span>
+          {userProfile.tastePreferences.map(t => (
+            <span key={t} style={{ fontSize: 11, background: 'white', border: '1px solid #e2e8f0', padding: '2px 8px', borderRadius: 12, color: '#334155' }}>
+              🧂 {t}
+            </span>
+          ))}
+          {userProfile.cookingStyles.map(s => (
+            <span key={s} style={{ fontSize: 11, background: 'white', border: '1px solid #e2e8f0', padding: '2px 8px', borderRadius: 12, color: '#334155' }}>
+              ⚡ {s}
+            </span>
+          ))}
+          {userProfile.excludedIngredients.map(ex => (
+            <span key={ex} style={{ fontSize: 11, background: '#fff1f2', border: '1px solid #fecdd3', padding: '2px 8px', borderRadius: 12, color: '#e11d48', fontWeight: 600 }}>
+              🚫 {ex}除外
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className={styles.inputSection}>
@@ -284,7 +336,7 @@ export default function RecipePage() {
             className={styles.conditionsHeader}
             onClick={() => setShowConditions(!showConditions)}
           >
-            <span>✨ 条件オプションを選択 {activeConditionsText}</span>
+            <span>✨ 追加の条件を選択 {activeConditionsText}</span>
             {showConditions ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
 
@@ -317,18 +369,14 @@ export default function RecipePage() {
                   <div className={styles.servingsHeader}>
                     <label className={styles.servingsLabel}>
                       <Utensils size={18} color="#ff7849" />
-                      <span>🍽️ 分量を調整</span>
+                      <span>🍽️ 分量を一時変更</span>
                     </label>
-                    <div className={styles.servingsHint}>
-                      レシピの人数分を指定できます
-                    </div>
                   </div>
                   <select
                     className={styles.servingsSelect}
-                    value={servings ?? ""}
-                    onChange={(e) => setServings(e.target.value ? Number(e.target.value) : null)}
+                    value={servings ?? userProfile.servings}
+                    onChange={(e) => setServings(Number(e.target.value))}
                   >
-                    <option value="">指定なし (材料のみで提案)</option>
                     {SERVINGS_OPTIONS.map((n) => (
                       <option key={n} value={n}>{n}人分 の分量で提案</option>
                     ))}
@@ -343,7 +391,7 @@ export default function RecipePage() {
           placeholder="カスタム指示 (任意) 例: 子供が喜ぶ味付け、辛さ控えめなど"
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
-          rows={3}
+          rows={2}
           className={styles.textarea}
         />
 
@@ -353,7 +401,7 @@ export default function RecipePage() {
           disabled={loading || ingredients.length === 0}
         >
           {loading ? <Loader2 className="spinner" size={20} /> : <ChefHat size={20} />}
-          レシピを提案する
+          気候 ＆ 設定に合わせてレシピを提案
         </button>
       </div>
 
@@ -371,14 +419,14 @@ export default function RecipePage() {
             <span className={styles.emoji}>🔪</span>
             <span className={styles.emoji}>🥘</span>
           </div>
-          <p className={styles.loadingText}>在庫から最高のレシピを考案中...</p>
+          <p className={styles.loadingText}>気候と設定に合わせて最高のレシピを考案中...</p>
         </div>
       )}
 
       {!loading && recipes.length > 0 && (
         <div className={styles.results}>
           <div className={styles.resultsHeader}>
-            <h2 className={styles.resultsTitle}>✨ 提案結果</h2>
+            <h2 className={styles.resultsTitle}>✨ 提案結果 (気候 ＆ 設定最適化済)</h2>
           </div>
 
           {recipes.map((recipe, index) => {
@@ -394,11 +442,18 @@ export default function RecipePage() {
                   />
 
                   <div className={styles.recipeTitleGroup}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                      {recipe.climate_badge && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255, 120, 73, 0.15)', color: '#ea580c', padding: '1px 6px', borderRadius: 6 }}>
+                          {recipe.climate_badge}
+                        </span>
+                      )}
+                      <span className={styles.recipeTime}>⏱ {recipe.time}</span>
+                      {recipe.genre && (
+                        <span className={styles.genreBadge}>{recipe.genre}</span>
+                      )}
+                    </div>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
-                    <span className={styles.recipeTime}>⏱ {recipe.time}</span>
-                    {recipe.genre && (
-                      <span className={styles.genreBadge}>{recipe.genre}</span>
-                    )}
                   </div>
 
                   <div className={styles.recipeActions}>
@@ -577,12 +632,18 @@ export default function RecipePage() {
             ingredients={cookedModalRecipe.ingredients}
             onClose={() => setCookedModalRecipe(null)}
             onSuccess={() => {
-              fetchIngredients();
+              loadLocalData();
               showToast("🎉 自炊記録とお使いの在庫を更新しました！");
             }}
           />
         )}
       </AnimatePresence>
+
+      <ProfileSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSaved={loadLocalData}
+      />
     </div>
   );
 }

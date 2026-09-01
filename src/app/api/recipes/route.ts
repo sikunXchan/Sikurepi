@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ai, generateWithRetry } from '@/lib/ai';
-import { getRecentRecipeNames } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/user';
 
 export async function POST(req: Request) {
   try {
-    const userId = getUserIdFromRequest(req);
     const body = await req.json();
     const {
       ingredients,
@@ -13,6 +10,9 @@ export async function POST(req: Request) {
       conditions,
       instruction,
       servings,
+      climate,
+      profile,
+      recentHistory,
     } = body;
 
     if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
@@ -24,44 +24,74 @@ export async function POST(req: Request) {
       : '';
 
     const conditionsSection = conditions && conditions.length > 0
-      ? `\n【重要：守るべき調理条件】\n${conditions.join('、')}\n`
+      ? `\n【重要：選択された調理条件】\n${conditions.join('、')}\n`
       : '';
 
-    const recentNames = await getRecentRecipeNames(5, userId);
-    const historyNote = recentNames.length > 0
-      ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentNames.join('、')}\n`
+    // 気候・環境連動セクション
+    let climateSection = '';
+    if (climate) {
+      const cond = climate.condition || '通常';
+      const temp = climate.temperature !== undefined ? `${climate.temperature}℃` : '';
+      const tod = climate.timeOfDay || '';
+      const advice = climate.advice || '';
+      climateSection = `\n【現在の気候・気温・時間帯（最重要：身体の状態に合わせてレシピを最適化してください）】
+・気候/天気: ${cond} (${temp})
+・時間帯: ${tod}
+・気候アドバイス方針: ${advice}
+※ 気候や気温に合わせた調理法（例：猛暑ならさっぱり冷製・酸味・水分ミネラル補給、寒い日ならあったかスープや生姜、夜遅い時間なら消化の良いヘルシーメニュー等）を自然に取り入れてください。\n`;
+    }
+
+    // ユーザープロファイル（マイ一括設定）セクション
+    let profileSection = '';
+    if (profile) {
+      const taste = profile.tastePreferences && profile.tastePreferences.length > 0
+        ? `・味の好み/栄養方針: ${profile.tastePreferences.join('、')}\n`
+        : '';
+      const excluded = profile.excludedIngredients && profile.excludedIngredients.length > 0
+        ? `・【絶対除外（アレルギー・苦手）】: ${profile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
+        : '';
+      const styles = profile.cookingStyles && profile.cookingStyles.length > 0
+        ? `・調理スタイル/設備: ${profile.cookingStyles.join('、')}\n`
+        : '';
+      if (taste || excluded || styles) {
+        profileSection = `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${styles}`;
+      }
+    }
+
+    const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
+      ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
       : '';
 
-    const servingsSection = servings
-      ? `\n【分量指定】\nすべてのレシピの材料・分量は ${servings}人分 で記載してください。\n`
-      : '';
+    const targetServings = servings || profile?.servings || 2;
+    const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
     const seasoningSection = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。これらは在庫食材に含まれていなくても構いません。\n`;
 
-    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の在庫食材を使い、家庭で再現できる「本当においしく、栄養バランスの取れた」レシピを複数提案してください。
+    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の在庫食材を使い、現在の気候やユーザーの好みにぴったりな、家庭で再現できる「本当においしく、栄養バランスの取れた」レシピを複数提案してください。
 【現在の在庫食材】
 ${ingredients.join(', ')}
-${seasoningSection}${pinnedSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからのカスタム指示】\n${instruction}\n` : ''}${historyNote}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
-2. 調理条件（低カロリー、時短など）が指定されている場合、必ずその条件を満たすレシピにしてください。
-3. 味付けは「ぼやけない・しっかりした美味しさ」を最優先してください。基本調味料を積極的に使い、すべての調味料について分量を「大さじ・小さじ・g」など具体的な数値で必ず明記してください（「適量」「少々」は塩・こしょうなど一部の仕上げ調味料のみ許可）。各レシピが料理として味が決まる仕上がりになるよう設計してください。
+2. 気候や気温（猛暑、寒さ、雨など）に合った最適な温度感・味付け（さっぱり、温まるなど）を取り入れてください。
+3. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
 4. 【栄養バランス】すべてのレシピでPFCバランス（タンパク質・脂質・炭水化物）を計算し、1人分あたりの推定栄養価（カロリー, タンパク質g, 脂質g, 炭水化物g）を算出してください。
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
-6. 以下のJSON構造で、"recipes"配列の中に複数のレシピデータを格納して返してください。また"cooking_tips"配列に食材に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
+6. 以下のJSON構造で、"recipes"配列の中に複数のレシピデータを格納して返してください。"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
 {
   "recipes": [
     {
       "title": "料理名",
       "time": "調理時間目安（例：15分）",
       "genre": "和食",
+      "climate_badge": "☀️ 猛暑に最適",
       "ingredients": [
-        { "name": "使用する具材または調味料", "amount": "分量の目安（例：鶏もも肉200g、玉ねぎ1/2個、醤油 大さじ2、砂糖 小さじ1など）" }
+        { "name": "使用する具材または調味料", "amount": "分量の目安（例：豚バラ肉200g、トマト1個、ポン酢 大さじ2など）" }
       ],
       "steps": ["手順1", "手順2", "手順3..."],
       "tips": "調理のコツ・アドバイス",
-      "nutrition": { "calories": 450, "protein_g": 30, "fat_g": 12, "carbs_g": 45 }
+      "nutrition": { "calories": 420, "protein_g": 28, "fat_g": 14, "carbs_g": 35 }
     }
   ],
   "cooking_tips": [

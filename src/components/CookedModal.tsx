@@ -1,11 +1,11 @@
-﻿use client;
+"use client";
 
-import { useState } from react;
-import { motion, AnimatePresence } from framer-motion;
-import { Check, X, Sparkles, Loader2, Trash2 } from lucide-react;
-import confetti from canvas-confetti;
-import styles from ./CookedModal.module.css;
-import { getApiHeaders } from @/lib/user;
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
+import confetti from "canvas-confetti";
+import { consumeLocalIngredients, recordLocalCookingDone } from "@/lib/storage";
+import styles from "./CookedModal.module.css";
 
 type Props = {
   recipeTitle: string;
@@ -15,7 +15,6 @@ type Props = {
 };
 
 export default function CookedModal({ recipeTitle, ingredients, onClose, onSuccess }: Props) {
-  // デフォルトで全食材を選択
   const [selectedItems, setSelectedItems] = useState<Set<string>>(
     new Set(ingredients.map((i) => i.name))
   );
@@ -31,33 +30,32 @@ export default function CookedModal({ recipeTitle, ingredients, onClose, onSucce
     });
   };
 
-  const handleConfirm = async (consume: boolean) => {
+  const handleConfirm = (consume: boolean) => {
     setLoading(true);
     try {
       const toConsume = consume ? Array.from(selectedItems) : [];
-      const res = await fetch(/api/recipes/consume, {
-        method: POST,
-        headers: getApiHeaders(),
-        body: JSON.stringify({ consumedIngredients: toConsume }),
-      });
-
-      if (res.ok) {
-        setDone(true);
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: [#ff7849, #20b2aa, #10b981, #fbbf24],
-        });
-        window.dispatchEvent(new Event(stats-updated));
-        setTimeout(() => {
-          if (onSuccess) onSuccess();
-          onClose();
-        }, 1200);
+      let consumedCount = 0;
+      if (toConsume.length > 0) {
+        consumedCount = consumeLocalIngredients(toConsume);
       }
+      recordLocalCookingDone(consumedCount);
+
+      setDone(true);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#ff7849", "#20b2aa", "#10b981", "#fbbf24"],
+      });
+      window.dispatchEvent(new Event("storage-updated"));
+      window.dispatchEvent(new Event("stats-updated"));
+      setTimeout(() => {
+        if (onSuccess) onSuccess();
+        onClose();
+      }, 1000);
     } catch (e) {
       console.error(e);
-      alert(エラーが発生しました);
+      alert("エラーが発生しました");
     } finally {
       setLoading(false);
     }
@@ -99,9 +97,9 @@ export default function CookedModal({ recipeTitle, ingredients, onClose, onSucce
                 {ingredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
                   return (
-                    <label key={idx} className={${styles.itemRow} }>
+                    <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.itemRowActive : ""}`}>
                       <input
-                        type=checkbox
+                        type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleItem(item.name)}
                         className={styles.checkbox}
@@ -120,7 +118,7 @@ export default function CookedModal({ recipeTitle, ingredients, onClose, onSucce
                   onClick={() => handleConfirm(true)}
                 >
                   {loading ? (
-                    <Loader2 size={16} className=spin />
+                    <Loader2 size={16} className="spin" />
                   ) : (
                     <>
                       <Trash2 size={15} />

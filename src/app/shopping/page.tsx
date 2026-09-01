@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Loader2, Trash2, Check, ShoppingCart, ShoppingBag, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Check, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
-import { getApiHeaders } from "@/lib/user";
+import {
+  getLocalShoppingItems,
+  addLocalShoppingItem,
+  deleteLocalShoppingItem,
+  toggleLocalShoppingItem,
+  ShoppingItem
+} from "@/lib/storage";
 import styles from "./Shopping.module.css";
-
-type ShoppingItem = {
-  id: number;
-  name: string;
-  category?: string;
-  is_completed: boolean;
-};
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
 
@@ -41,73 +40,45 @@ export default function ShoppingPage() {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchItems();
+    loadItems();
+    const handleUpdate = () => loadItems();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => window.removeEventListener("storage-updated", handleUpdate);
   }, []);
 
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/shopping", { headers: getApiHeaders() });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setItems(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  const loadItems = () => {
+    setItems(getLocalShoppingItems());
+    setLoading(false);
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    const clean = newName.trim();
+    if (!clean) return;
 
-    setAdding(true);
-    const category = inferCategory(newName.trim());
-    try {
-      const res = await fetch("/api/shopping", {
-        method: "POST",
-        headers: getApiHeaders(),
-        body: JSON.stringify({ name: newName.trim(), category }),
-      });
-      const data = await res.json();
-      if (data && data.id) {
-        setItems([data, ...items]);
-        setNewName("");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("エラーが発生しました");
-    } finally {
-      setAdding(false);
-    }
+    const category = inferCategory(clean);
+    addLocalShoppingItem(clean, category);
+    setNewName("");
+    loadItems();
   };
 
-  const handleDelete = async (id: number) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-    try {
-      await fetch(`/api/shopping/${id}`, {
-        method: "DELETE",
-        headers: getApiHeaders(),
-      });
-    } catch (e) {
-      console.error(e);
-    }
+  const handleDelete = (id: number) => {
+    deleteLocalShoppingItem(id);
+    loadItems();
   };
 
-  const handleComplete = async (item: ShoppingItem, e: React.MouseEvent) => {
+  const handleComplete = (item: ShoppingItem, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const startX = rect.left + rect.width / 2;
     const startY = rect.top + rect.height / 2;
 
     const targetEl = document.querySelector('[data-nav="在庫"]');
     if (!targetEl) {
-      processCompletion(item.id);
+      toggleLocalShoppingItem(item.id);
+      loadItems();
       return;
     }
     const targetRect = targetEl.getBoundingClientRect();
@@ -115,19 +86,8 @@ export default function ShoppingPage() {
     const endY = targetRect.top + targetRect.height / 2;
 
     createFlyingEffect(item.name, startX, startY, endX, endY);
-    processCompletion(item.id);
-  };
-
-  const processCompletion = async (id: number) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-    try {
-      await fetch(`/api/shopping/${id}`, {
-        method: "PATCH",
-        headers: getApiHeaders(),
-      });
-    } catch (e) {
-      console.error(e);
-    }
+    toggleLocalShoppingItem(item.id);
+    loadItems();
   };
 
   const createFlyingEffect = (name: string, startX: number, startY: number, endX: number, endY: number) => {
