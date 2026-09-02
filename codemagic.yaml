@@ -1,0 +1,80 @@
+# Codemagic CI設定: Macを使わずクラウドで「署名なしiOS .ipa」をビルドするための設定。
+#
+# 前提と狙い:
+# - RevenueCatの課金はWeb Billing(purchases-js)を使うため、StoreKitの署名や
+#   App Store Connectの実機課金設定は一切不要。
+# - ここで作る.ipaは意図的に「未署名」。Sideloadlyが手元のWindows PCで
+#   あなたの無料Apple IDを使って再署名・インストールする前提の成果物。
+# - このファイルは実際にCodemagic上で実行検証できていません(このセッションには
+#   macOS/Codemagicアカウントがないため)。初回実行時にステップ名・パス・
+#   スキーム名などの微調整が必要になる可能性が高いです。エラーが出たら
+#   ログの内容を見ながら該当ステップだけ直してください。
+#
+# 使い方の概要:
+# 1. https://codemagic.io で無料アカウントを作成し、このリポジトリを接続
+# 2. このワークフロー(ios-unsigned-sideload)を実行
+# 3. 完了後、Artifactsから *.ipa をダウンロード
+# 4. Windows PCでSideloadlyを使い、その.ipaを自分のiPhoneにインストール
+
+workflows:
+  ios-unsigned-sideload:
+    name: iOS Unsigned Build (for Sideloadly)
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      node: 20
+      vars:
+        XCODE_SCHEME: "App"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Sync Capacitor iOS platform (プラグイン・www反映)
+        script: |
+          npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        script: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme "$XCODE_SCHEME"
+
+      - name: Build unsigned .app for real iOS devices
+        script: |
+          set -e
+          cd ios/App
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$CM_BUILD_DIR/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM=""
+
+      - name: Package unsigned .ipa (Sideloadlyが再署名する前提)
+        script: |
+          set -e
+          APP_PATH=$(find "$CM_BUILD_DIR/DerivedData/Build/Products" -maxdepth 2 -name "App.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "App.app が見つかりませんでした。前段のビルドログを確認してください。"
+            exit 1
+          fi
+          echo "Found app bundle: $APP_PATH"
+          rm -rf "$CM_BUILD_DIR/Payload"
+          mkdir -p "$CM_BUILD_DIR/Payload"
+          cp -r "$APP_PATH" "$CM_BUILD_DIR/Payload/"
+          cd "$CM_BUILD_DIR"
+          zip -r LilyCooking-unsigned.ipa Payload
+          echo "Generated: $CM_BUILD_DIR/LilyCooking-unsigned.ipa"
+
+    artifacts:
+      - "*.ipa"
+      - "$CM_BUILD_DIR/*.ipa"
