@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Pin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import {
@@ -16,6 +16,7 @@ import {
   removeLocalWeekPlanEntry,
   getFreeGenerationsUsed,
   incrementFreeGenerationsUsed,
+  isIngredientMissing,
   FREE_WEEKLY_PLAN_GENERATIONS,
   Ingredient,
   UserProfile,
@@ -45,7 +46,7 @@ function buildDays(): DayInfo[] {
 }
 
 const chip = (active: boolean): CSSProperties => ({
-  background: active ? 'var(--primary)' : '#ffffff',
+  background: active ? 'var(--primary)' : 'var(--card-bg-solid)',
   color: active ? '#ffffff' : 'var(--foreground)',
   border: '1px solid var(--border)',
   padding: '6px 12px',
@@ -86,6 +87,7 @@ export default function MealPlanPage() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [weeklyTargets, setWeeklyTargets] = useState<{ calories: number; protein_g: number; fat_g: number; carbs_g: number } | null>(null);
+  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -278,6 +280,14 @@ export default function MealPlanPage() {
     showToast(`🛒 不足食材 ${needed.size}件を買い物リストに追加しました！`);
   };
 
+  const handlePinToShopping = (slotKey: string, ingredientName: string) => {
+    const pinKey = `${slotKey}-${ingredientName}`;
+    if (pinnedToShoppingSet.has(pinKey)) return;
+    addLocalShoppingItem(ingredientName);
+    setPinnedToShoppingSet(prev => new Set(prev).add(pinKey));
+    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
+  };
+
   const weeklyNutritionSum = () => {
     let calories = 0, protein_g = 0, fat_g = 0, carbs_g = 0;
     plan.forEach(e => {
@@ -457,11 +467,30 @@ export default function MealPlanPage() {
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>材料</div>
-                                  <ul style={{ fontSize: 12, color: 'var(--foreground)', marginBottom: 10, paddingLeft: 16 }}>
-                                    {(entry.recipe.ingredients || []).map((it, i) => (
-                                      <li key={i}>{it.name} {it.amount}</li>
-                                    ))}
+                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>材料（不足分は📌で買い物リストへ）</div>
+                                  <ul style={{ fontSize: 12, marginBottom: 10, paddingLeft: 16, listStyle: 'none' }}>
+                                    {(entry.recipe.ingredients || []).map((it, i) => {
+                                      const missing = isIngredientMissing(it.name, ingredients);
+                                      const pinKey = `${key}-${it.name}`;
+                                      const isPinned = pinnedToShoppingSet.has(pinKey);
+                                      return (
+                                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                          {missing && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handlePinToShopping(key, it.name)}
+                                              title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
+                                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                            >
+                                              <Pin size={12} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                            </button>
+                                          )}
+                                          <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
+                                            {it.name} {it.amount}
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
                                   </ul>
                                   <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>作り方</div>
                                   <ol style={{ fontSize: 12, color: 'var(--foreground)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>

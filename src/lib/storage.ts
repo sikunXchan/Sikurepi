@@ -72,6 +72,30 @@ export type UserProfile = {
   enableClimate: boolean;
 };
 
+// --- 材料の不足チェック (レシピの材料が在庫にあるか) ---
+
+// 常備調味料と前提としているもの（AIプロンプトのSEASONING_SECTIONと対応）。
+// 在庫に無くても「不足」扱いにはしない。
+const PANTRY_STAPLES = [
+  '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
+  '酢', 'サラダ油', 'ごま油', 'バター', 'だし', 'コンソメ', '鶏がらスープ',
+  'ケチャップ', 'マヨネーズ', 'にんにく', 'ニンニク', 'しょうが', '生姜',
+];
+
+export function isPantryStaple(ingredientName: string): boolean {
+  const name = ingredientName.trim();
+  return PANTRY_STAPLES.some(s => name.includes(s));
+}
+
+export function isIngredientMissing(ingredientName: string, inventory: Ingredient[]): boolean {
+  const target = ingredientName.trim().toLowerCase();
+  if (!target || isPantryStaple(ingredientName)) return false;
+  return !inventory.some(inv => {
+    const invName = inv.name.trim().toLowerCase();
+    return invName.includes(target) || target.includes(invName);
+  });
+}
+
 // --- 週間献立プラン (Weekly Meal Plan) ---
 
 export type MealSlot = 'lunch' | 'dinner';

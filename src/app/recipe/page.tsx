@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Utensils, Pin, Lightbulb, PlayCircle, Sparkles, ShoppingCart, Settings, Plus } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Pin, Lightbulb, PlayCircle, Sparkles, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -18,6 +18,7 @@ import {
   addLocalShoppingItem,
   getRecentLocalRecipeNames,
   saveLocalTip,
+  isIngredientMissing,
   Ingredient,
   UserProfile,
   ClimateState,
@@ -82,6 +83,7 @@ export default function RecipePage() {
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadLocalData();
@@ -211,9 +213,12 @@ export default function RecipePage() {
     }
   };
 
-  const handleAddToShopping = (ingredientName: string) => {
+  const handlePinToShopping = (recipeIndex: number, ingredientName: string) => {
+    const key = `${recipeIndex}-${ingredientName}`;
+    if (pinnedToShoppingSet.has(key)) return;
     addLocalShoppingItem(ingredientName);
-    showToast(`🛒 「${ingredientName}」を買い物リストに追加しました！`);
+    setPinnedToShoppingSet(prev => new Set(prev).add(key));
+    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
   };
 
   return (
@@ -316,7 +321,7 @@ export default function RecipePage() {
                 type="button"
                 onClick={() => handleApplyTemplate(tmpl.query)}
                 style={{
-                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : '#ffffff',
+                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : 'var(--card-bg-solid)',
                   color: instruction === tmpl.query ? 'var(--primary)' : 'var(--foreground)',
                   border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   padding: '4px 10px',
@@ -362,7 +367,7 @@ export default function RecipePage() {
                       type="button"
                       onClick={() => toggleIngredientSelection(ing.id)}
                       style={{
-                        background: isSelected ? 'var(--primary)' : '#ffffff',
+                        background: isSelected ? 'var(--primary)' : 'var(--card-bg-solid)',
                         color: isSelected ? '#ffffff' : 'var(--foreground)',
                         border: '1px solid var(--border)',
                         padding: '4px 10px',
@@ -466,27 +471,38 @@ export default function RecipePage() {
                       </div>
                     )}
 
-                    {/* 材料リスト ＋ 買い物リスト追加 */}
+                    {/* 材料リスト（不足分は赤字＋📌で買い物リストへ） */}
                     <div className={styles.section}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <h3>材料・調味料</h3>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>タップで買い物リストへ追加 🛒</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>不足分は📌で買い物リストへ</span>
                       </div>
                       <ul className={styles.ingredientList}>
-                        {recipe.ingredients.map((item, i) => (
-                          <li
-                            key={i}
-                            onClick={() => handleAddToShopping(item.name)}
-                            style={{ cursor: 'pointer' }}
-                            title="タップして買い物リストに追加"
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span>• {item.name}</span>
-                              <Plus size={12} color="var(--primary)" />
-                            </span>
-                            <span className="text-muted">{item.amount}</span>
-                          </li>
-                        ))}
+                        {recipe.ingredients.map((item, i) => {
+                          const missing = isIngredientMissing(item.name, ingredients);
+                          const pinKey = `${index}-${item.name}`;
+                          const isPinned = pinnedToShoppingSet.has(pinKey);
+                          return (
+                            <li key={i}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {missing && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(index, item.name); }}
+                                    title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                  >
+                                    <Pin size={13} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                  </button>
+                                )}
+                                <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
+                                  {missing ? '' : '• '}{item.name}
+                                </span>
+                              </span>
+                              <span className="text-muted">{item.amount}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
 

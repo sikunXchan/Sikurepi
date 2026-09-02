@@ -36,5 +36,5 @@
 
 .legendValue {
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--foreground);
 }
