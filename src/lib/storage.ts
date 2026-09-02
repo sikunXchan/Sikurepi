@@ -116,6 +116,7 @@ const KEYS = {
   CLIMATE: 'lily_app_climate',
   TIPS: 'lily_app_saved_tips',
   WEEK_PLAN: 'lily_app_week_plan',
+  FREE_GENERATIONS_USED: 'lily_app_free_generations_used',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -341,6 +342,21 @@ export function removeLocalWeekPlanEntry(date: string, mealSlot: MealSlot): void
 export function clearLocalWeekPlanRange(dates: string[]): void {
   const list = getLocalWeekPlan();
   setStorage(KEYS.WEEK_PLAN, list.filter(e => !dates.includes(e.date)));
+}
+
+// --- プレミアムプラン無料枠 (アプリ版のみ有効。Web版は無制限) ---
+
+// アプリ版で「週間献立の自動生成」を無料で使える回数。これを超えるとプレミアムプラン加入を促す。
+export const FREE_WEEKLY_PLAN_GENERATIONS = 3;
+
+export function getFreeGenerationsUsed(): number {
+  return getStorage<number>(KEYS.FREE_GENERATIONS_USED, 0);
+}
+
+export function incrementFreeGenerationsUsed(): number {
+  const next = getFreeGenerationsUsed() + 1;
+  setStorage(KEYS.FREE_GENERATIONS_USED, next);
+  return next;
 }
 
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---

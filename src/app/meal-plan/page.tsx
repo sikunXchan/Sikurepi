@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import {
@@ -14,11 +14,15 @@ import {
   getLocalWeekPlan,
   setLocalWeekPlanEntries,
   removeLocalWeekPlanEntry,
+  getFreeGenerationsUsed,
+  incrementFreeGenerationsUsed,
+  FREE_WEEKLY_PLAN_GENERATIONS,
   Ingredient,
   UserProfile,
   MealSlot,
   WeeklyPlanEntry,
 } from "@/lib/storage";
+import { isNativeApp, hasPremiumEntitlement, purchasePremium } from "@/lib/purchases";
 import styles from "./MealPlan.module.css";
 
 const SLOT_LABEL: Record<MealSlot, string> = { lunch: "☀️ 昼", dinner: "🌙 夜" };
@@ -82,11 +86,18 @@ export default function MealPlanPage() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [weeklyTargets, setWeeklyTargets] = useState<{ calories: number; protein_g: number; fat_g: number; carbs_g: number } | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState("");
 
   useEffect(() => {
     loadData();
     const handleUpdate = () => loadData();
     window.addEventListener("storage-updated", handleUpdate);
+    if (isNativeApp()) {
+      hasPremiumEntitlement().then(setIsPremium);
+    }
     return () => window.removeEventListener("storage-updated", handleUpdate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -174,6 +185,10 @@ export default function MealPlanPage() {
       setErrorMsg("少なくとも1つの日付・食事枠を選んでください");
       return;
     }
+    if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+      setShowPaywall(true);
+      return;
+    }
     setGenerating(true);
     setErrorMsg("");
     try {
@@ -188,12 +203,30 @@ export default function MealPlanPage() {
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
+      if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
       loadData();
       showToast(`🪄 ${entries.length}食分の献立を生成しました！`);
     } catch (err: any) {
       setErrorMsg(err.message || "エラーが発生しました");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handlePurchasePremium = async () => {
+    setPurchasing(true);
+    setPurchaseError("");
+    try {
+      const result = await purchasePremium();
+      if (result.success) {
+        setIsPremium(true);
+        setShowPaywall(false);
+        showToast("👑 プレミアムプランへようこそ！これから週間献立を無制限に生成できます");
+      } else if (result.error) {
+        setPurchaseError(result.error);
+      }
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -273,6 +306,11 @@ export default function MealPlanPage() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>📅 週間献立プランナー</h1>
+        {isNativeApp() && isPremium && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#b45309', background: 'rgba(245, 158, 11, 0.12)', padding: '4px 10px', borderRadius: 20 }}>
+            <Crown size={13} /> プレミアム
+          </span>
+        )}
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: -8 }}>
         いらない日・食事はチェックを外してから生成してください。今日から7日分、在庫とPFC目標に合わせてAIが自動で組みます。
@@ -319,6 +357,11 @@ export default function MealPlanPage() {
             </>
           )}
         </button>
+        {isNativeApp() && !isPremium && (
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
+            無料プラン: 残り{Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed())}回生成できます
+          </p>
+        )}
       </div>
 
       {errorMsg && (
@@ -441,6 +484,62 @@ export default function MealPlanPage() {
           })}
         </div>
       )}
+
+      <AnimatePresence>
+        {showPaywall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 }}
+            onClick={() => !purchasing && setShowPaywall(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ position: 'relative', background: 'var(--card-bg-solid, #fff)', borderRadius: 20, padding: 24, maxWidth: 360, width: '100%', textAlign: 'center' }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowPaywall(false)}
+                disabled={purchasing}
+                style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <X size={18} />
+              </button>
+              <Crown size={40} color="#f59e0b" style={{ marginBottom: 8 }} />
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>プレミアムプラン</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
+                無料プランの週間献立生成（{FREE_WEEKLY_PLAN_GENERATIONS}回）を使い切りました。プレミアムプランに登録すると、週間献立の自動生成が無制限になります。
+              </p>
+              {purchaseError && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 12, marginBottom: 12 }}>
+                  {purchaseError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handlePurchasePremium}
+                disabled={purchasing}
+                className="btn-primary"
+                style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 700 }}
+              >
+                {purchasing ? (<><Loader2 className="spinner" size={16} />処理中...</>) : (<><Crown size={16} />プレミアムプランに登録する</>)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPaywall(false)}
+                disabled={purchasing}
+                style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 8 }}
+              >
+                また今度にする
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
