@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Trash2, Plus, Loader2, Pin, Settings, Network, List } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { Trash2, Plus, Loader2, Pin, Settings } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate as animateValue, PanInfo } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
-import InventoryMindMap from "@/components/InventoryMindMap";
 import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
@@ -31,15 +30,103 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
 
+const SWIPE_OPEN_X = -88;
+const SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
+const LONG_PRESS_MS = 550;
+
+function SwipeableIngredientRow({
+  item,
+  isOpen,
+  onOpenChange,
+  onDelete,
+  onTogglePin,
+}: {
+  item: Ingredient;
+  isOpen: boolean;
+  onOpenChange: (id: number | null) => void;
+  onDelete: (id: number, name: string) => void;
+  onTogglePin: (item: Ingredient) => void;
+}) {
+  const x = useMotionValue(0);
+  const bgOpacity = useTransform(x, [SWIPE_OPEN_X, SWIPE_OPEN_X / 2, 0], [1, 1, 0]);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) animateValue(x, 0, SWIPE_SPRING);
+  }, [isOpen, x]);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePointerDown = () => {
+    if (isOpen) return;
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
+      onTogglePin(item);
+    }, LONG_PRESS_MS);
+  };
+
+  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+    const shouldOpen = info.offset.x < -40 || info.velocity.x < -300;
+    animateValue(x, shouldOpen ? SWIPE_OPEN_X : 0, SWIPE_SPRING);
+    onOpenChange(shouldOpen ? item.id : null);
+  };
+
+  return (
+    <li className={styles.swipeWrapper}>
+      <motion.div className={styles.swipeDeleteBg} style={{ opacity: bgOpacity }}>
+        <button
+          type="button"
+          className={styles.swipeDeleteBtn}
+          onClick={() => {
+            onOpenChange(null);
+            onDelete(item.id, item.name);
+          }}
+          title="削除"
+        >
+          <Trash2 size={20} />
+        </button>
+      </motion.div>
+      <motion.div
+        className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
+        style={{ x, y: item.is_pinned ? -4 : 0 }}
+        drag="x"
+        dragConstraints={{ left: SWIPE_OPEN_X, right: 0 }}
+        dragElastic={0.05}
+        onDragStart={clearLongPress}
+        onDragEnd={handleDragEnd}
+        onPointerDown={handlePointerDown}
+        onPointerUp={clearLongPress}
+        onPointerCancel={clearLongPress}
+        onTap={() => {
+          if (isOpen) onOpenChange(null);
+        }}
+      >
+        <div className={styles.nameSection}>
+          <IngredientIcon name={item.name} size={36} />
+          {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, flexShrink: 0 }} />}
+          <span>{item.name}</span>
+        </div>
+      </motion.div>
+    </li>
+  );
+}
+
 export default function Home() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'mindmap'>('list');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
 
   useEffect(() => {
     loadIngredients();
@@ -178,79 +265,14 @@ export default function Home() {
         </div>
       </form>
 
-      {/* 表示切替タブ (リスト ⇄ マインドマップ) */}
-      <div style={{
-        display: 'flex',
-        background: 'rgba(255, 255, 255, 0.8)',
-        border: '1px solid rgba(255, 120, 73, 0.2)',
-        borderRadius: 12,
-        padding: 3,
-        gap: 4,
-        marginBottom: 8,
-      }}>
-        <button
-          type="button"
-          onClick={() => setViewMode('list')}
-          style={{
-            flex: 1,
-            background: viewMode === 'list' ? 'var(--gradient-primary)' : 'transparent',
-            color: viewMode === 'list' ? 'white' : 'var(--text-muted)',
-            border: 'none',
-            borderRadius: 9,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-          }}
-        >
-          <List size={14} />
-          リスト表示
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('mindmap')}
-          style={{
-            flex: 1,
-            background: viewMode === 'mindmap' ? 'var(--gradient-primary)' : 'transparent',
-            color: viewMode === 'mindmap' ? 'white' : 'var(--text-muted)',
-            border: 'none',
-            borderRadius: 9,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-          }}
-        >
-          <Network size={14} />
-          マインドマップ表示
-        </button>
-      </div>
-
       {loading && (
         <div className="flex justify-center mt-4">
           <Loader2 className="spinner" size={32} color="var(--primary)" />
         </div>
       )}
 
-      {/* マインドマップ表示 */}
-      {!loading && viewMode === 'mindmap' && (
-        <InventoryMindMap
-          ingredients={ingredients}
-          onUpdated={loadIngredients}
-          onShowToast={showToast}
-        />
-      )}
-
       {/* リスト表示 */}
-      {!loading && viewMode === 'list' && (
+      {!loading && (
         <div className={styles.categoryGroups}>
           {Object.entries(grouped).map(([category, items]) => {
             const isCollapsed = collapsedCategories.has(category);
@@ -279,34 +301,14 @@ export default function Home() {
                       transition={{ duration: 0.2 }}
                     >
                       {items.map((item) => (
-                        <li
+                        <SwipeableIngredientRow
                           key={item.id}
-                          className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
-                        >
-                          <div className={styles.nameSection}>
-                            <IngredientIcon name={item.name} size={36} />
-                            {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, flexShrink: 0 }} />}
-                            <span>{item.name}</span>
-                          </div>
-                          <div className={styles.actions}>
-                            <button
-                              type="button"
-                              className={`${styles.pinBtn} ${item.is_pinned ? styles.pinActive : ""}`}
-                              onClick={() => handleTogglePin(item)}
-                              title="ピン留め"
-                            >
-                              <Pin size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.deleteBtn}
-                              onClick={() => handleDelete(item.id, item.name)}
-                              title="削除"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </li>
+                          item={item}
+                          isOpen={openSwipeId === item.id}
+                          onOpenChange={setOpenSwipeId}
+                          onDelete={handleDelete}
+                          onTogglePin={handleTogglePin}
+                        />
                       ))}
                     </motion.ul>
                   )}
