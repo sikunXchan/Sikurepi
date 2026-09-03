@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, SEASONING_SECTION, DISH_LOAD_INSTRUCTION, RecipeProfile } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, DISH_LOAD_INSTRUCTION, RecipeProfile } from '@/lib/ai';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
 
     const climateSection = buildClimateSection(climate);
     const profileSection = buildProfileSection(actualProfile);
+    const seasoningSection = buildSeasoningSection(actualProfile?.assumeSeasoningsAvailable !== false);
 
     const targetServings = actualProfile?.servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
 ${slotLines}
 
 ${ingredientsSection}
-${SEASONING_SECTION}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}
 【重要・厳守事項】
 1. 上記の日付・食事枠それぞれに必ず1品ずつ、過不足なくレシピを割り当ててください。
 2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。

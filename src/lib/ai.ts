@@ -4,7 +4,15 @@ export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const DEFAULT_AI_MODELS = ['models/gemini-2.5-flash', 'models/gemini-3.5-flash'];
 
-export const SEASONING_SECTION = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
+const SEASONING_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
+
+const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または一般的にどの家庭にもある可能性が高い最小限のもの（塩・こしょう程度）に留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
+
+// ユーザーが「調味料は常備している」を前提にするかどうかで文面を切り替える。
+// falseの場合、常備調味料も通常の食材と同じくAIに明示させる。
+export function buildSeasoningSection(assumeSeasoningsAvailable: boolean = true): string {
+  return assumeSeasoningsAvailable ? SEASONING_ASSUMED_SECTION : SEASONING_NOT_ASSUMED_SECTION;
+}
 
 export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に短いタグで示してください（例：「🍽️ 洗い物少なめ（2点）」「🍽️ 洗い物やや多め（5点）」）。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
 
@@ -15,6 +23,7 @@ export type RecipeProfile = {
   servings?: number;
   targetCalories?: number | null;
   targetProtein?: number | null;
+  assumeSeasoningsAvailable?: boolean;
 };
 
 export type ClimateInfo = {

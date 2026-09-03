@@ -476,6 +476,13 @@ export default function RecipePage() {
                     </div>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
                     <span className={styles.recipeTime}>⏱ {recipe.time}</span>
+                    {recipe.ingredients.length > 0 && (
+                      <div className={styles.ingredientIconRow}>
+                        {recipe.ingredients.map((item, i) => (
+                          <IngredientIcon key={i} name={item.name} size={24} />
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.headerActions}>
@@ -510,7 +517,7 @@ export default function RecipePage() {
                       </div>
                       <ul className={styles.ingredientList}>
                         {recipe.ingredients.map((item, i) => {
-                          const missing = isIngredientMissing(item.name, ingredients);
+                          const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
                           const pinKey = `${index}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);
                           return (

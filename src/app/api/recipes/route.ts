@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, SEASONING_SECTION, DISH_LOAD_INSTRUCTION } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, DISH_LOAD_INSTRUCTION } from '@/lib/ai';
 
 export async function POST(req: Request) {
   try {
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
 
     // ユーザープロファイル（マイ一括設定）セクション
     const profileSection = buildProfileSection(actualProfile);
+    const seasoningSection = buildSeasoningSection(actualProfile?.assumeSeasoningsAvailable !== false);
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${SEASONING_SECTION}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。

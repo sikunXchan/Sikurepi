@@ -13,6 +13,7 @@ import {
   addLocalIngredient,
   deleteLocalIngredient,
   toggleLocalIngredientPin,
+  inferIngredientCategory,
   Ingredient
 } from "@/lib/storage";
 import styles from "./Home.module.css";
@@ -123,6 +124,8 @@ export default function Home() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
+  // カテゴリを手動で選び直したら、それ以降は名前を打っても自動判定で上書きしない
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -158,8 +161,18 @@ export default function Home() {
 
     addLocalIngredient(cleanName, selectedCategory);
     setNewName("");
+    setSelectedCategory("その他");
+    setCategoryTouched(false);
     loadIngredients();
     showToast(`✨ 「${cleanName}」を冷蔵庫に追加しました！`);
+  };
+
+  const handleNameChange = (value: string) => {
+    setNewName(value);
+    // カテゴリを手動で選んでいない間は、入力中の食材名から自動でカテゴリを判定する
+    if (!categoryTouched) {
+      setSelectedCategory(inferIngredientCategory(value));
+    }
   };
 
   const handleDelete = (id: number, name?: string) => {
@@ -248,7 +261,7 @@ export default function Home() {
             type="text"
             placeholder="食材名を入力 (例: トマト、豚バラ肉)"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => handleNameChange(e.target.value)}
           />
           <button type="submit" disabled={!newName.trim()}>
             <Plus size={20} />
@@ -260,12 +273,15 @@ export default function Home() {
           <select
             className={styles.categorySelect}
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
           >
             {CATEGORY_ORDER.map(cat => (
               <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
             ))}
           </select>
+          {!categoryTouched && newName.trim() && selectedCategory !== 'その他' && (
+            <span className={styles.autoCategoryHint}>自動で判定したよ</span>
+          )}
         </div>
       </form>
 

@@ -490,7 +490,7 @@ export default function MealPlanPage() {
                                   <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>材料<span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>不足分は「追加」で買い物リストへ</span></div>
                                   <ul style={{ fontSize: 14, marginBottom: 10, padding: 0, listStyle: 'none' }}>
                                     {(entry.recipe.ingredients || []).map((it, i) => {
-                                      const missing = isIngredientMissing(it.name, ingredients);
+                                      const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
                                       const pinKey = `${key}-${it.name}`;
                                       const isPinned = pinnedToShoppingSet.has(pinKey);
                                       return (

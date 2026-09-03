@@ -38,6 +38,17 @@
   gap: 10px;
 }
 
+.autoCategoryHint {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary-text);
+  background: rgba(255, 111, 145, 0.12);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .categorySelectLabel {
   font-size: 13px;
   font-weight: 700;
