@@ -175,6 +175,7 @@ const KEYS = {
   TIPS: 'lily_app_saved_tips',
   WEEK_PLAN: 'lily_app_week_plan',
   FREE_GENERATIONS_USED: 'lily_app_free_generations_used',
+  LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -307,6 +308,28 @@ export function deleteLocalSavedRecipe(id: number): void {
 export function getRecentLocalRecipeNames(limit = 5): string[] {
   const list = getLocalSavedRecipes();
   return list.slice(0, limit).map(r => r.title);
+}
+
+// --- 直近のAIレシピ生成結果 (別タブへ移動しても消えないように保持する) ---
+
+export type LastRecipeGeneration = {
+  recipes: any[];
+  cookingTips: any[];
+  expandedIndex: number;
+  savedIndices: number[];
+  creationMode: 'inventory' | 'free';
+  instruction: string;
+  selectedIngredientIds: number[];
+  servings: number;
+  savedAt: string;
+};
+
+export function getLocalLastRecipeGeneration(): LastRecipeGeneration | null {
+  return getStorage<LastRecipeGeneration | null>(KEYS.LAST_RECIPE_GENERATION, null);
+}
+
+export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
+  setStorage(KEYS.LAST_RECIPE_GENERATION, data);
 }
 
 // --- 統計 ＆ PFC記録 (Stats) ---
@@ -469,13 +492,15 @@ export function deleteLocalSavedTip(id: string): void {
 
 // --- 気候設定 (Climate State) ---
 
+export const DEFAULT_CLIMATE_STATE: ClimateState = {
+  condition: '猛暑・晴れ',
+  temperature: 33,
+  timeOfDay: '夕食',
+  advice: '熱中症予防・塩分＆さっぱり酸味レシピを優先中',
+};
+
 export function getLocalClimateState(): ClimateState {
-  return getStorage<ClimateState>(KEYS.CLIMATE, {
-    condition: '猛暑・晴れ',
-    temperature: 33,
-    timeOfDay: '夕食',
-    advice: '熱中症予防・塩分＆さっぱり酸味レシピを優先中',
-  });
+  return getStorage<ClimateState>(KEYS.CLIMATE, DEFAULT_CLIMATE_STATE);
 }
 
 export function setLocalClimateState(state: ClimateState): void {
