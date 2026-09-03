@@ -139,7 +139,7 @@ export default function HistoryPage() {
           color: 'white',
           padding: '8px 18px',
           borderRadius: 9999,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 700,
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
           zIndex: 9999,

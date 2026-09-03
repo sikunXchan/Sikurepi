@@ -10,10 +10,7 @@
   font-size: 28px;
   font-weight: 800;
   text-align: center;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-text);
 }
 
 .addForm {
@@ -73,7 +70,7 @@
 
 .itemName {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .deleteBtn {

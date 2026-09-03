@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .dot {
@@ -35,6 +35,6 @@
 }
 
 .legendValue {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--foreground);
 }

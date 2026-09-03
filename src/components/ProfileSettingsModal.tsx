@@ -318,11 +318,11 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🍳 累計自炊回数</div>
+                <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>🍳 累計自炊回数</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{stats.total_cooked} 回</div>
               </div>
               <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🔥 累積総カロリー</div>
+                <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>🔥 累積総カロリー</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{(stats.total_calories || 0).toLocaleString()} kcal</div>
               </div>
             </div>
@@ -338,14 +338,14 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
                     <div style={{ width: `${fPct}%`, background: '#f59e0b' }} title={`Fat: ${fPct}%`} />
                     <div style={{ width: `${cPct}%`, background: '#10b981' }} title={`Carbs: ${cPct}%`} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: 12, fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: 13, fontWeight: 700 }}>
                     <span style={{ color: '#3b82f6' }}>P: {pPct}% ({(stats.total_protein || 0).toFixed(1)}g)</span>
                     <span style={{ color: '#f59e0b' }}>F: {fPct}% ({(stats.total_fat || 0).toFixed(1)}g)</span>
                     <span style={{ color: '#10b981' }}>C: {cPct}% ({(stats.total_carbs || 0).toFixed(1)}g)</span>
                   </div>
                 </>
               ) : (
-                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: '#9ca3af', margin: 0, textAlign: 'center' }}>
                   料理を作るとここにPFC比率が集計されます
                 </p>
               )}
@@ -356,12 +356,12 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
               {(stats.cooked_records && stats.cooked_records.length > 0) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {stats.cooked_records.map((rec, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', padding: '8px 10px', borderRadius: 8, border: '1px solid #f3f4f6', fontSize: 12 }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', padding: '8px 10px', borderRadius: 8, border: '1px solid #f3f4f6', fontSize: 13 }}>
                       <div>
                         <div style={{ fontWeight: 700, color: '#111827' }}>{rec.recipeTitle}</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(rec.date).toLocaleDateString('ja-JP')}</div>
+                        <div style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(rec.date).toLocaleDateString('ja-JP')}</div>
                       </div>
-                      <div style={{ fontSize: 11, color: '#4b5563', fontWeight: 600, textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 700, textAlign: 'right' }}>
                         {rec.calories ? `${rec.calories}kcal` : ''}
                         {rec.protein_g ? ` (P:${rec.protein_g}g)` : ''}
                       </div>
@@ -369,7 +369,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>自炊記録はまだありません</p>
+                <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>自炊記録はまだありません</p>
               )}
             </div>
           </div>
@@ -386,10 +386,10 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
                 {tips.map((t) => (
                   <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '10px 12px', gap: 8 }}>
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: 4, marginRight: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: 4, marginRight: 6 }}>
                         {t.category}
                       </span>
-                      <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.4 }}>
+                      <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.4 }}>
                         {t.tip}
                       </span>
                     </div>
@@ -407,7 +407,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
             ) : (
               <div style={{ textAlign: 'center', padding: '30px 0', color: '#9ca3af' }}>
                 <Lightbulb size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
-                <p style={{ fontSize: 12 }}>レシピを生成すると、シェフのコツや豆知識がここに自動蓄積されます</p>
+                <p style={{ fontSize: 13 }}>レシピを生成すると、シェフのコツや豆知識がここに自動蓄積されます</p>
               </div>
             )}
           </div>

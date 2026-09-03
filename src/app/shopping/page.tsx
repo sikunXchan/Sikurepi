@@ -180,11 +180,11 @@ export default function ShoppingPage() {
                 if (!aisleItems || aisleItems.length === 0) return null;
 
                 return (
-                  <div key={aisle} style={{ background: '#ffffff', borderRadius: 16, padding: '12px 14px', border: '1px solid #f0f0f0', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#4b5563', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid #f3f4f6' }}>
+                  <div key={aisle} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
                       <span>{AISLE_ICONS[aisle] || '🍽️'}</span>
                       <span>{aisle} 売り場</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', marginLeft: 'auto' }}>{aisleItems.length}件</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{aisleItems.length}件</span>
                     </div>
 
                     <ul className={styles.list}>

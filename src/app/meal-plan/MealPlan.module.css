@@ -14,10 +14,7 @@
 .title {
   font-size: 24px;
   font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-text);
   margin: 0;
 }
 
@@ -41,8 +38,8 @@
 
 .slotBadge {
   display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: 20px;
   background: rgba(32, 178, 170, 0.12);
@@ -54,7 +51,7 @@
   border-left: 4px solid var(--primary);
   padding: 10px 12px;
   border-radius: 0 10px 10px 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--foreground);
   line-height: 1.5;
   margin-top: 6px;

@@ -234,7 +234,7 @@ export default function RecipePage() {
           color: 'white',
           padding: '8px 18px',
           borderRadius: 9999,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 700,
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
           zIndex: 9999,
@@ -263,10 +263,10 @@ export default function RecipePage() {
       {/* AI作成モード切り替え (在庫から作成 ⇄ 自由作成) */}
       <div style={{
         display: 'flex',
-        background: 'rgba(255, 255, 255, 0.8)',
-        border: '1px solid rgba(255, 111, 145, 0.2)',
-        borderRadius: 12,
-        padding: 3,
+        background: 'var(--card-bg-solid)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 16,
+        padding: 4,
         gap: 4,
         marginBottom: 12,
       }}>
@@ -276,17 +276,19 @@ export default function RecipePage() {
           style={{
             flex: 1,
             background: creationMode === 'inventory' ? 'var(--gradient-primary)' : 'transparent',
-            color: creationMode === 'inventory' ? 'white' : 'var(--text-muted)',
+            color: creationMode === 'inventory' ? 'white' : 'var(--text-secondary)',
             border: 'none',
-            borderRadius: 9,
-            padding: '8px 12px',
-            fontSize: 12,
-            fontWeight: 700,
+            boxShadow: 'none',
+            borderRadius: 12,
+            padding: '10px 8px',
+            fontSize: 14,
+            fontWeight: 800,
             cursor: 'pointer',
             textAlign: 'center',
+            whiteSpace: 'nowrap',
           }}
         >
-          🧺 冷蔵庫の在庫から作成
+          🧺 在庫から作る
         </button>
         <button
           type="button"
@@ -294,17 +296,19 @@ export default function RecipePage() {
           style={{
             flex: 1,
             background: creationMode === 'free' ? 'var(--gradient-primary)' : 'transparent',
-            color: creationMode === 'free' ? 'white' : 'var(--text-muted)',
+            color: creationMode === 'free' ? 'white' : 'var(--text-secondary)',
             border: 'none',
-            borderRadius: 9,
-            padding: '8px 12px',
-            fontSize: 12,
-            fontWeight: 700,
+            boxShadow: 'none',
+            borderRadius: 12,
+            padding: '10px 8px',
+            fontSize: 14,
+            fontWeight: 800,
             cursor: 'pointer',
             textAlign: 'center',
+            whiteSpace: 'nowrap',
           }}
         >
-          ✨ 在庫縛りなし・自由作成
+          ✨ 自由に作る
         </button>
       </div>
 
@@ -312,8 +316,8 @@ export default function RecipePage() {
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', marginBottom: 6 }}>
-            💡 おすすめテンプレート:
+          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
+            💡 おすすめテンプレート
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {TEMPLATES.map((tmpl, i) => (
@@ -327,8 +331,8 @@ export default function RecipePage() {
                   border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   padding: '4px 10px',
                   borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 600,
+                  fontSize: 13,
+                  fontWeight: 700,
                   cursor: 'pointer',
                 }}
               >
@@ -340,8 +344,8 @@ export default function RecipePage() {
 
         {/* 自由リクエスト入力 */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: 4 }}>
-            📝 リクエスト・気分（自由に入力できます）
+          <label style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', display: 'block', marginBottom: 8 }}>
+            📝 リクエスト・気分
           </label>
           <textarea
             rows={2}
@@ -355,8 +359,9 @@ export default function RecipePage() {
         {/* 在庫選択 (在庫モード時のみ) */}
         {creationMode === 'inventory' && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', marginBottom: 6 }}>
-              🧺 使いたい食材を選択（未選択時は全在庫からAIが判断）:
+            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
+              🧺 使いたい食材を選択
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>未選択なら全在庫からAIが判断</span>
             </div>
             {ingredients.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -376,8 +381,8 @@ export default function RecipePage() {
                         border: '1px solid var(--border)',
                         padding: '4px 10px 4px 6px',
                         borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 600,
+                        fontSize: 13,
+                        fontWeight: 700,
                         cursor: 'pointer',
                       }}
                     >
@@ -389,7 +394,7 @@ export default function RecipePage() {
                 })}
               </div>
             ) : (
-              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 冷蔵庫に食材がありません。「自由作成」モードをご利用いただくか、在庫画面から追加してください。
               </p>
             )}
@@ -427,7 +432,7 @@ export default function RecipePage() {
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>AIシェフが厨房で腕をふるっています…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>AIシェフが厨房で腕をふるっています…</p>
         </div>
       )}
 
@@ -494,7 +499,7 @@ export default function RecipePage() {
                     <div className={styles.section}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <h3>材料・調味料</h3>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>不足分は📌で買い物リストへ</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>不足分は📌で買い物リストへ</span>
                       </div>
                       <ul className={styles.ingredientList}>
                         {recipe.ingredients.map((item, i) => {
