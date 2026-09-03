@@ -1,0 +1,48 @@
+{
+  "identifier" : "716D7BC6-BECC-46E7-AB48-E94EE694B0F5",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja_JP",
+    "_storefront" : "JPN",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "1BD3ECB8-4460-436B-B167-6BEEF734FC4B",
+      "localizations" : [],
+      "name" : "Lily Cooking Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "480",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "AB0A0FDF-6FF0-4D55-B493-5F08D0F63919",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "週間献立の自動生成が無制限に使えます",
+              "displayName" : "プレミアムプラン（月額）",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "com.lilycooking.app.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "1BD3ECB8-4460-436B-B167-6BEEF734FC4B",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

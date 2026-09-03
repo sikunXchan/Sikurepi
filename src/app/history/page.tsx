@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, ChevronDown, ChevronUp, BookOpen, Search, X, PlayCircle } from "lucide-react";
+import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Pin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
-  SavedRecipe
+  getLocalIngredients,
+  addLocalShoppingItem,
+  isIngredientMissing,
+  SavedRecipe,
+  Ingredient
 } from "@/lib/storage";
 import styles from "./History.module.css";
 
@@ -30,6 +35,8 @@ export default function HistoryPage() {
   const [cookedModalRecipe, setCookedModalRecipe] = useState<SavedRecipe | null>(null);
   const [cookingSessionRecipe, setCookingSessionRecipe] = useState<SavedRecipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -45,7 +52,16 @@ export default function HistoryPage() {
 
   const loadRecipes = () => {
     setAllRecipes(getLocalSavedRecipes());
+    setIngredients(getLocalIngredients());
     setLoading(false);
+  };
+
+  const handlePinToShopping = (recipeId: number, ingredientName: string) => {
+    const key = `${recipeId}-${ingredientName}`;
+    if (pinnedToShoppingSet.has(key)) return;
+    addLocalShoppingItem(ingredientName);
+    setPinnedToShoppingSet(prev => new Set(prev).add(key));
+    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
   };
 
   const showToast = (msg: string) => {
@@ -254,6 +270,9 @@ export default function HistoryPage() {
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{recipe.genre}</span>
                       )}
+                      {recipe.dish_badge && (
+                        <span className={styles.genreBadge}>{recipe.dish_badge}</span>
+                      )}
                     </div>
                     <div className={styles.savedDate}>
                       📅 {formatDate(recipe.saved_at)}
@@ -333,12 +352,32 @@ export default function HistoryPage() {
                     <div className={styles.section}>
                       <h3>材料・調味料</h3>
                       <ul className={styles.ingredientList}>
-                        {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => (
-                          <li key={i}>
-                            <span>{item.name}</span>
-                            <span className="text-muted">{item.amount}</span>
-                          </li>
-                        ))}
+                        {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => {
+                          const missing = isIngredientMissing(item.name, ingredients);
+                          const pinKey = `${recipe.id}-${item.name}`;
+                          const isPinned = pinnedToShoppingSet.has(pinKey);
+                          return (
+                            <li key={i}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <IngredientIcon name={item.name} size={30} />
+                                {missing && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(recipe.id, item.name); }}
+                                    title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                  >
+                                    <Pin size={13} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                  </button>
+                                )}
+                                <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
+                                  {item.name}
+                                </span>
+                              </span>
+                              <span className="text-muted">{item.amount}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
 
@@ -372,7 +411,7 @@ export default function HistoryPage() {
 
           {allRecipes.length === 0 && (
             <div className={styles.emptyState}>
-              <BookOpen size={48} style={{ opacity: 0.5 }} />
+              <img src="/mascot/bear_reading.png" alt="" width={96} height={96} />
               <p>保存されたレシピはありません</p>
             </div>
           )}

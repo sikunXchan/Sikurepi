@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, ChefHat, BookOpen, ShoppingCart } from "lucide-react";
+import { Home, Receipt, ChefHat, BookOpen, ShoppingCart, CalendarDays } from "lucide-react";
 import styles from "./BottomNav.module.css";
 
 export default function BottomNav() {
@@ -13,6 +13,7 @@ export default function BottomNav() {
     { name: "レシート", path: "/receipt", icon: Receipt },
     { name: "買い物", path: "/shopping", icon: ShoppingCart },
     { name: "レシピ", path: "/recipe", icon: ChefHat },
+    { name: "献立", path: "/meal-plan", icon: CalendarDays },
     { name: "履歴", path: "/history", icon: BookOpen },
   ];
 

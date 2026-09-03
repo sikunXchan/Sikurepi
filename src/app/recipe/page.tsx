@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Utensils, Pin, Lightbulb, PlayCircle, Sparkles, ShoppingCart, Settings, Plus } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Pin, Lightbulb, PlayCircle, Sparkles, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -9,6 +9,7 @@ import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -18,6 +19,7 @@ import {
   addLocalShoppingItem,
   getRecentLocalRecipeNames,
   saveLocalTip,
+  isIngredientMissing,
   Ingredient,
   UserProfile,
   ClimateState,
@@ -35,6 +37,7 @@ type Recipe = {
   time: string;
   genre?: string;
   climate_badge?: string;
+  dish_badge?: string;
   ingredients: RecipeItem[];
   steps: string[];
   tips: string;
@@ -54,6 +57,7 @@ const TEMPLATES = [
   { label: '🥗 ヘルシー・低糖質', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
   { label: '🍲 鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
   { label: '🍰 簡単スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { label: '🍽️ 洗い物ラクラク', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ];
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
@@ -80,6 +84,7 @@ export default function RecipePage() {
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadLocalData();
@@ -190,6 +195,7 @@ export default function RecipePage() {
         image_url: r.image_url,
         nutrition: r.nutrition || null,
         genre: r.genre || null,
+        dish_badge: r.dish_badge || null,
       });
 
       setSavedSet(prev => new Set(prev).add(index));
@@ -208,9 +214,12 @@ export default function RecipePage() {
     }
   };
 
-  const handleAddToShopping = (ingredientName: string) => {
+  const handlePinToShopping = (recipeIndex: number, ingredientName: string) => {
+    const key = `${recipeIndex}-${ingredientName}`;
+    if (pinnedToShoppingSet.has(key)) return;
     addLocalShoppingItem(ingredientName);
-    showToast(`🛒 「${ingredientName}」を買い物リストに追加しました！`);
+    setPinnedToShoppingSet(prev => new Set(prev).add(key));
+    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
   };
 
   return (
@@ -313,7 +322,7 @@ export default function RecipePage() {
                 type="button"
                 onClick={() => handleApplyTemplate(tmpl.query)}
                 style={{
-                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : '#ffffff',
+                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : 'var(--card-bg-solid)',
                   color: instruction === tmpl.query ? 'var(--primary)' : 'var(--foreground)',
                   border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   padding: '4px 10px',
@@ -359,16 +368,20 @@ export default function RecipePage() {
                       type="button"
                       onClick={() => toggleIngredientSelection(ing.id)}
                       style={{
-                        background: isSelected ? 'var(--primary)' : '#ffffff',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: isSelected ? 'var(--primary)' : 'var(--card-bg-solid)',
                         color: isSelected ? '#ffffff' : 'var(--foreground)',
                         border: '1px solid var(--border)',
-                        padding: '4px 10px',
+                        padding: '4px 10px 4px 6px',
                         borderRadius: 20,
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: 'pointer',
                       }}
                     >
+                      <IngredientIcon name={ing.name} size={20} />
                       {ing.is_pinned && '📌 '}
                       {ing.name}
                     </button>
@@ -404,6 +417,20 @@ export default function RecipePage() {
         </button>
       </div>
 
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
+          <motion.img
+            src="/mascot/bear_delivering.png"
+            alt="AIシェフが考案中"
+            width={96}
+            height={96}
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>AIシェフが厨房で腕をふるっています…</p>
+        </div>
+      )}
+
       {errorMsg && (
         <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
           {errorMsg}
@@ -430,6 +457,9 @@ export default function RecipePage() {
                       )}
                       {recipe.climate_badge && (
                         <span className={styles.climateBadge}>🌤️ {recipe.climate_badge}</span>
+                      )}
+                      {recipe.dish_badge && (
+                        <span className={styles.climateBadge}>{recipe.dish_badge}</span>
                       )}
                     </div>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
@@ -460,27 +490,39 @@ export default function RecipePage() {
                       </div>
                     )}
 
-                    {/* 材料リスト ＋ 買い物リスト追加 */}
+                    {/* 材料リスト（不足分は赤字＋📌で買い物リストへ） */}
                     <div className={styles.section}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <h3>材料・調味料</h3>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>タップで買い物リストへ追加 🛒</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>不足分は📌で買い物リストへ</span>
                       </div>
                       <ul className={styles.ingredientList}>
-                        {recipe.ingredients.map((item, i) => (
-                          <li
-                            key={i}
-                            onClick={() => handleAddToShopping(item.name)}
-                            style={{ cursor: 'pointer' }}
-                            title="タップして買い物リストに追加"
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span>• {item.name}</span>
-                              <Plus size={12} color="var(--primary)" />
-                            </span>
-                            <span className="text-muted">{item.amount}</span>
-                          </li>
-                        ))}
+                        {recipe.ingredients.map((item, i) => {
+                          const missing = isIngredientMissing(item.name, ingredients);
+                          const pinKey = `${index}-${item.name}`;
+                          const isPinned = pinnedToShoppingSet.has(pinKey);
+                          return (
+                            <li key={i}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <IngredientIcon name={item.name} size={30} />
+                                {missing && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(index, item.name); }}
+                                    title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                  >
+                                    <Pin size={13} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                  </button>
+                                )}
+                                <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
+                                  {missing ? '' : '• '}{item.name}
+                                </span>
+                              </span>
+                              <span className="text-muted">{item.amount}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
 

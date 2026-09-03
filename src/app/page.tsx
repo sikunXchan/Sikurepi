@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Plus, Loader2, ShoppingBag, Pin, Settings, Network, List } from "lucide-react";
+import { Trash2, Plus, Loader2, Pin, Settings, Network, List } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import InventoryMindMap from "@/components/InventoryMindMap";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
   addLocalIngredient,
@@ -283,7 +284,8 @@ export default function Home() {
                           className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
                         >
                           <div className={styles.nameSection}>
-                            {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6 }} />}
+                            <IngredientIcon name={item.name} size={36} />
+                            {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, flexShrink: 0 }} />}
                             <span>{item.name}</span>
                           </div>
                           <div className={styles.actions}>
@@ -317,7 +319,7 @@ export default function Home() {
 
       {!loading && !hasIngredients && (
         <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-          <ShoppingBag size={48} style={{ marginBottom: 12, opacity: 0.5 }} />
+          <img src="/mascot/bear_sleeping.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
           <p>在庫がありません。上のフォームから追加してください。</p>
         </div>
       )}

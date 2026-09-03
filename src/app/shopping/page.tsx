@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, Check, ShoppingBag, Loader2 } from "lucide-react";
+import { Plus, Trash2, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   getLocalShoppingItems,
@@ -10,6 +10,7 @@ import {
   toggleLocalShoppingItem,
   ShoppingItem
 } from "@/lib/storage";
+import IngredientIcon from "@/components/IngredientIcon";
 import styles from "./Shopping.module.css";
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
@@ -205,6 +206,7 @@ export default function ShoppingPage() {
                               >
                                 <Check size={16} />
                               </div>
+                              <IngredientIcon name={item.name} size={32} />
                               <span className={styles.itemName}>{item.name}</span>
                             </div>
                             <button
@@ -224,7 +226,7 @@ export default function ShoppingPage() {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <ShoppingBag size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
+              <img src="/mascot/bear_basket.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
               <p>買い物リストは空です</p>
             </div>
           )}

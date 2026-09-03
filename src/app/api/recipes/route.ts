@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, SEASONING_SECTION, DISH_LOAD_INSTRUCTION } from '@/lib/ai';
 
 export async function POST(req: Request) {
   try {
@@ -33,35 +33,10 @@ export async function POST(req: Request) {
       : '';
 
     // 気候・環境連動セクション
-    let climateSection = '';
-    if (climate) {
-      const cond = climate.condition || '通常';
-      const temp = climate.temperature !== undefined ? `${climate.temperature}℃` : '';
-      const tod = climate.timeOfDay || '';
-      const advice = climate.advice || '';
-      climateSection = `\n【現在の気候・気温・時間帯（最重要：身体の状態に合わせてレシピを最適化してください）】
-・気候/天気: ${cond} (${temp})
-・時間帯: ${tod}
-・気候アドバイス方針: ${advice}
-※ 気候や気温に合わせた調理法（例：猛暑ならさっぱり冷製・酸味・水分ミネラル補給、寒い日ならあったかスープや生姜、夜遅い時間なら消化の良いヘルシーメニュー等）を自然に取り入れてください。\n`;
-    }
+    const climateSection = buildClimateSection(climate);
 
     // ユーザープロファイル（マイ一括設定）セクション
-    let profileSection = '';
-    if (actualProfile) {
-      const taste = actualProfile.tastePreferences && actualProfile.tastePreferences.length > 0
-        ? `・味の好み/栄養方針: ${actualProfile.tastePreferences.join('、')}\n`
-        : '';
-      const excluded = actualProfile.excludedIngredients && actualProfile.excludedIngredients.length > 0
-        ? `・【絶対除外（アレルギー・苦手）】: ${actualProfile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
-        : '';
-      const styles = actualProfile.cookingStyles && actualProfile.cookingStyles.length > 0
-        ? `・調理スタイル/設備: ${actualProfile.cookingStyles.join('、')}\n`
-        : '';
-      if (taste || excluded || styles) {
-        profileSection = `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${styles}`;
-      }
-    }
+    const profileSection = buildProfileSection(actualProfile);
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
@@ -70,11 +45,9 @@ export async function POST(req: Request) {
     const targetServings = servings || actualProfile?.servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
-    const seasoningSection = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
-
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
+${SEASONING_SECTION}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -82,7 +55,8 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
 3. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
 4. 【栄養バランス】すべてのレシピでPFCバランス（タンパク質・脂質・炭水化物）を計算し、1人分あたりの推定栄養価（カロリー, タンパク質g, 脂質g, 炭水化物g）を算出してください。
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
-6. 以下のJSON構造で、"recipes"配列の中に複数のレシピデータを格納して返してください。"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
+6. ${DISH_LOAD_INSTRUCTION}
+7. 以下のJSON構造で、"recipes"配列の中に複数のレシピデータを格納して返してください。"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
 {
   "recipes": [
     {
@@ -90,6 +64,7 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
       "time": "調理時間目安（例：15分）",
       "genre": "和食",
       "climate_badge": "☀️ 猛暑に最適",
+      "dish_badge": "🍽️ 洗い物少なめ（2点）",
       "ingredients": [
         { "name": "使用する具材または調味料", "amount": "分量の目安（例：豚バラ肉200g、トマト1個、ポン酢 大さじ2など）" }
       ],
