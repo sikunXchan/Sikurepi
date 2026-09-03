@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, Check, ShoppingBag, Loader2 } from "lucide-react";
+import { Plus, Trash2, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   getLocalShoppingItems,
@@ -226,7 +226,7 @@ export default function ShoppingPage() {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <ShoppingBag size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
+              <img src="/mascot/bear_basket.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
               <p>買い物リストは空です</p>
             </div>
           )}

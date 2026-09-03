@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, ChevronDown, ChevronUp, BookOpen, Search, X, PlayCircle, Pin } from "lucide-react";
+import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Pin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -411,7 +411,7 @@ export default function HistoryPage() {
 
           {allRecipes.length === 0 && (
             <div className={styles.emptyState}>
-              <BookOpen size={48} style={{ opacity: 0.5 }} />
+              <img src="/mascot/bear_reading.png" alt="" width={96} height={96} />
               <p>保存されたレシピはありません</p>
             </div>
           )}

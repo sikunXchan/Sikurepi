@@ -375,6 +375,20 @@ export default function MealPlanPage() {
         )}
       </div>
 
+      {generating && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
+          <motion.img
+            src="/mascot/bear_basket.png"
+            alt="AIシェフが献立を考案中"
+            width={96}
+            height={96}
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>1週間分の献立をバランスよく組み立てています…</p>
+        </div>
+      )}
+
       {errorMsg && (
         <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center' }}>
           {errorMsg}

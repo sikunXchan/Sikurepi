@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Plus, Loader2, ShoppingBag, Pin, Settings, Network, List } from "lucide-react";
+import { Trash2, Plus, Loader2, Pin, Settings, Network, List } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
@@ -319,7 +319,7 @@ export default function Home() {
 
       {!loading && !hasIngredients && (
         <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-          <ShoppingBag size={48} style={{ marginBottom: 12, opacity: 0.5 }} />
+          <img src="/mascot/bear_sleeping.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
           <p>在庫がありません。上のフォームから追加してください。</p>
         </div>
       )}

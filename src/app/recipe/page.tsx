@@ -417,6 +417,20 @@ export default function RecipePage() {
         </button>
       </div>
 
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
+          <motion.img
+            src="/mascot/bear_delivering.png"
+            alt="AIシェフが考案中"
+            width={96}
+            height={96}
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>AIシェフが厨房で腕をふるっています…</p>
+        </div>
+      )}
+
       {errorMsg && (
         <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
           {errorMsg}
