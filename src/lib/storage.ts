@@ -87,6 +87,29 @@ export function isPantryStaple(ingredientName: string): boolean {
   return PANTRY_STAPLES.some(s => name.includes(s));
 }
 
+// --- 食材名からのカテゴリ自動判定 (在庫の手動追加時に使用) ---
+// src/app/page.tsx の CATEGORY_ORDER (在庫画面のカテゴリ) と対応させている。
+// 各カテゴリの正規表現は上から順に評価し、最初に一致したものを採用する。
+// 「いちごジャム」のような加工品が素材名(いちご→果物)に引っ張られないよう、
+// 調味料・加工品の判定は生鮮カテゴリ(果物・野菜)より先に置いている。
+const CATEGORY_RULES: { category: string; pattern: RegExp }[] = [
+  { category: '肉', pattern: /肉|豚|牛|鶏|ミンチ|ひき肉|挽肉|ベーコン|ハム|ソーセージ|ウインナー|つくね|つみれ/ },
+  { category: '魚介類', pattern: /魚|鮭|サーモン|マグロ|ツナ|エビ|海老|イカ|タコ|蛸|貝|あさり|しじみ|サバ|鯖|アジ|鯵|イワシ|鰯|サンマ|秋刀魚|タラ|鱈|鯛|かに|蟹|ほたて|帆立|かき|牡蠣|かまぼこ|ちくわ|竹輪|海苔|わかめ|昆布|ひじき|かつお|鰹|削り節/ },
+  { category: '乳製品・卵', pattern: /卵|たまご|玉子|牛乳|ヨーグルト|チーズ|バター|生クリーム|ホイップクリーム|豆腐|納豆|油揚げ|厚揚げ/ },
+  { category: '穀物・パン', pattern: /ごはん|ご飯|米|パン|うどん|そば|パスタ|スパゲティ|春雨|小麦粉|薄力粉|強力粉|片栗粉|ごま|胡麻/ },
+  { category: '調味料', pattern: /塩|しお|砂糖|さとう|酢|醤油|しょうゆ|味噌|みそ|みりん|酒|だし|コンソメ|スープの素|ガラスープ|油|マヨネーズ|ケチャップ|ソース|ぽん酢|ポン酢|はちみつ|蜂蜜|わさび|山葵|こしょう|コショウ|胡椒|ジャム|スプレッド/ },
+  { category: '豆類', pattern: /豆(?!腐|乳)|えだまめ|枝豆|もやし|アーモンド|くるみ|カシューナッツ|ピーナッツ|落花生|ナッツ/ },
+  { category: '果物', pattern: /りんご|リンゴ|林檎|バナナ|レモン|オレンジ|みかん|いちご|イチゴ|苺|ぶどう|ブドウ|梨|なし|柿|かき|桃|もも|メロン|スイカ|すいか|キウイ|パイナップル|マンゴー|グレープフルーツ|レーズン/ },
+  { category: '野菜', pattern: /たまねぎ|玉ねぎ|にんじん|人参|じゃがいも|トマト|きゅうり|キャベツ|だいこん|大根|なす|ナス|ピーマン|パプリカ|ブロッコリー|ほうれん|とうもろこし|ねぎ|ネギ|にんにく|ニンニク|しょうが|生姜|しいたけ|椎茸|えのき|しめじ|エリンギ|舞茸|まいたけ|きのこ|こんにゃく|たけのこ|筍|ごぼう|牛蒡|山芋|長芋|れんこん|蓮根|アボカド|アスパラ|かぼちゃ|カボチャ|オクラ|しそ|大葉|唐辛子|白菜|ズッキーニ|かぶ|カブ|さつまいも|レタス|セロリ|ゴーヤ|水菜|小松菜/ },
+];
+
+export function inferIngredientCategory(ingredientName: string): string {
+  const name = ingredientName.trim();
+  if (!name) return 'その他';
+  const hit = CATEGORY_RULES.find(r => r.pattern.test(name));
+  return hit ? hit.category : 'その他';
+}
+
 export function isIngredientMissing(ingredientName: string, inventory: Ingredient[]): boolean {
   const target = ingredientName.trim().toLowerCase();
   if (!target || isPantryStaple(ingredientName)) return false;
