@@ -74,7 +74,7 @@
 }
 
 .conditionsHeader:hover {
-  background: rgba(255, 120, 73, 0.05);
+  background: rgba(255, 111, 145, 0.05);
   color: var(--primary);
 }
 
@@ -144,7 +144,7 @@
   outline: none;
   border-color: var(--primary);
   background: var(--card-bg-solid);
-  box-shadow: 0 0 0 4px rgba(255, 120, 73, 0.1);
+  box-shadow: 0 0 0 4px rgba(255, 111, 145, 0.1);
 }
 
 .servingsHint {
@@ -173,7 +173,7 @@
 
 .conditionToggle:hover {
   border-color: var(--primary-light);
-  background: rgba(255, 120, 73, 0.05);
+  background: rgba(255, 111, 145, 0.05);
   color: var(--primary);
   transform: translateY(-2px);
 }
@@ -182,7 +182,7 @@
   background: var(--gradient-primary) !important;
   border-color: transparent !important;
   color: white !important;
-  box-shadow: 0 4px 15px rgba(255, 120, 73, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 111, 145, 0.4);
 }
 
 .textarea {
@@ -199,7 +199,7 @@
 .textarea:focus {
   background: var(--card-bg-solid);
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(255, 120, 73, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 111, 145, 0.1);
 }
 
 .generateBtn {
@@ -330,7 +330,7 @@
 }
 
 .recipeCard:hover {
-  box-shadow: 0 20px 60px rgba(255, 120, 73, 0.15);
+  box-shadow: 0 20px 60px rgba(255, 111, 145, 0.15);
 }
 
 .recipeIcon {
@@ -346,8 +346,8 @@
   width: 56px;
   height: 56px;
   border-radius: 12px;
-  background: rgba(255, 120, 73, 0.1);
-  border: 1px dashed rgba(255, 120, 73, 0.3);
+  background: rgba(255, 111, 145, 0.1);
+  border: 1px dashed rgba(255, 111, 145, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -364,7 +364,7 @@
 }
 
 .recipeHeader:hover {
-  background: rgba(255, 120, 73, 0.04);
+  background: rgba(255, 111, 145, 0.04);
 }
 
 .recipeTitleGroup {
@@ -541,7 +541,7 @@
 }
 
 .tipsBox {
-  background: rgba(255, 120, 73, 0.06);
+  background: rgba(255, 111, 145, 0.06);
   border-left: 4px solid var(--primary);
   padding: 14px 16px;
   border-radius: 0 12px 12px 0;
@@ -573,13 +573,13 @@
 
 .modelBtn:hover {
   border-color: var(--primary-light);
-  background: rgba(255, 120, 73, 0.05);
+  background: rgba(255, 111, 145, 0.05);
 }
 
 .modelBtnActive {
   border-color: var(--primary) !important;
-  background: rgba(255, 120, 73, 0.08) !important;
-  box-shadow: 0 0 0 3px rgba(255, 120, 73, 0.12);
+  background: rgba(255, 111, 145, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(255, 111, 145, 0.12);
 }
 
 .modelName {
@@ -683,7 +683,7 @@
 
 .nutritionPickerItemSelected {
   border-color: var(--primary) !important;
-  background: rgba(255, 120, 73, 0.06) !important;
+  background: rgba(255, 111, 145, 0.06) !important;
 }
 
 .nutritionPickerCheck {

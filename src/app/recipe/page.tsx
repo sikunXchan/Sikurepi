@@ -62,7 +62,7 @@ const TEMPLATES = [
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
   '保存方法': '#20b2aa',
-  '調理のコツ': '#ff7849',
+  '調理のコツ': '#ff6f91',
   '栄養豆知識': '#8b5cf6',
 };
 
@@ -203,7 +203,7 @@ export default function RecipePage() {
         particleCount: 50,
         spread: 60,
         origin: { y: 0.7 },
-        colors: ['#ff7849', '#20b2aa', '#fbbf24', '#f472b6'],
+        colors: ['#ff6f91', '#20b2aa', '#fbbf24', '#f472b6'],
       });
       showToast(`💾 「${r.title}」をレシピ履歴に保存しました！`);
     } catch (e) {
@@ -264,7 +264,7 @@ export default function RecipePage() {
       <div style={{
         display: 'flex',
         background: 'rgba(255, 255, 255, 0.8)',
-        border: '1px solid rgba(255, 120, 73, 0.2)',
+        border: '1px solid rgba(255, 111, 145, 0.2)',
         borderRadius: 12,
         padding: 3,
         gap: 4,
@@ -322,7 +322,7 @@ export default function RecipePage() {
                 type="button"
                 onClick={() => handleApplyTemplate(tmpl.query)}
                 style={{
-                  background: instruction === tmpl.query ? 'rgba(255, 120, 73, 0.15)' : 'var(--card-bg-solid)',
+                  background: instruction === tmpl.query ? 'rgba(255, 111, 145, 0.15)' : 'var(--card-bg-solid)',
                   color: instruction === tmpl.query ? 'var(--primary)' : 'var(--foreground)',
                   border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                   padding: '4px 10px',
@@ -560,7 +560,7 @@ export default function RecipePage() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 8,
-                          background: 'linear-gradient(135deg, #ff7849 0%, #ff5722 100%)',
+                          background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)',
                           color: 'white',
                           border: 'none',
                           borderRadius: 12,
@@ -568,7 +568,7 @@ export default function RecipePage() {
                           fontSize: 14,
                           fontWeight: 700,
                           cursor: 'pointer',
-                          boxShadow: '0 3px 10px rgba(255, 120, 73, 0.25)',
+                          boxShadow: '0 3px 10px rgba(255, 111, 145, 0.25)',
                         }}
                         onClick={() => setCookedModalRecipe(recipe)}
                       >

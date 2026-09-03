@@ -122,7 +122,7 @@ export default function ReceiptPage() {
         particleCount: 120,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#ff7849', '#20b2aa', '#fbbf24']
+        colors: ['#ff6f91', '#20b2aa', '#fbbf24']
       });
     } catch (e: any) {
       console.error(e);
@@ -172,7 +172,7 @@ export default function ReceiptPage() {
         <div style={{ background: '#ffffff', borderRadius: 20, padding: 20, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={18} color="#ff7849" />
+              <Sparkles size={18} color="#ff6f91" />
               検出結果の確認・編集
             </h3>
             <span style={{ fontSize: 12, color: '#6b7280' }}>{extractedList.length}件</span>
@@ -265,7 +265,7 @@ export default function ReceiptPage() {
                     key={i}
                     src={src}
                     alt={`Preview ${i + 1}`}
-                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff7849' }}
+                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6f91' }}
                   />
                 ))}
               </div>

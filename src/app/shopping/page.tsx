@@ -105,7 +105,7 @@ export default function ShoppingPage() {
     el.style.fontWeight = "bold";
     el.style.zIndex = "10000";
     el.style.pointerEvents = "none";
-    el.style.boxShadow = "0 10px 25px rgba(255, 120, 73, 0.4)";
+    el.style.boxShadow = "0 10px 25px rgba(255, 111, 145, 0.4)";
     document.body.appendChild(el);
 
     const controlX = (startX + endX) / 2;

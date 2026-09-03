@@ -213,7 +213,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
                   type="checkbox"
                   checked={profile.enableClimate !== false}
                   onChange={(e) => setProfile(prev => ({ ...prev, enableClimate: e.target.checked }))}
-                  style={{ width: 16, height: 16, accentColor: '#ff7849' }}
+                  style={{ width: 16, height: 16, accentColor: '#ff6f91' }}
                 />
                 <span>🌤️ 気候・天気に連動したレシピ提案を有効にする</span>
               </label>
@@ -319,7 +319,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🍳 累計自炊回数</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#ff7849', marginTop: 2 }}>{stats.total_cooked} 回</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{stats.total_cooked} 回</div>
               </div>
               <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>🔥 累積総カロリー</div>

@@ -41,7 +41,7 @@ export default function NutritionChart({ nutrition }: Props) {
   if (total === 0) return null;
 
   const slices: Slice[] = [
-    { label: 'タンパク質', value: protein_g, color: '#ff7849' },
+    { label: 'タンパク質', value: protein_g, color: '#ff6f91' },
     { label: '炭水化物', value: carbs_g, color: '#20b2aa' },
     { label: '脂質', value: fat_g, color: '#fbbf24' },
   ];

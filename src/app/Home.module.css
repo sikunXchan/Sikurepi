@@ -119,7 +119,7 @@
 
 .listItem:hover {
   border-color: var(--primary-light);
-  background: rgba(255, 120, 73, 0.08);
+  background: rgba(255, 111, 145, 0.08);
 }
 
 @media (hover: none) {
@@ -136,9 +136,9 @@
 
 .listItem.pinned {
   /* Spotlight/Accent Background */
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 120, 73, 0.15) 100%) !important;
-  border: 1px solid rgba(255, 120, 73, 0.4) !important;
-  box-shadow: 0 12px 40px rgba(255, 120, 73, 0.25);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 111, 145, 0.15) 100%) !important;
+  border: 1px solid rgba(255, 111, 145, 0.4) !important;
+  box-shadow: 0 12px 40px rgba(255, 111, 145, 0.25);
   z-index: 10;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .categoryBadge:hover {
-  background: rgba(255, 120, 73, 0.1);
+  background: rgba(255, 111, 145, 0.1);
   color: var(--primary);
   border-color: var(--primary-light);
 }
@@ -234,7 +234,7 @@
 }
 
 .categoryHeader:hover {
-  background: rgba(255, 120, 73, 0.06);
+  background: rgba(255, 111, 145, 0.06);
 }
 
 .categoryTitle {
@@ -246,7 +246,7 @@
 .categoryCount {
   font-size: 12px;
   font-weight: 600;
-  background: rgba(255, 120, 73, 0.12);
+  background: rgba(255, 111, 145, 0.12);
   color: var(--primary);
   padding: 1px 7px;
   border-radius: 20px;

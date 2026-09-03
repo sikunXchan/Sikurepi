@@ -66,7 +66,7 @@ export default function CookedModal({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ["#ff7849", "#20b2aa", "#10b981", "#fbbf24"],
+        colors: ["#ff6f91", "#20b2aa", "#10b981", "#fbbf24"],
       });
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));

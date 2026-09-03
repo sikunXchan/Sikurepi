@@ -12,7 +12,7 @@
   padding: 10px 0;
   padding-bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 1000;
-  box-shadow: 0 -4px 30px rgba(255, 120, 73, 0.08);
+  box-shadow: 0 -4px 30px rgba(255, 111, 145, 0.08);
 }
 
 .navItem {
