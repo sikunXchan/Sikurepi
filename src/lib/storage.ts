@@ -73,6 +73,9 @@ export type UserProfile = {
   // false にすると、塩・醤油などの調味料も「常備してある」前提を外し、
   // 在庫に無ければ通常の食材と同じく不足扱い・AIにも常備を仮定させない。
   assumeSeasoningsAvailable: boolean;
+  // ヴィーガン・ハラール等、宗教上/ライフスタイル上の食事制限。
+  // アレルギー(excludedIngredients)と同じく、AIには「絶対に破らない制約」として渡す。
+  dietaryRestrictions: string[];
 };
 
 // --- 材料の不足チェック (レシピの材料が在庫にあるか) ---
@@ -428,6 +431,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   address: '',
   enableClimate: true,
   assumeSeasoningsAvailable: true,
+  dietaryRestrictions: [],
 };
 
 export function getLocalUserProfile(): UserProfile {

@@ -21,7 +21,10 @@
 }
 
 .rankIcon {
-  font-size: 15px;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .rankName {

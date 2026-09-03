@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&display=swap');
 
 :root {
+  /* OSがダークモードでも、スクロールバーや input[type=date] 等のネイティブUIまで
+     勝手に暗くならないよう明示的にライト固定する */
+  color-scheme: light;
   --background: #fffaf8;
   --background-secondary: #fff2f5;
   /* 本文インク: 白カード上で約13:1。細字でも潰れない濃さにする */
@@ -30,45 +33,11 @@
   --gradient-hero: linear-gradient(180deg, #fffaf8 0%, #fff4f2 40%, #ffeaf0 100%);
 }
 
-.cooking-mode {
-  --background: #1a1512;
-  --background-secondary: #231e19;
-  --foreground: #fdf3ef;
-  --primary-text: #ff9db5;
-  --border: rgba(255, 111, 145, 0.3);
-  --card-bg: #2d2620;
-  --card-bg-solid: #2d2620;
-  --text-muted: #c3b5b0;
-  --text-secondary: #d8ccc7;
-  --glass-bg: #2d2620;
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --gradient-hero: linear-gradient(180deg, #1a1512 0%, #231e19 100%);
-}
-
-.cooking-mode body {
-  background: var(--background) !important;
-  color: var(--foreground) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1a1512;
-    --background-secondary: #231e19;
-    --foreground: #fdf3ef;
-    --primary-text: #ff9db5;
-    --border: rgba(255, 111, 145, 0.28);
-    --card-bg: #2d2620;
-    --card-bg-solid: #2d2620;
-    --text-muted: #c3b5b0;
-    --text-secondary: #d8ccc7;
-    --glass-bg: #2d2620;
-    --glass-border: rgba(255, 255, 255, 0.12);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    /* 背景も暗くしないとカードだけ黒く浮いてちぐはぐになる */
-    --gradient-hero: linear-gradient(180deg, #1a1512 0%, #231e19 100%);
-  }
-}
+/* スマホ側のシステムテーマ(ダークモード)に連動して配色が変わると
+   デザインが崩れて見にくくなるため、OSの設定に関わらず常にライトモード
+   固定にする(以前あった @media (prefers-color-scheme: dark) は廃止)。
+   なお調理中フルスクリーンのCookingSessionは、ここのCSS変数を使わず
+   自身のモジュールCSSで独自に暗い配色を直接指定している。 */
 
 * {
   box-sizing: border-box;

@@ -24,6 +24,19 @@ export type RecipeProfile = {
   targetCalories?: number | null;
   targetProtein?: number | null;
   assumeSeasoningsAvailable?: boolean;
+  dietaryRestrictions?: string[];
+};
+
+// 各食事制限が具体的に何を禁じるかをAIに誤解なく伝えるための説明文。
+// ラベルだけだと解釈がぶれるため、宗教・ライフスタイルごとの制約を明記する。
+export const DIETARY_RESTRICTION_INSTRUCTIONS: Record<string, string> = {
+  'ベジタリアン': '肉・魚・魚介類（だし・エキス類も含む）を一切使用しない。卵・乳製品は使用可',
+  'ヴィーガン': '肉・魚・魚介類・卵・乳製品・はちみつなど、動物由来の食材を一切使用しない',
+  'ハラール（イスラム教）': '豚肉・豚由来の成分（ゼラチン等）、みりん・料理酒・ワイン等のアルコールを一切使用しない',
+  'コーシャ（ユダヤ教）': '豚肉、えび・かに・貝等の甲殻類/軟体動物を一切使用しない。また肉料理と乳製品を同じ一皿で組み合わせない',
+  '豚肉不可': '豚肉・豚肉加工品（ベーコン・ハム・ソーセージ等）を一切使用しない',
+  '牛肉不可': '牛肉・牛肉加工品を一切使用しない',
+  'アルコール不可': 'みりん・料理酒・ワイン・ビール等、調理用も含めアルコールを含む食材を一切使用しない',
 };
 
 export type ClimateInfo = {
@@ -42,11 +55,16 @@ export function buildProfileSection(profile: RecipeProfile | null | undefined): 
   const excluded = profile.excludedIngredients && profile.excludedIngredients.length > 0
     ? `・【絶対除外（アレルギー・苦手）】: ${profile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
     : '';
+  const dietary = profile.dietaryRestrictions && profile.dietaryRestrictions.length > 0
+    ? `・【絶対厳守（食事制限・宗教上の理由）】: ${profile.dietaryRestrictions
+        .map(r => `${r}（${DIETARY_RESTRICTION_INSTRUCTIONS[r] || ''}）`)
+        .join('、')} ※これらの制約に違反する食材・調味料は絶対に提案レシピに含めないでください！\n`
+    : '';
   const styles = profile.cookingStyles && profile.cookingStyles.length > 0
     ? `・調理スタイル/設備: ${profile.cookingStyles.join('、')}\n`
     : '';
-  if (!taste && !excluded && !styles) return '';
-  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${styles}`;
+  if (!taste && !excluded && !dietary && !styles) return '';
+  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${dietary}${styles}`;
 }
 
 // 気候・環境連動セクションを組み立てる

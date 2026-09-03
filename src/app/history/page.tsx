@@ -8,6 +8,7 @@ import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import RecipeThumbnail from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import {
   getLocalSavedRecipes,
@@ -268,8 +269,9 @@ export default function HistoryPage() {
                   className={styles.cardTopRow}
                   onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
                 >
-                  <IngredientIcon
-                    name={getRecipeMainIngredientName(recipe)}
+                  <RecipeThumbnail
+                    genre={recipe.genre}
+                    fallbackIngredientName={getRecipeMainIngredientName(recipe)}
                     size={50}
                     className={styles.recipeIcon}
                   />
@@ -399,7 +401,10 @@ export default function HistoryPage() {
                       <h3>作り方</h3>
                       <ol className={styles.stepList}>
                         {(Array.isArray(recipe.steps) ? recipe.steps : []).map((step, i) => (
-                          <li key={i}>{step}</li>
+                          <li key={i}>
+                            <span className={styles.stepNumber}>{i + 1}</span>
+                            <span className={styles.stepText}>{step}</span>
+                          </li>
                         ))}
                       </ol>
                     </div>

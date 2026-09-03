@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
-import { CookingModeProvider } from "@/context/CookingModeContext";
 
 export const metadata: Metadata = {
   title: "AI Cooking",
@@ -29,12 +28,10 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
-        <CookingModeProvider>
-          <div className="container">
-            {children}
-          </div>
-          <BottomNav />
-        </CookingModeProvider>
+        <div className="container">
+          {children}
+        </div>
+        <BottomNav />
       </body>
     </html>
   );

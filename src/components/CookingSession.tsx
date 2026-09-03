@@ -96,6 +96,30 @@ export default function CookingSession({
     };
   }, []);
 
+  // 調理中は手が汚れて画面に触れられないため、Wake Lockでスリープを防止する。
+  // (CookingModeContext/CookingModeToggleは実際にはどこからも呼ばれておらず
+  // 死んでいたため、実際にクッキングモードが起動するここに直接実装している)
+  useEffect(() => {
+    let wakeLock: { release: () => Promise<void> } | null = null;
+    const requestWakeLock = async () => {
+      if (!("wakeLock" in navigator)) return;
+      try {
+        wakeLock = await (navigator as Navigator & { wakeLock: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock.request("screen");
+      } catch {
+        // 非対応端末・省電力モード等でのリクエスト失敗は握りつぶす
+      }
+    };
+    requestWakeLock();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") requestWakeLock();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      wakeLock?.release().catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     nodeRefs.current[index]?.scrollIntoView({
       behavior: "smooth",

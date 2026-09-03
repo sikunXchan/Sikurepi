@@ -3,7 +3,9 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  /* BottomNav(z-index:1000)と同値だとDOM順で下に敷かれ、画面下寄りでは
+     ボタンのタップがナビバーに奪われて反応しなくなるため、確実に上に出す */
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
