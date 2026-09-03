@@ -1,33 +1,33 @@
-﻿.badgeContainer {
+.badgeContainer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, rgba(255, 120, 73, 0.08) 0%, rgba(32, 178, 170, 0.08) 100%);
-  border: 1px solid rgba(255, 120, 73, 0.2);
-  border-radius: 12px;
-  padding: 8px 12px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 10px 12px;
   margin-bottom: 16px;
   gap: 8px;
+  box-shadow: var(--glass-shadow);
 }
 
 .rankPill {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: white;
-  padding: 4px 10px;
+  background: rgba(255, 111, 145, 0.14);
+  padding: 5px 12px;
   border-radius: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .rankIcon {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .rankName {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1f2937;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--primary-text);
 }
 
 .metricsGroup {
@@ -40,21 +40,21 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 3px 8px;
+  background: var(--background-secondary);
+  padding: 4px 10px;
   border-radius: 16px;
 }
 
 .streakIcon {
-  color: #ff5722;
+  color: #ff4f7d;
 }
 
 .leafIcon {
-  color: #10b981;
+  color: #0f8f68;
 }
 
 .metricValue {
-  font-size: 11px;
-  font-weight: 600;
-  color: #4b5563;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-secondary);
 }

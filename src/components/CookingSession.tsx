@@ -120,7 +120,7 @@ export default function CookingSession({
           particleCount: 150,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ["#ff7849", "#20b2aa", "#fbbf24"],
+          colors: ["#ff6f91", "#20b2aa", "#fbbf24"],
         });
         return prev;
       }
@@ -338,12 +338,12 @@ export default function CookingSession({
               exit="exit"
               className={styles.finishedCard}
             >
-              <PartyPopper size={56} color="#ff7849" />
+              <PartyPopper size={56} color="#ff6f91" />
               <h2>完成です！</h2>
               <p>お疲れさまでした 🍽️</p>
               <button
                 className={styles.finishBtn}
-                style={{ marginBottom: "12px", background: "linear-gradient(135deg, #ff7849 0%, #ff5722 100%)", color: "white" }}
+                style={{ marginBottom: "12px", background: "linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)", color: "white" }}
                 onClick={() => setShowCookedModal(true)}
               >
                 🍳 在庫の消費を記録する

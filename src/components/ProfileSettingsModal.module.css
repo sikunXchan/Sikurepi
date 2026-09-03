@@ -64,7 +64,7 @@
   border: none;
   padding: 8px 6px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #6b7280;
   cursor: pointer;
@@ -74,7 +74,7 @@
 
 .tabBtnActive {
   background: white;
-  color: #ff7849;
+  color: #ff6f91;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
@@ -121,7 +121,7 @@
 }
 
 .description {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
@@ -151,15 +151,15 @@
   border-radius: 12px;
   padding: 8px 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #4b5563;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .servingsBtnActive {
-  background: rgba(255, 120, 73, 0.1);
-  border: 2px solid #ff7849;
+  background: rgba(255, 111, 145, 0.1);
+  border: 2px solid #ff6f91;
   color: #ea580c;
   font-weight: 700;
 }
@@ -181,8 +181,8 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 8px 6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: #4b5563;
   cursor: pointer;
   text-align: center;
@@ -190,8 +190,8 @@
 }
 
 .tagBtnActive {
-  background: rgba(255, 120, 73, 0.1);
-  border: 2px solid #ff7849;
+  background: rgba(255, 111, 145, 0.1);
+  border: 2px solid #ff6f91;
   color: #ea580c;
   font-weight: 700;
 }
@@ -209,12 +209,12 @@
 
 .input:focus {
   background: white;
-  border-color: #ff7849;
-  box-shadow: 0 0 0 3px rgba(255, 120, 73, 0.15);
+  border-color: #ff6f91;
+  box-shadow: 0 0 0 3px rgba(255, 111, 145, 0.15);
 }
 
 .hint {
-  font-size: 11px;
+  font-size: 13px;
   color: #9ca3af;
 }
 
@@ -229,7 +229,7 @@
 }
 
 .backupHint {
-  font-size: 11px;
+  font-size: 13px;
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
@@ -250,8 +250,8 @@
   gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -278,8 +278,8 @@
 }
 
 .importStatusAlert {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   padding: 8px 10px;
   border-radius: 8px;
   background: #ecfdf5;
@@ -299,7 +299,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ff7849 0%, #ff5722 100%);
+  background: linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%);
   color: white;
   border: none;
   border-radius: 14px;
@@ -307,7 +307,7 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 120, 73, 0.25);
+  box-shadow: 0 4px 12px rgba(255, 111, 145, 0.25);
   transition: all 0.15s ease;
 }
 

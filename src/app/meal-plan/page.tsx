@@ -52,7 +52,7 @@ const chip = (active: boolean): CSSProperties => ({
   border: '1px solid var(--border)',
   padding: '6px 12px',
   borderRadius: 20,
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 700,
   cursor: 'pointer',
 });
@@ -308,7 +308,7 @@ export default function MealPlanPage() {
         <div style={{
           position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(31, 41, 55, 0.95)', color: 'white', padding: '8px 18px',
-          borderRadius: 9999, fontSize: 12, fontWeight: 700, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+          borderRadius: 9999, fontSize: 13, fontWeight: 700, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
           zIndex: 9999, pointerEvents: 'none',
         }}>
           {toastMessage}
@@ -318,12 +318,12 @@ export default function MealPlanPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>📅 週間献立プランナー</h1>
         {isNativeApp() && isPremium && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#b45309', background: 'rgba(245, 158, 11, 0.12)', padding: '4px 10px', borderRadius: 20 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: '#b45309', background: 'rgba(245, 158, 11, 0.12)', padding: '4px 10px', borderRadius: 20 }}>
             <Crown size={13} /> プレミアム
           </span>
         )}
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: -8 }}>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginTop: -8, lineHeight: 1.6 }}>
         いらない日・食事はチェックを外してから生成してください。今日から7日分、在庫とPFC目標に合わせてAIが自動で組みます。
       </p>
 
@@ -340,7 +340,7 @@ export default function MealPlanPage() {
                 <button
                   type="button"
                   onClick={() => toggleDay(d.date, false)}
-                  style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                  style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', background: 'none', border: 'none', boxShadow: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', padding: '6px 8px' }}
                 >
                   この日はいらない
                 </button>
@@ -369,7 +369,7 @@ export default function MealPlanPage() {
           )}
         </button>
         {isNativeApp() && !isPremium && (
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
             無料プラン: 残り{Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed())}回生成できます
           </p>
         )}
@@ -385,7 +385,7 @@ export default function MealPlanPage() {
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>1週間分の献立をバランスよく組み立てています…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>1週間分の献立をバランスよく組み立てています…</p>
         </div>
       )}
 
@@ -400,7 +400,7 @@ export default function MealPlanPage() {
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--foreground)' }}>📊 週間PFCサマリー（現在の献立合計）</div>
           <NutritionChart nutrition={weeklyNutritionSum()} />
           {weeklyTargets && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
               週間目標目安: {weeklyTargets.calories}kcal / P{weeklyTargets.protein_g}g・F{weeklyTargets.fat_g}g・C{weeklyTargets.carbs_g}g
             </p>
           )}
@@ -429,7 +429,7 @@ export default function MealPlanPage() {
                   return (
                     <div key={key} className={styles.slotCard}>
                       {!entry ? (
-                        <div style={{ padding: 14, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                        <div style={{ padding: 14, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
                           {SLOT_LABEL[slot]}・未生成
                         </div>
                       ) : (
@@ -442,7 +442,7 @@ export default function MealPlanPage() {
                                 {entry.recipe.dish_badge && <span className={styles.slotBadge}>{entry.recipe.dish_badge}</span>}
                               </div>
                               <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.recipe.title}</div>
-                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                                 ⏱ {entry.recipe.time}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
                               </div>
                             </div>
@@ -482,8 +482,8 @@ export default function MealPlanPage() {
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>材料（不足分は📌で買い物リストへ）</div>
-                                  <ul style={{ fontSize: 12, marginBottom: 10, paddingLeft: 16, listStyle: 'none' }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>材料（不足分は📌で買い物リストへ）</div>
+                                  <ul style={{ fontSize: 13, marginBottom: 10, paddingLeft: 16, listStyle: 'none' }}>
                                     {(entry.recipe.ingredients || []).map((it, i) => {
                                       const missing = isIngredientMissing(it.name, ingredients);
                                       const pinKey = `${key}-${it.name}`;
@@ -508,8 +508,8 @@ export default function MealPlanPage() {
                                       );
                                     })}
                                   </ul>
-                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>作り方</div>
-                                  <ol style={{ fontSize: 12, color: 'var(--foreground)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>作り方</div>
+                                  <ol style={{ fontSize: 13, color: 'var(--foreground)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                     {(entry.recipe.steps || []).map((s, i) => (
                                       <li key={i}>{s}</li>
                                     ))}
@@ -560,7 +560,7 @@ export default function MealPlanPage() {
                 無料プランの週間献立生成（{FREE_WEEKLY_PLAN_GENERATIONS}回）を使い切りました。プレミアムプランに登録すると、週間献立の自動生成が無制限になります。
               </p>
               {purchaseError && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 12, marginBottom: 12 }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 13, marginBottom: 12 }}>
                   {purchaseError}
                 </div>
               )}
@@ -577,7 +577,7 @@ export default function MealPlanPage() {
                 type="button"
                 onClick={() => setShowPaywall(false)}
                 disabled={purchasing}
-                style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 8 }}
+                style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', padding: 8 }}
               >
                 また今度にする
               </button>

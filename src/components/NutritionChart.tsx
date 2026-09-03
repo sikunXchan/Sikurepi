@@ -41,7 +41,7 @@ export default function NutritionChart({ nutrition }: Props) {
   if (total === 0) return null;
 
   const slices: Slice[] = [
-    { label: 'タンパク質', value: protein_g, color: '#ff7849' },
+    { label: 'タンパク質', value: protein_g, color: '#ff6f91' },
     { label: '炭水化物', value: carbs_g, color: '#20b2aa' },
     { label: '脂質', value: fat_g, color: '#fbbf24' },
   ];
@@ -68,7 +68,7 @@ export default function NutritionChart({ nutrition }: Props) {
             ) : null
           )}
           <circle cx={cx} cy={cy} r={28} fill="var(--card-bg, #fff)" />
-          <text x={cx} y={cy - 5} textAnchor="middle" fontSize="11" fontWeight="bold" fill="var(--text-primary, #333)">
+          <text x={cx} y={cy - 5} textAnchor="middle" fontSize="11" fontWeight="bold" fill="var(--foreground)">
             {calories}
           </text>
           <text x={cx} y={cy + 9} textAnchor="middle" fontSize="8" fill="var(--text-muted, #888)">

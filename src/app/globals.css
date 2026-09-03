@@ -1,42 +1,49 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&display=swap');
 
 :root {
-  --background: #fef7f0;
-  --background-secondary: #fff5eb;
-  --foreground: #2d2a26;
-  --primary: #ff7849;
-  --primary-light: #ffaa80;
-  --primary-hover: #ff6230;
-  --secondary: #20b2aa;
+  --background: #fffaf8;
+  --background-secondary: #fff2f5;
+  /* 本文インク: 白カード上で約13:1。細字でも潰れない濃さにする */
+  --foreground: #3a2b2b;
+  --primary: #ff6f91;
+  --primary-light: #ffa8c0;
+  --primary-hover: #ff4f7d;
+  /* 文字にピンクを使う時の濃い版（白背景で約4.6:1、小さい字でも読める） */
+  --primary-text: #e0466e;
+  --secondary: #17948d;
   --secondary-light: #5fd4cd;
-  --accent: #f97316;
+  --accent: #f0a500;
   --accent-pink: #f472b6;
-  --border: rgba(255, 120, 73, 0.15);
-  --border-radius: 16px;
-  --card-bg: rgba(255, 255, 255, 0.7);
+  --border: rgba(255, 111, 145, 0.22);
+  --border-radius: 22px;
+  --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
-  --text-muted: #9ca3af;
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 8px 32px rgba(255, 120, 73, 0.08);
-  --gradient-primary: linear-gradient(135deg, #ff7849 0%, #f97316 50%, #fb923c 100%);
-  --gradient-warm: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%);
-  --gradient-cool: linear-gradient(135deg, #20b2aa 0%, #5fd4cd 50%, #99f6e4 100%);
-  --gradient-hero: linear-gradient(135deg, #fff7ed 0%, #fef3c7 30%, #ffe4e6 60%, #fce7f3 100%);
+  /* 補助テキスト: 旧#9ca3afは薄すぎたので白背景で約4.9:1まで濃くした */
+  --text-muted: #8a736e;
+  --text-secondary: #6b5450;
+  --glass-bg: #ffffff;
+  --glass-border: rgba(255, 111, 145, 0.14);
+  --glass-shadow: 0 6px 20px rgba(224, 70, 110, 0.09);
+  --gradient-primary: linear-gradient(135deg, #ff6f91 0%, #ff8fa3 50%, #ffb0c4 100%);
+  --gradient-warm: linear-gradient(135deg, #fff0d9 0%, #ffe4b5 50%, #ffc971 100%);
+  --gradient-cool: linear-gradient(135deg, #17948d 0%, #35b3ab 50%, #7fd8d1 100%);
+  --gradient-hero: linear-gradient(180deg, #fffaf8 0%, #fff4f2 40%, #ffeaf0 100%);
 }
 
 .cooking-mode {
   --background: #1a1512;
   --background-secondary: #231e19;
-  --foreground: #fef7f0;
-  --border: rgba(255, 120, 73, 0.25);
-  --card-bg: rgba(45, 38, 32, 0.7);
+  --foreground: #fdf3ef;
+  --primary-text: #ff9db5;
+  --border: rgba(255, 111, 145, 0.3);
+  --card-bg: #2d2620;
   --card-bg-solid: #2d2620;
-  --text-muted: #a8a29e;
-  --glass-bg: rgba(35, 30, 25, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-muted: #c3b5b0;
+  --text-secondary: #d8ccc7;
+  --glass-bg: #2d2620;
+  --glass-border: rgba(255, 255, 255, 0.12);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --gradient-hero: linear-gradient(135deg, #1a1512 0%, #231e19 100%);
+  --gradient-hero: linear-gradient(180deg, #1a1512 0%, #231e19 100%);
 }
 
 .cooking-mode body {
@@ -48,14 +55,18 @@
   :root {
     --background: #1a1512;
     --background-secondary: #231e19;
-    --foreground: #fef7f0;
-    --border: rgba(255, 120, 73, 0.2);
-    --card-bg: rgba(45, 38, 32, 0.7);
+    --foreground: #fdf3ef;
+    --primary-text: #ff9db5;
+    --border: rgba(255, 111, 145, 0.28);
+    --card-bg: #2d2620;
     --card-bg-solid: #2d2620;
-    --text-muted: #a8a29e;
-    --glass-bg: rgba(45, 38, 32, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-muted: #c3b5b0;
+    --text-secondary: #d8ccc7;
+    --glass-bg: #2d2620;
+    --glass-border: rgba(255, 255, 255, 0.12);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    /* 背景も暗くしないとカードだけ黒く浮いてちぐはぐになる */
+    --gradient-hero: linear-gradient(180deg, #1a1512 0%, #231e19 100%);
   }
 }
 
@@ -74,12 +85,24 @@ body {
   background: var(--gradient-hero);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, "Hiragino Maru Gothic ProN",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* 丸ゴシックは細字だと線が飛ぶので、本文から中太を基準にする */
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
 }
 
 a {
@@ -93,16 +116,17 @@ button {
   border: none;
   padding: 12px 22px;
   border-radius: var(--border-radius);
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(255, 120, 73, 0.3);
+  box-shadow: 0 4px 14px rgba(224, 70, 110, 0.28);
   position: relative;
   overflow: hidden;
 }
@@ -118,7 +142,7 @@ button::before {
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(255, 120, 73, 0.4);
+  box-shadow: 0 6px 25px rgba(255, 111, 145, 0.4);
 }
 
 button:hover::before {
@@ -139,21 +163,20 @@ button:disabled {
 input, textarea {
   width: 100%;
   padding: 14px 16px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--border-radius);
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  background: var(--card-bg-solid);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
   font-size: 15px;
+  font-weight: 600;
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 input:focus, textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(255, 120, 73, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 111, 145, 0.15);
 }
 
 input::placeholder, textarea::placeholder {
@@ -170,14 +193,18 @@ input::placeholder, textarea::placeholder {
 }
 
 .card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--card-bg-solid);
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius);
-  padding: 16px;
+  padding: 18px;
   margin-bottom: 16px;
   box-shadow: var(--glass-shadow);
+}
+
+/* 見出し共通: グラデ文字は背景のピンクに溶けて読めないので、必ずベタ塗り＋極太で出す */
+.pageTitleInk {
+  color: var(--primary-text);
+  font-weight: 900;
 }
 
 /* Utilities */
@@ -217,8 +244,8 @@ input::placeholder, textarea::placeholder {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 120, 73, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(255, 120, 73, 0.4); }
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 111, 145, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(255, 111, 145, 0.4); }
 }
 
 /* Scrollbar */
@@ -246,7 +273,7 @@ input::placeholder, textarea::placeholder {
   /* Disable hover transforms on touch devices to avoid stuck states */
   button:hover {
     transform: none;
-    box-shadow: 0 4px 15px rgba(255, 120, 73, 0.3);
+    box-shadow: 0 4px 15px rgba(255, 111, 145, 0.3);
   }
 
   /* Tap highlight for touch feedback instead */

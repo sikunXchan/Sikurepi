@@ -122,7 +122,7 @@ export default function ReceiptPage() {
         particleCount: 120,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#ff7849', '#20b2aa', '#fbbf24']
+        colors: ['#ff6f91', '#20b2aa', '#fbbf24']
       });
     } catch (e: any) {
       console.error(e);
@@ -172,13 +172,13 @@ export default function ReceiptPage() {
         <div style={{ background: '#ffffff', borderRadius: 20, padding: 20, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={18} color="#ff7849" />
+              <Sparkles size={18} color="#ff6f91" />
               検出結果の確認・編集
             </h3>
-            <span style={{ fontSize: 12, color: '#6b7280' }}>{extractedList.length}件</span>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>{extractedList.length}件</span>
           </div>
 
-          <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>
             誤認識した食材の修正・削除や、カテゴリの変更ができます。確認後に在庫へ追加してください。
           </p>
 
@@ -195,7 +195,7 @@ export default function ReceiptPage() {
                 <select
                   value={item.category}
                   onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
-                  style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, background: 'white', color: '#4b5563' }}
+                  style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, background: 'white', color: '#4b5563' }}
                 >
                   {CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -228,7 +228,7 @@ export default function ReceiptPage() {
                 fontSize: 13,
                 color: '#4b5563',
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
               <Plus size={15} /> 食材を追加
@@ -265,7 +265,7 @@ export default function ReceiptPage() {
                     key={i}
                     src={src}
                     alt={`Preview ${i + 1}`}
-                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff7849' }}
+                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6f91' }}
                   />
                 ))}
               </div>
@@ -275,8 +275,8 @@ export default function ReceiptPage() {
                   <Camera size={36} className="text-muted" />
                   <ImageIcon size={36} className="text-muted" />
                 </div>
-                <span style={{ fontWeight: 600, color: '#374151' }}>写真を選択 / 撮影（複数可）</span>
-                <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>レシート・冷蔵庫の中・食材</span>
+                <span style={{ fontWeight: 700, color: '#374151' }}>写真を選択 / 撮影（複数可）</span>
+                <span style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>レシート・冷蔵庫の中・食材</span>
               </div>
             )}
           </label>
