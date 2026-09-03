@@ -23,7 +23,7 @@ import {
 } from "@/lib/storage";
 import styles from "./History.module.css";
 
-const GENRE_OPTIONS = ['和食', '洋食', '中華', 'アジア料理', 'イタリアン', 'フレンチ', 'その他'];
+const GENRE_OPTIONS = ['和食', '洋食', '中華', 'アジア料理', '韓国料理', 'タイ料理', 'インド料理', 'メキシコ料理', '中東料理', 'イタリアン', 'フレンチ', 'その他'];
 const TIME_OPTIONS = [
   { label: 'すべて', value: '' },
   { label: '10分以内', value: '10' },
