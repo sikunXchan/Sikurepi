@@ -188,6 +188,13 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   pistachio: ["ピスタチオ"],
   pinenut: ["松の実"],
   hazelnut: ["ヘーゼルナッツ"],
+  grapefruit: ["グレープフルーツ"],
+  yuzu: ["ゆず", "ユズ", "柚子"],
+  ume: ["梅", "うめ", "梅干し"],
+  lychee: ["ライチ", "レイシ", "茘枝"],
+  raspberry: ["ラズベリー", "木いちご"],
+  papaya: ["パパイヤ", "パパイア"],
+  plum: ["すもも", "スモモ", "李", "プラム"],
 
   // --- お菓子・スイーツ ---
   shortcake: ["ショートケーキ", "いちごのショートケーキ"],
@@ -200,6 +207,9 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   chocolatespread: ["チョコレートスプレッド", "チョコソース"],
   whippedcream: ["ホイップクリーム", "デコレーションクリーム"],
   chocolate: ["チョコレート", "チョコ", "板チョコ"],
+  marshmallow: ["マシュマロ"],
+  youkan: ["羊羹", "ようかん"],
+  gummy: ["グミ"],
 
   // --- 調味料・油 ---
   salt: ["塩", "しお"],

@@ -134,7 +134,12 @@ function SwipeableIngredientRow({
         }}
       >
         <div className={styles.nameSection}>
-          <IngredientIcon name={item.name} size={36} />
+          <span
+            className={isForgotten ? styles.forgottenIconWrap : undefined}
+            style={isForgotten ? { animationDelay: `${(item.id % 5) * 0.12}s` } : undefined}
+          >
+            <IngredientIcon name={item.name} size={36} />
+          </span>
           <div className={styles.nameTextCol}>
             <span>
               {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, verticalAlign: -2 }} />}

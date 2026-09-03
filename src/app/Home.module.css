@@ -156,6 +156,27 @@
   border: 1px solid rgba(255, 111, 145, 0.35);
 }
 
+/* 呼びかけ中の食材アイコンが小刻みに震える(悲しんでいる/寒がっている様子) */
+@keyframes forgottenTremble {
+  0%, 100% { transform: rotate(0deg) translate(0, 0); }
+  20% { transform: rotate(-4deg) translate(-1px, 0); }
+  40% { transform: rotate(3deg) translate(1px, 0); }
+  60% { transform: rotate(-3deg) translate(-1px, 0); }
+  80% { transform: rotate(2deg) translate(1px, 0); }
+}
+
+.forgottenIconWrap {
+  display: inline-flex;
+  animation: forgottenTremble 0.6s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forgottenIconWrap {
+    animation: none;
+  }
+}
+
 .nameTextCol {
   display: flex;
   flex-direction: column;
