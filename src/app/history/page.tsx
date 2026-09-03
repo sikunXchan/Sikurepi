@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
+import { getIngredientIconUrl } from "@/lib/ingredientIcons";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -14,8 +15,10 @@ import {
   getLocalIngredients,
   addLocalShoppingItem,
   isIngredientMissing,
+  getLocalUserProfile,
   SavedRecipe,
-  Ingredient
+  Ingredient,
+  UserProfile
 } from "@/lib/storage";
 import styles from "./History.module.css";
 
@@ -37,6 +40,7 @@ export default function HistoryPage() {
   const [cookingSessionRecipe, setCookingSessionRecipe] = useState<SavedRecipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
 
   // Search/filter state
@@ -54,6 +58,7 @@ export default function HistoryPage() {
   const loadRecipes = () => {
     setAllRecipes(getLocalSavedRecipes());
     setIngredients(getLocalIngredients());
+    setUserProfile(getLocalUserProfile());
     setLoading(false);
   };
 
@@ -110,11 +115,12 @@ export default function HistoryPage() {
     showToast("🗑️ レシピを履歴から削除しました");
   };
 
-  const getRecipeIcon = (recipe: SavedRecipe) => {
-    const timeStr = recipe.time || "";
-    const match = timeStr.match(/(\d+)/);
-    const minutes = match ? parseInt(match[0], 10) : 10;
-    return minutes <= 9 ? "/sub.png" : "/main.png";
+  // サムネイルは犬(main.png/sub.png)固定だったのを、レシピの主材料アイコンに変更。
+  // アイコンが見つかる最初の材料を選ぶ（無ければIngredientIcon側のプレースホルダーに任せる）。
+  const getRecipeMainIngredientName = (recipe: SavedRecipe): string => {
+    const list = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+    const withIcon = list.find(i => getIngredientIconUrl(i.name));
+    return (withIcon || list[0])?.name || recipe.title;
   };
 
   const formatDate = (dateStr: string) => {
@@ -262,9 +268,9 @@ export default function HistoryPage() {
                   className={styles.cardTopRow}
                   onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
                 >
-                  <img
-                    src={getRecipeIcon(recipe)}
-                    alt={recipe.title}
+                  <IngredientIcon
+                    name={getRecipeMainIngredientName(recipe)}
+                    size={50}
                     className={styles.recipeIcon}
                   />
 
@@ -358,7 +364,7 @@ export default function HistoryPage() {
                       <h3>材料・調味料</h3>
                       <ul className={styles.ingredientList}>
                         {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => {
-                          const missing = isIngredientMissing(item.name, ingredients);
+                          const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
                           const pinKey = `${recipe.id}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);
                           return (

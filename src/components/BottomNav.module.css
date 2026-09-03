@@ -7,24 +7,26 @@
   border-top: 1px solid var(--glass-border);
   display: flex;
   justify-content: space-around;
-  padding: 8px 4px;
+  padding: 8px 2px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
   z-index: 1000;
   box-shadow: 0 -6px 24px rgba(224, 70, 110, 0.1);
 }
 
+/* タブが7つ(在庫,レシート,買い物,レシピ,献立,履歴,マイページ)に増えたため、
+   幅の狭い端末でも収まるよう1タブあたりの余白・文字サイズを詰めている */
 .navItem {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 10.5px;
   transition: color 0.2s ease, background 0.2s ease;
   position: relative;
-  padding: 7px 10px 5px;
-  border-radius: 16px;
-  min-width: 52px;
+  padding: 7px 3px 5px;
+  border-radius: 14px;
+  min-width: 40px;
 }
 
 /* 選択中はピンクの座布団を敷いて、色だけの差より一目で分かるようにする */
@@ -35,7 +37,8 @@
 
 .navItem span {
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
 }
 
 .navItem.active span {
@@ -59,8 +62,8 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 0 6px;
-  min-width: 52px;
+  padding: 0 3px;
+  min-width: 44px;
   /* バーから少し持ち上げて主役感を出す */
   margin-top: -18px;
 }

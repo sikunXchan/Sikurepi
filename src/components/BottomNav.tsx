@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, ChefHat, BookOpen, ShoppingCart, CalendarDays } from "lucide-react";
+import { Home, Receipt, ChefHat, BookOpen, ShoppingCart, CalendarDays, UserRound } from "lucide-react";
 import styles from "./BottomNav.module.css";
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   // primary: モックアップの中央FABに相当する主要アクション（レシピを作る）
+  // レシピを中央（左右3つずつ）に置くため、タブ数は7つ。
   const navItems = [
     { name: "在庫", path: "/", icon: Home },
     { name: "レシート", path: "/receipt", icon: Receipt },
@@ -16,6 +17,7 @@ export default function BottomNav() {
     { name: "レシピ", path: "/recipe", icon: ChefHat, primary: true },
     { name: "献立", path: "/meal-plan", icon: CalendarDays },
     { name: "履歴", path: "/history", icon: BookOpen },
+    { name: "マイページ", path: "/mypage", icon: UserRound },
   ];
 
   return (

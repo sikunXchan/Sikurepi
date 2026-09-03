@@ -18,6 +18,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import CookedModal from "./CookedModal";
+import IngredientIcon from "./IngredientIcon";
 import styles from "./CookingSession.module.css";
 
 type IngredientItem = {
@@ -291,7 +292,10 @@ export default function CookingSession({
               <ul className={styles.ingredientsSheetList}>
                 {ingredients?.map((item, i) => (
                   <li key={i}>
-                    <span>{item.name}</span>
+                    <span className={styles.ingredientsSheetNameGroup}>
+                      <IngredientIcon name={item.name} size={26} />
+                      <span className={styles.ingredientsSheetName}>{item.name}</span>
+                    </span>
                     <span className={styles.ingredientsSheetAmount}>{item.amount}</span>
                   </li>
                 ))}

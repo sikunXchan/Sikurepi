@@ -1016,3 +1016,11 @@
 .templateTileActive .templateLabel {
   color: #ffffff;
 }
+
+/* カード折りたたみ時にも、必要な材料をひと目で把握できるアイコンだけの行 */
+.ingredientIconRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
