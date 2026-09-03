@@ -368,16 +368,20 @@ export default function RecipePage() {
                       type="button"
                       onClick={() => toggleIngredientSelection(ing.id)}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
                         background: isSelected ? 'var(--primary)' : 'var(--card-bg-solid)',
                         color: isSelected ? '#ffffff' : 'var(--foreground)',
                         border: '1px solid var(--border)',
-                        padding: '4px 10px',
+                        padding: '4px 10px 4px 6px',
                         borderRadius: 20,
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: 'pointer',
                       }}
                     >
+                      <IngredientIcon name={ing.name} size={20} />
                       {ing.is_pinned && '📌 '}
                       {ing.name}
                     </button>
