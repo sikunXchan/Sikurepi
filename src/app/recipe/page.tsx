@@ -169,6 +169,7 @@ export default function RecipePage() {
           excludedIngredients: userProfile.excludedIngredients || [],
           cookingStyles: userProfile.cookingStyles || [],
           dietaryRestrictions: userProfile.dietaryRestrictions || [],
+          preferredGenres: userProfile.preferredGenres || [],
         },
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         recentRecipes,
@@ -408,31 +409,43 @@ export default function RecipePage() {
           />
         </div>
 
-        {/* 人数 (マイページの設定をデフォルトに使いつつ、生成のたびに個別に変更できる) */}
+        {/* 人数 (マイページの設定をデフォルトに使いつつ、生成のたびに個別に変更できる。大人数の集まり等も想定し1〜15人分まで対応) */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', display: 'block', marginBottom: 8 }}>
             👥 今回作る人数
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-            {[1, 2, 3, 4].map(n => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setSessionServings(n)}
-                style={{
-                  background: sessionServings === n ? 'rgba(255, 111, 145, 0.1)' : 'var(--background-secondary)',
-                  border: sessionServings === n ? '2px solid var(--primary)' : '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '8px 4px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: sessionServings === n ? '#ea580c' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                }}
-              >
-                {n}人分
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--background-secondary)', border: '1px solid var(--border)', borderRadius: 14, padding: '8px 12px' }}>
+            <button
+              type="button"
+              onClick={() => setSessionServings(prev => Math.max(1, prev - 1))}
+              disabled={sessionServings <= 1}
+              style={{
+                width: 40, height: 40, borderRadius: '50%', border: 'none',
+                background: 'var(--gradient-primary)', color: 'white',
+                fontSize: 20, fontWeight: 900, cursor: 'pointer',
+                opacity: sessionServings <= 1 ? 0.4 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              −
+            </button>
+            <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
+              {sessionServings}人分
+            </span>
+            <button
+              type="button"
+              onClick={() => setSessionServings(prev => Math.min(15, prev + 1))}
+              disabled={sessionServings >= 15}
+              style={{
+                width: 40, height: 40, borderRadius: '50%', border: 'none',
+                background: 'var(--gradient-primary)', color: 'white',
+                fontSize: 20, fontWeight: 900, cursor: 'pointer',
+                opacity: sessionServings >= 15 ? 0.4 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ＋
+            </button>
           </div>
         </div>
 

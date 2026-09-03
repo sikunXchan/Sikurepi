@@ -149,6 +149,7 @@ export default function MealPlanPage() {
         excludedIngredients: profile.excludedIngredients || [],
         cookingStyles: profile.cookingStyles || [],
         dietaryRestrictions: profile.dietaryRestrictions || [],
+        preferredGenres: profile.preferredGenres || [],
       },
       climate: profile.enableClimate !== false ? currentClimate : undefined,
       recentHistory,

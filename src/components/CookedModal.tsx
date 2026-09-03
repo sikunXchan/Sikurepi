@@ -59,7 +59,7 @@ export default function CookedModal({
       if (toConsume.length > 0) {
         consumedCount = consumeLocalIngredients(toConsume);
       }
-      recordLocalCookingDone(consumedCount, title, nutrition || undefined);
+      recordLocalCookingDone(consumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
 
       setDone(true);
       confetti({

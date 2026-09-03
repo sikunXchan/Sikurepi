@@ -3,9 +3,9 @@
 import { useState } from "react";
 import IngredientIcon from "./IngredientIcon";
 
-// ジャンルの料理イラスト(未作成)を置くための差し替え先。用意でき次第
-// public/genres/{slug}.png を置けば、コード変更なしで自動的に使われる。
-// 画像が無い間は404になり、onErrorで食材アイコンのサムネイルに自動フォールバックする。
+// ジャンルの料理イラスト。public/genres/{slug}.png を参照する。
+// 「その他」用のイラストは無いため、画像が無い場合(404)はonErrorで
+// 食材アイコンのサムネイルに自動フォールバックする。
 export const GENRE_ICON_SLUGS: Record<string, string> = {
   "和食": "washoku",
   "洋食": "yoshoku",
@@ -18,6 +18,21 @@ export const GENRE_ICON_SLUGS: Record<string, string> = {
   "中東料理": "middleeastern",
   "イタリアン": "italian",
   "フレンチ": "french",
+  "スペイン料理": "spanish",
+  "ギリシャ料理": "greek",
+  "ドイツ・中欧料理": "german",
+  "北欧料理": "nordic",
+  "ロシア・東欧料理": "russian",
+  "ベトナム料理": "vietnamese",
+  "台湾料理": "taiwanese",
+  "インドネシア・マレーシア料理": "indomalay",
+  "アメリカ南部料理": "americansouth",
+  "モロッコ・北アフリカ料理": "moroccan",
+  "エチオピア料理": "ethiopian",
+  "ジャマイカ・カリブ料理": "caribbean",
+  "ペルー料理": "peruvian",
+  "ブラジル料理": "brazilian",
+  "シンガポール料理": "singaporean",
   "その他": "other",
 };
 
