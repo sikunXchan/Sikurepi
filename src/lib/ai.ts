@@ -25,6 +25,7 @@ export type RecipeProfile = {
   targetProtein?: number | null;
   assumeSeasoningsAvailable?: boolean;
   dietaryRestrictions?: string[];
+  preferredGenres?: string[];
 };
 
 // 各食事制限が具体的に何を禁じるかをAIに誤解なく伝えるための説明文。
@@ -63,8 +64,13 @@ export function buildProfileSection(profile: RecipeProfile | null | undefined): 
   const styles = profile.cookingStyles && profile.cookingStyles.length > 0
     ? `・調理スタイル/設備: ${profile.cookingStyles.join('、')}\n`
     : '';
-  if (!taste && !excluded && !dietary && !styles) return '';
-  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${dietary}${styles}`;
+  // 食事制限とは異なり「絶対」ではなく、できる範囲で優先してほしいという
+  // やわらかい希望として伝える（他ジャンルを完全に排除する必要はない）
+  const preferredGenre = profile.preferredGenres && profile.preferredGenres.length > 0
+    ? `・優先したい料理ジャンル: ${profile.preferredGenres.join('、')} ※必須ではありませんが、できるだけこれらのジャンルから提案してください\n`
+    : '';
+  if (!taste && !excluded && !dietary && !styles && !preferredGenre) return '';
+  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${dietary}${styles}${preferredGenre}`;
 }
 
 // 気候・環境連動セクションを組み立てる

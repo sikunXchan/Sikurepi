@@ -14,6 +14,7 @@ import {
   deleteLocalIngredient,
   toggleLocalIngredientPin,
   inferIngredientCategory,
+  getForgottenIngredients,
   Ingredient
 } from "@/lib/storage";
 import styles from "./Home.module.css";
@@ -25,26 +26,48 @@ const CATEGORY_ICONS: Record<string, string> = {
   '乳製品・卵': '🥚',
   '穀物・パン': '🌾',
   '調味料': '🧂',
+  'お菓子・スイーツ': '🍰',
   '果物': '🍎',
   '豆類': '🫘',
+  'ナッツ類': '🥜',
+  '飲み物': '🥤',
   'その他': '🍽️',
 };
 
-const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
+const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', 'ナッツ類', '果物', 'お菓子・スイーツ', '調味料', '飲み物', 'その他'];
 
 const SWIPE_OPEN_X = -88;
 const SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
 const LONG_PRESS_MS = 550;
 
+// 食品ロス防止: 長く放置され直近の料理で使われていない食材に、
+// アイコンの顔から吹き出しで呼びかけてもらう
+const FORGOTTEN_MESSAGES = [
+  "私のこと忘れてない？",
+  "そろそろ使ってほしいな…",
+  "冷蔵庫の隅で待ってるよ〜",
+  "そろそろ食べ頃かも…！",
+  "そろそろ出番をちょうだい！",
+];
+
+function getForgottenMessage(id: number, ageDays: number): string {
+  const msg = FORGOTTEN_MESSAGES[id % FORGOTTEN_MESSAGES.length];
+  return `${msg}（在庫${ageDays}日目）`;
+}
+
 function SwipeableIngredientRow({
   item,
   isOpen,
+  isForgotten,
+  ageDays,
   onOpenChange,
   onDelete,
   onTogglePin,
 }: {
   item: Ingredient;
   isOpen: boolean;
+  isForgotten: boolean;
+  ageDays: number;
   onOpenChange: (id: number | null) => void;
   onDelete: (id: number, name: string) => void;
   onTogglePin: (item: Ingredient) => void;
@@ -96,7 +119,7 @@ function SwipeableIngredientRow({
         </button>
       </motion.div>
       <motion.div
-        className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
+        className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""} ${isForgotten ? styles.forgotten : ""}`}
         style={{ x, y: item.is_pinned ? -4 : 0 }}
         drag="x"
         dragConstraints={{ left: SWIPE_OPEN_X, right: 0 }}
@@ -112,8 +135,15 @@ function SwipeableIngredientRow({
       >
         <div className={styles.nameSection}>
           <IngredientIcon name={item.name} size={36} />
-          {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, flexShrink: 0 }} />}
-          <span>{item.name}</span>
+          <div className={styles.nameTextCol}>
+            <span>
+              {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, verticalAlign: -2 }} />}
+              {item.name}
+            </span>
+            {isForgotten && (
+              <span className={styles.forgottenCallout}>💬 {getForgottenMessage(item.id, ageDays)}</span>
+            )}
+          </div>
         </div>
       </motion.div>
     </li>
@@ -131,6 +161,7 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
+  const [forgottenIds, setForgottenIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadIngredients();
@@ -141,6 +172,7 @@ export default function Home() {
 
   const loadIngredients = () => {
     setIngredients(getLocalIngredients());
+    setForgottenIds(new Set(getForgottenIngredients().map(i => i.id)));
     setLoading(false);
   };
 
@@ -325,6 +357,8 @@ export default function Home() {
                           key={item.id}
                           item={item}
                           isOpen={openSwipeId === item.id}
+                          isForgotten={forgottenIds.has(item.id)}
+                          ageDays={Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))}
                           onOpenChange={setOpenSwipeId}
                           onDelete={handleDelete}
                           onTogglePin={handleTogglePin}

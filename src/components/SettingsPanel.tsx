@@ -11,11 +11,20 @@ import {
   getLocalUserStats,
   getLocalSavedTips,
   deleteLocalSavedTip,
+  getForgottenIngredients,
+  DEFAULT_USER_STATS,
   UserStats,
-  SavedTip
+  SavedTip,
+  Ingredient
 } from "@/lib/storage";
 import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database } from "lucide-react";
+import IngredientIcon from "./IngredientIcon";
+import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import styles from "./ProfileSettingsModal.module.css";
+
+// 優先ジャンル選択の選択肢。ジャンル別サムネイルと同じ一覧を使い回して二重管理を防ぐ
+// (「その他」はジャンルとして選ぶ意味が薄いため除外)
+const PREFERRED_GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS).filter(g => g !== "その他");
 
 const TASTE_OPTIONS = [
   "うす味・減塩",
@@ -59,8 +68,11 @@ type Props = {
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
-  const [stats, setStats] = useState<UserStats>(getLocalUserStats());
+  // getLocalUserStats()を直接初期値に渡すとハイドレーションミスマッチになるため、
+  // 安全な初期値を渡し実データはマウント後のuseEffectでのみ取得する
+  const [stats, setStats] = useState<UserStats>(DEFAULT_USER_STATS);
   const [tips, setTips] = useState<SavedTip[]>([]);
+  const [forgottenItems, setForgottenItems] = useState<Ingredient[]>([]);
   const [excludedInput, setExcludedInput] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -72,6 +84,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     setExcludedInput((p.excludedIngredients || []).join(", "));
     setStats(getLocalUserStats());
     setTips(getLocalSavedTips());
+    setForgottenItems(getForgottenIngredients());
   }, []);
 
   const handleServingsChange = (n: number) => {
@@ -105,6 +118,16 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         ? current.filter(d => d !== option)
         : [...current, option];
       return { ...prev, dietaryRestrictions: list };
+    });
+  };
+
+  const togglePreferredGenre = (genre: string) => {
+    setProfile(prev => {
+      const current = prev.preferredGenres || [];
+      const list = current.includes(genre)
+        ? current.filter(g => g !== genre)
+        : [...current, genre];
+      return { ...prev, preferredGenres: list };
     });
   };
 
@@ -151,6 +174,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         setProfile(getLocalUserProfile());
         setStats(getLocalUserStats());
         setTips(getLocalSavedTips());
+        setForgottenItems(getForgottenIngredients());
         if (onSaved) onSaved();
       } else {
         setImportStatus(`❌ 復元失敗: ${res.error}`);
@@ -158,11 +182,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     };
     reader.readAsText(file);
   };
-
-  const totalPFC = (stats.total_protein || 0) * 4 + (stats.total_fat || 0) * 9 + (stats.total_carbs || 0) * 4;
-  const pPct = totalPFC > 0 ? Math.round(((stats.total_protein || 0) * 4 / totalPFC) * 100) : 0;
-  const fPct = totalPFC > 0 ? Math.round(((stats.total_fat || 0) * 9 / totalPFC) * 100) : 0;
-  const cPct = totalPFC > 0 ? Math.round(((stats.total_carbs || 0) * 4 / totalPFC) * 100) : 0;
 
   return (
     <>
@@ -181,7 +200,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           onClick={() => setActiveTab('stats')}
         >
           <Activity size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          PFC統計
+          自炊記録
         </button>
         <button
           type="button"
@@ -246,17 +265,38 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
 
           <div className={styles.section}>
             <label className={styles.sectionLabel}>👥 基本の人数</label>
-            <div className={styles.servingsGrid}>
-              {[1, 2, 3, 4].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  className={`${styles.servingsBtn} ${profile.servings === n ? styles.servingsBtnActive : ""}`}
-                  onClick={() => handleServingsChange(n)}
-                >
-                  {n}人分
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 14, padding: '8px 12px' }}>
+              <button
+                type="button"
+                onClick={() => handleServingsChange(Math.max(1, profile.servings - 1))}
+                disabled={profile.servings <= 1}
+                style={{
+                  width: 40, height: 40, borderRadius: '50%', border: 'none',
+                  background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)', color: 'white',
+                  fontSize: 20, fontWeight: 900, cursor: 'pointer',
+                  opacity: profile.servings <= 1 ? 0.4 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                −
+              </button>
+              <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
+                {profile.servings}人分
+              </span>
+              <button
+                type="button"
+                onClick={() => handleServingsChange(Math.min(15, profile.servings + 1))}
+                disabled={profile.servings >= 15}
+                style={{
+                  width: 40, height: 40, borderRadius: '50%', border: 'none',
+                  background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)', color: 'white',
+                  fontSize: 20, fontWeight: 900, cursor: 'pointer',
+                  opacity: profile.servings >= 15 ? 0.4 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ＋
+              </button>
             </div>
           </div>
 
@@ -281,6 +321,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               />
             </div>
             <span className={styles.hint}>※ 空欄の場合、厚生労働省「日本人の食事摂取基準」の目安（2000kcal、たんぱく質エネルギー比13〜20%）から自動算出します</span>
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>🍽️ 優先的に食べたい料理ジャンル</label>
+            <div className={styles.tagGrid}>
+              {PREFERRED_GENRE_OPTIONS.map(genre => {
+                const active = (profile.preferredGenres || []).includes(genre);
+                return (
+                  <button
+                    key={genre}
+                    type="button"
+                    className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
+                    onClick={() => togglePreferredGenre(genre)}
+                  >
+                    {active ? `✓ ${genre}` : genre}
+                  </button>
+                );
+              })}
+            </div>
+            <span className={styles.hint}>※ 未選択ならすべてのジャンルから提案します。選ぶと「できるだけ」優先しますが、アレルギーのように完全に他を除外するわけではありません</span>
           </div>
 
           <div className={styles.section}>
@@ -358,40 +418,44 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       {activeTab === 'stats' && (
         <div className={styles.body}>
           <p className={styles.description}>
-            「この料理を作った！」ボタンを押すことで、全体のPFCバランスと調理実績がここに自動蓄積されます。
+            「この料理を作った！」ボタンを押すことで自炊実績が、食材を使い切ることで食品ロス削減の記録がここに自動蓄積されます。
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>🍳 累計自炊回数</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{stats.total_cooked} 回</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🍳 累計自炊</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{stats.total_cooked}回</div>
             </div>
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>🔥 累積総カロリー</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{(stats.total_calories || 0).toLocaleString()} kcal</div>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🔥 連続記録</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>{stats.streak_days}日</div>
+            </div>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🌱 救済した食材</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{stats.saved_food_count}個</div>
             </div>
           </div>
 
-          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 14, padding: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
-              📊 全体のPFCバランス（エネルギー比率）
-            </div>
-            {totalPFC > 0 ? (
-              <>
-                <div style={{ display: 'flex', height: 14, borderRadius: 9999, overflow: 'hidden', marginBottom: 10 }}>
-                  <div style={{ width: `${pPct}%`, background: '#3b82f6' }} title={`Protein: ${pPct}%`} />
-                  <div style={{ width: `${fPct}%`, background: '#f59e0b' }} title={`Fat: ${fPct}%`} />
-                  <div style={{ width: `${cPct}%`, background: '#10b981' }} title={`Carbs: ${cPct}%`} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ color: '#3b82f6' }}>P: {pPct}% ({(stats.total_protein || 0).toFixed(1)}g)</span>
-                  <span style={{ color: '#f59e0b' }}>F: {fPct}% ({(stats.total_fat || 0).toFixed(1)}g)</span>
-                  <span style={{ color: '#10b981' }}>C: {cPct}% ({(stats.total_carbs || 0).toFixed(1)}g)</span>
-                </div>
-              </>
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>💬 いま呼びかけている食材</label>
+            {forgottenItems.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {forgottenItems.map((item) => {
+                  const ageDays = Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255, 111, 145, 0.06)', border: '1px solid rgba(255, 111, 145, 0.25)', padding: '8px 10px', borderRadius: 12 }}>
+                      <IngredientIcon name={item.name} size={30} />
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#111827', fontSize: 13 }}>{item.name}</div>
+                        <div style={{ fontSize: 12, color: '#e0466e', fontWeight: 700 }}>そろそろ使ってほしいな…（在庫{ageDays}日目）</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <p style={{ fontSize: 13, color: '#9ca3af', margin: 0, textAlign: 'center' }}>
-                料理を作るとここにPFC比率が集計されます
+              <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>
+                今のところ忘れられている食材はなさそう！このまま食品ロスゼロを目指そう✨
               </p>
             )}
           </div>

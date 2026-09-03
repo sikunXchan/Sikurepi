@@ -44,6 +44,10 @@ export type CookedRecord = {
   protein_g?: number;
   fat_g?: number;
   carbs_g?: number;
+  // 「食材が呼びかける」機能用: 実際に消費したかに関わらず、そのレシピで
+  // 使った材料名を全て記録しておく（在庫にずっと残っている食材が、直近の
+  // 料理で本当に使われていないかを判定するために使う）
+  ingredientNames?: string[];
 };
 
 export type UserStats = {
@@ -76,6 +80,9 @@ export type UserProfile = {
   // ヴィーガン・ハラール等、宗教上/ライフスタイル上の食事制限。
   // アレルギー(excludedIngredients)と同じく、AIには「絶対に破らない制約」として渡す。
   dietaryRestrictions: string[];
+  // 優先的に食べたい料理ジャンル。dietaryRestrictionsと違い「絶対」ではなく
+  // 「できれば優先して」というやわらかい希望としてAIに伝える。デフォルトは未選択。
+  preferredGenres: string[];
 };
 
 // --- 材料の不足チェック (レシピの材料が在庫にあるか) ---
@@ -104,9 +111,14 @@ const CATEGORY_RULES: { category: string; pattern: RegExp }[] = [
   { category: '乳製品・卵', pattern: /卵|たまご|玉子|牛乳|ヨーグルト|チーズ|バター|生クリーム|ホイップクリーム|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|オーツミルク|アーモンドミルク|ココナッツミルク/ },
   { category: '穀物・パン', pattern: /ごはん|ご飯|米|パン|うどん|そば|パスタ|スパゲティ|春雨|小麦粉|薄力粉|強力粉|片栗粉|ごま|胡麻|もち|餅|そうめん|素麺|中華麺|中華そば|ラーメン|キヌア|キノア|クスクス|トルティーヤ|ピタパン|ナン/ },
   { category: '調味料', pattern: /塩|しお|砂糖|さとう|酢|醤油|しょうゆ|味噌|みそ|みりん|酒|だし|コンソメ|スープの素|ガラスープ|油|マヨネーズ|ケチャップ|ソース|ぽん酢|ポン酢|はちみつ|蜂蜜|わさび|山葵|こしょう|コショウ|胡椒|ジャム|スプレッド|カレールー|カレールウ|豆板醤|カレー粉|フムス|タヒニ|サルサ|スリラチャ|ペスト|タイカレーペースト|クミン|ターメリック|シナモン/ },
-  { category: '豆類', pattern: /豆(?!腐|乳|板醤)|えだまめ|枝豆|もやし|アーモンド|くるみ|カシューナッツ|ピーナッツ|落花生|ナッツ|ピスタチオ|松の実|ヘーゼルナッツ/ },
+  // 「いちごのショートケーキ」等が果物(いちご)に引っ張られないよう、生鮮カテゴリより先に置く
+  { category: 'お菓子・スイーツ', pattern: /ショートケーキ|あめ(?!ちゃん)|飴|キャンディ|駄菓子|クッキー|ポテトチップス|ポテトチップ|チップス|アイスクリーム|アイス|プリン|チョコレート|チョコ|マカロン|ドーナツ|ゼリー|わらび餅|大福|羊羹|団子|グミ|マシュマロ/ },
+  { category: '豆類', pattern: /豆(?!腐|乳|板醤)|えだまめ|枝豆|もやし/ },
+  { category: 'ナッツ類', pattern: /アーモンド|くるみ|カシューナッツ|ピーナッツ|落花生|ナッツ|ピスタチオ|松の実|ヘーゼルナッツ|マカダミア|ペカン/ },
   { category: '果物', pattern: /りんご|リンゴ|林檎|バナナ|レモン|オレンジ|みかん|いちご|イチゴ|苺|ぶどう|ブドウ|梨|なし|柿|かき|桃|もも|メロン|スイカ|すいか|キウイ|パイナップル|マンゴー|グレープフルーツ|レーズン/ },
   { category: '野菜', pattern: /たまねぎ|玉ねぎ|にんじん|人参|じゃがいも|トマト|きゅうり|キャベツ|だいこん|大根|なす|ナス|ピーマン|パプリカ|ブロッコリー|ほうれん|とうもろこし|コーン|ねぎ|ネギ|にんにく|ニンニク|しょうが|生姜|しいたけ|椎茸|えのき|しめじ|ブナシメジ|ぶなしめじ|エリンギ|舞茸|まいたけ|きのこ|こんにゃく|しらたき|たけのこ|筍|ごぼう|牛蒡|山芋|長芋|れんこん|蓮根|アボカド|アスパラ|かぼちゃ|カボチャ|オクラ|しそ|大葉|唐辛子|白菜|ズッキーニ|かぶ|カブ|さつまいも|レタス|セロリ|ゴーヤ|水菜|小松菜|キムチ|パセリ|バジル|パクチー|コリアンダー|ローズマリー/ },
+  // 「水菜」等を誤って拾わないよう、最後に置いた上で「水」に否定先読みを付ける
+  { category: '飲み物', pattern: /水(?!菜)|ミネラルウォーター|炭酸水|ジュース|コーヒー|紅茶|緑茶|お茶|麦茶|ビール|ワイン|日本酒|焼酎|ハイボール|サワー/ },
 ];
 
 export function inferIngredientCategory(ingredientName: string): string {
@@ -127,6 +139,37 @@ export function isIngredientMissing(
   return !inventory.some(inv => {
     const invName = inv.name.trim().toLowerCase();
     return invName.includes(target) || target.includes(invName);
+  });
+}
+
+// --- 「食材が呼びかける」機能 (食品ロス防止) ---
+// 一定日数以上在庫にあり、かつ直近の「料理した！」記録のどのレシピにも
+// 使われていない食材を検出する。調味料・常備品は対象外にする。
+
+const FORGOTTEN_INGREDIENT_MIN_DAYS = 5;
+
+export function getForgottenIngredients(minDays: number = FORGOTTEN_INGREDIENT_MIN_DAYS): Ingredient[] {
+  const inventory = getLocalIngredients();
+  const stats = getLocalUserStats();
+
+  // 表記ゆれ(「キャベツ」⇔「キャベツ（千切り）」等)に強くするため部分一致で判定する
+  const usedNames = (stats.cooked_records || [])
+    .flatMap(r => r.ingredientNames || [])
+    .map(n => n.trim().toLowerCase())
+    .filter(Boolean);
+
+  const now = Date.now();
+
+  return inventory.filter(item => {
+    if ((item.category || '') === '調味料') return false;
+    if (isPantryStaple(item.name)) return false;
+
+    const ageDays = (now - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageDays < minDays) return false;
+
+    const target = item.name.trim().toLowerCase();
+    const wasUsedRecently = usedNames.some(used => used.includes(target) || target.includes(used));
+    return !wasUsedRecently;
   });
 }
 
@@ -334,22 +377,24 @@ export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
 
 // --- 統計 ＆ PFC記録 (Stats) ---
 
+export const DEFAULT_USER_STATS: UserStats = {
+  streak_days: 1,
+  last_cooked_date: null,
+  total_cooked: 0,
+  saved_food_count: 0,
+  chef_level: 1,
+  total_calories: 0,
+  total_protein: 0,
+  total_fat: 0,
+  total_carbs: 0,
+  cooked_records: [],
+};
+
 export function getLocalUserStats(): UserStats {
-  return getStorage<UserStats>(KEYS.STATS, {
-    streak_days: 1,
-    last_cooked_date: new Date().toISOString().split('T')[0],
-    total_cooked: 0,
-    saved_food_count: 0,
-    chef_level: 1,
-    total_calories: 0,
-    total_protein: 0,
-    total_fat: 0,
-    total_carbs: 0,
-    cooked_records: [],
-  });
+  return getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
 }
 
-export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null): UserStats {
+export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null, ingredientNames: string[] = []): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
   let newStreak = stats.streak_days;
@@ -380,6 +425,7 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
     protein_g: addProtein,
     fat_g: addFat,
     carbs_g: addCarbs,
+    ingredientNames,
   };
 
   const updated: UserStats = {
@@ -455,6 +501,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   enableClimate: true,
   assumeSeasoningsAvailable: true,
   dietaryRestrictions: [],
+  preferredGenres: [],
 };
 
 export function getLocalUserProfile(): UserProfile {

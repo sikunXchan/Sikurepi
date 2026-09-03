@@ -41,6 +41,31 @@
   white-space: nowrap;
 }
 
+.iconWrap {
+  position: relative;
+  display: flex;
+}
+
+/* 「食材が呼びかける」対象がいる間、在庫タブに気づけるようにする赤バッジ */
+.forgottenBadge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-bg-solid);
+  line-height: 1;
+}
+
 .navItem.active span {
   font-weight: 900;
 }

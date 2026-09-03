@@ -139,31 +139,6 @@
   color: #374151;
 }
 
-.servingsGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.servingsBtn {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 8px 4px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #4b5563;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.servingsBtnActive {
-  background: rgba(255, 111, 145, 0.1);
-  border: 2px solid #ff6f91;
-  color: #ea580c;
-  font-weight: 700;
-}
-
 .tagGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

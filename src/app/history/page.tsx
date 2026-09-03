@@ -8,7 +8,7 @@ import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
-import RecipeThumbnail from "@/components/RecipeThumbnail";
+import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import {
   getLocalSavedRecipes,
@@ -23,7 +23,8 @@ import {
 } from "@/lib/storage";
 import styles from "./History.module.css";
 
-const GENRE_OPTIONS = ['和食', '洋食', '中華', 'アジア料理', '韓国料理', 'タイ料理', 'インド料理', 'メキシコ料理', '中東料理', 'イタリアン', 'フレンチ', 'その他'];
+// ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
+const GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS);
 const TIME_OPTIONS = [
   { label: 'すべて', value: '' },
   { label: '10分以内', value: '10' },
