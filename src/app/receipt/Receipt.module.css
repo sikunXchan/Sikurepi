@@ -19,8 +19,6 @@
   position: relative;
   cursor: pointer;
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   min-height: 250px;
   align-items: center;
   justify-content: center;
@@ -85,8 +83,6 @@
 
 .successAlert {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(32, 178, 170, 0.3);
   color: var(--foreground);
   padding: 24px;

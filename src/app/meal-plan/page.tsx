@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Pin } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
+import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -315,15 +316,19 @@ export default function MealPlanPage() {
         </div>
       )}
 
-      <div className={styles.header}>
-        <h1 className={styles.title}>📅 週間献立プランナー</h1>
-        {isNativeApp() && isPremium && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: '#b45309', background: 'rgba(245, 158, 11, 0.12)', padding: '4px 10px', borderRadius: 20 }}>
-            <Crown size={13} /> プレミアム
-          </span>
-        )}
-      </div>
-      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginTop: -8, lineHeight: 1.6 }}>
+      <PageHeader
+        title="週間献立プランナー"
+        subtitle="1週間ぶん、まとめて考えるよ"
+        mascot="bear_itadakimasu"
+        actions={
+          isNativeApp() && isPremium ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: '#b45309', background: 'rgba(245, 158, 11, 0.14)', padding: '5px 11px', borderRadius: 20 }}>
+              <Crown size={13} /> プレミアム
+            </span>
+          ) : undefined
+        }
+      />
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
         いらない日・食事はチェックを外してから生成してください。今日から7日分、在庫とPFC目標に合わせてAIが自動で組みます。
       </p>
 
@@ -482,28 +487,43 @@ export default function MealPlanPage() {
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>材料（不足分は📌で買い物リストへ）</div>
-                                  <ul style={{ fontSize: 13, marginBottom: 10, paddingLeft: 16, listStyle: 'none' }}>
+                                  <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>材料<span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>不足分は「追加」で買い物リストへ</span></div>
+                                  <ul style={{ fontSize: 14, marginBottom: 10, padding: 0, listStyle: 'none' }}>
                                     {(entry.recipe.ingredients || []).map((it, i) => {
                                       const missing = isIngredientMissing(it.name, ingredients);
                                       const pinKey = `${key}-${it.name}`;
                                       const isPinned = pinnedToShoppingSet.has(pinKey);
                                       return (
-                                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                        <li
+                                          key={i}
+                                          style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, minHeight: 44,
+                                            background: missing ? 'rgba(217, 43, 63, 0.06)' : 'transparent',
+                                            borderRadius: 12, padding: missing ? '2px 8px' : '2px 0',
+                                          }}
+                                        >
                                           <IngredientIcon name={it.name} size={28} />
+                                          <span style={{ flex: 1, minWidth: 0, color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
+                                            {it.name} {it.amount}
+                                          </span>
                                           {missing && (
                                             <button
                                               type="button"
                                               onClick={() => handlePinToShopping(key, it.name)}
-                                              title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
-                                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                              disabled={isPinned}
+                                              style={{
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                                                minHeight: 44, padding: '10px 14px', borderRadius: 999,
+                                                fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', border: 'none',
+                                                boxShadow: 'none', flexShrink: 0,
+                                                background: isPinned ? 'var(--background-secondary)' : '#d92b3f',
+                                                color: isPinned ? 'var(--text-secondary)' : '#ffffff',
+                                                cursor: isPinned ? 'default' : 'pointer',
+                                              }}
                                             >
-                                              <Pin size={12} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                              {isPinned ? '追加済み' : '＋ 追加'}
                                             </button>
                                           )}
-                                          <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
-                                            {it.name} {it.amount}
-                                          </span>
                                         </li>
                                       );
                                     })}

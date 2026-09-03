@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Pin } from "lucide-react";
+import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import PageHeader from "@/components/PageHeader";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
@@ -149,7 +150,11 @@ export default function HistoryPage() {
         </div>
       )}
 
-      <h1 className={styles.title}>📚 レシピ履歴・保存</h1>
+      <PageHeader
+        title="レシピ履歴・保存"
+        subtitle="お気に入りをふり返ろう"
+        mascot="bear_reading"
+      />
 
       {/* Search & Filter */}
       <div className={styles.searchSection}>
@@ -357,24 +362,27 @@ export default function HistoryPage() {
                           const pinKey = `${recipe.id}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);
                           return (
-                            <li key={i}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <li key={i} className={missing ? styles.ingredientMissing : undefined}>
+                              <span className={styles.ingredientName}>
                                 <IngredientIcon name={item.name} size={30} />
+                                <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
+                                  {item.name}
+                                </span>
+                              </span>
+                              <span className={styles.ingredientRight}>
+                                <span className={styles.ingredientAmount}>{item.amount}</span>
                                 {missing && (
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handlePinToShopping(recipe.id, item.name); }}
-                                    title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
-                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                    className={isPinned ? styles.addedBtn : styles.addToCartBtn}
+                                    disabled={isPinned}
                                   >
-                                    <Pin size={13} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                    {isPinned ? <Check size={15} /> : <Plus size={15} />}
+                                    {isPinned ? '追加済み' : '追加'}
                                   </button>
                                 )}
-                                <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
-                                  {item.name}
-                                </span>
                               </span>
-                              <span className="text-muted">{item.amount}</span>
                             </li>
                           );
                         })}

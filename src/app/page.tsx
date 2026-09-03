@@ -7,6 +7,7 @@ import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
   addLocalIngredient,
@@ -222,18 +223,21 @@ export default function Home() {
       )}
 
       {/* ヘッダーエリア */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>📦 冷蔵庫の在庫</h1>
-        <button
-          type="button"
-          className={styles.settingsBtn}
-          onClick={() => setIsSettingsOpen(true)}
-          title="マイ設定・自炊統計"
-        >
-          <Settings size={18} />
-          <span>マイ設定</span>
-        </button>
-      </div>
+      <PageHeader
+        title="冷蔵庫の在庫"
+        subtitle="いま家にあるものを教えてね"
+        mascot="bear_basket"
+        actions={
+          <button
+            type="button"
+            className={styles.settingsBtn}
+            onClick={() => setIsSettingsOpen(true)}
+            title="マイ設定・自炊統計"
+          >
+            <Settings size={18} />
+          </button>
+        }
+      />
 
       <ChefProfileBadge />
 

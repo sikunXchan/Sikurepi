@@ -5,6 +5,7 @@ import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkle
 import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import { addLocalIngredient } from "@/lib/storage";
+import PageHeader from "@/components/PageHeader";
 import styles from "./Receipt.module.css";
 
 type ExtractedItem = {
@@ -134,9 +135,13 @@ export default function ReceiptPage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>📷 食材スキャン・画像解析</h1>
+      <PageHeader
+        title="食材スキャン"
+        subtitle="レシートを撮るだけで登録できるよ"
+        mascot="bear_wave"
+      />
 
-      <p className="text-center text-muted mb-4" style={{ fontSize: 13, lineHeight: 1.5 }}>
+      <p className="text-muted mb-4" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>
         レシートや冷蔵庫・食材の写真をアップロードすると、AIが食材を自動検出します（複数枚同時OK）。
       </p>
 

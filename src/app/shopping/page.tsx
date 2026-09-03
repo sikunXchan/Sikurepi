@@ -11,6 +11,7 @@ import {
   ShoppingItem
 } from "@/lib/storage";
 import IngredientIcon from "@/components/IngredientIcon";
+import PageHeader from "@/components/PageHeader";
 import styles from "./Shopping.module.css";
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
@@ -150,7 +151,11 @@ export default function ShoppingPage() {
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <h1 className={styles.title}>🛒 買い物リスト</h1>
+      <PageHeader
+        title="買い物リスト"
+        subtitle="売り場ごとにまとめておいたよ"
+        mascot="bear_basket"
+      />
 
       <form onSubmit={handleAdd} className={styles.addForm}>
         <input
