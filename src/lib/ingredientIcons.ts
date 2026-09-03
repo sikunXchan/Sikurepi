@@ -27,7 +27,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   shiitake: ["しいたけ", "椎茸", "生しいたけ"],
   driedshiitake: ["干ししいたけ", "干し椎茸"],
   enoki2: ["えのき", "えのきたけ", "エノキ"],
-  shimeji: ["しめじ"],
+  shimeji: ["しめじ", "ブナシメジ", "ぶなしめじ"],
   eringi: ["エリンギ"],
   maitake: ["舞茸", "まいたけ"],
   konnyaku: ["こんにゃく", "コンニャク", "蒟蒻"],
@@ -42,6 +42,8 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   pumpkin: ["かぼちゃ", "カボチャ", "南瓜"],
   okra2: ["オクラ"],
   edamame2: ["えだまめ", "枝豆"],
+  chickpea: ["ひよこ豆", "チャナ豆"],
+  lentil: ["レンズ豆", "レンティル"],
   beansprout2: ["もやし"],
   shiso: ["しそ", "大葉", "シソ"],
   myoga: ["みょうが", "茗荷"],
@@ -79,7 +81,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   // 肉アイコンにフォールバックするようにする（longest-match優先なので、より
   // 具体的な部位名の登録があればそちらが優先される）。
   pork: ["ぶたにく", "豚肉", "豚バラ", "豚バラ肉", "豚こま", "豚こま切れ肉", "豚ロース", "豚肩ロース", "豚ひき肉", "豚"],
-  chicken: ["とりにく", "鶏肉", "鶏もも肉", "鶏むね肉", "鶏胸肉", "鶏ささみ", "鶏ひき肉", "手羽先", "手羽元", "鶏"],
+  chicken: ["とりにく", "鶏肉", "鶏もも肉", "鶏むね肉", "鶏胸肉", "鶏ささみ", "ささみ", "鶏ひき肉", "手羽先", "手羽元", "鶏"],
   beef: ["ぎゅうにく", "牛肉", "牛こま切れ肉", "牛薄切り肉", "牛バラ肉", "合いびき肉", "牛ひき肉", "牛"],
   hikiniku: ["ひき肉", "挽肉", "ミンチ"],
   tsumire: ["つみれ", "肉団子", "つくね"],
@@ -87,6 +89,10 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   ham: ["ハム"],
   wiener: ["ウインナー", "ウィンナー", "ソーセージ"],
   saladchicken: ["サラダチキン"],
+  lamb: ["ラム肉", "マトン", "羊肉"],
+  duck: ["鴨肉", "かも肉", "ダック"],
+  turkey: ["七面鳥", "ターキー"],
+  plantmeat: ["代替肉", "プラントベースミート", "大豆ミート"],
 
   // --- 魚介 ---
   salmon: ["さけ", "鮭", "サーモン"],
@@ -131,6 +137,10 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   aburaage: ["油揚げ", "あぶらあげ"],
   atsuage: ["厚揚げ"],
   soymilk: ["とうにゅう", "豆乳"],
+  tempeh: ["テンペ"],
+  oatmilk: ["オーツミルク"],
+  almondmilk: ["アーモンドミルク"],
+  coconutmilk: ["ココナッツミルク"],
 
   // --- 主食・粉物 ---
   rice: ["ごはん", "ご飯", "米", "白米"],
@@ -146,6 +156,11 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   mochi: ["おもち", "お餅", "もち", "餅"],
   somen: ["そうめん", "素麺"],
   chukamen: ["中華麺", "中華そば", "ラーメン"],
+  quinoa: ["キヌア", "キノア"],
+  couscous: ["クスクス"],
+  tortilla: ["トルティーヤ"],
+  pita: ["ピタパン", "ピタ"],
+  naan: ["ナン"],
 
   // --- 果物 ---
   apple: ["りんご", "リンゴ", "林檎"],
@@ -166,6 +181,13 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   persimmon: ["柿", "干し柿", "富有柿"],
   almond: ["アーモンド"],
   raisin: ["レーズン", "干しぶどう"],
+  lime: ["ライム"],
+  dragonfruit: ["ドラゴンフルーツ"],
+  pomegranate: ["ざくろ", "ザクロ"],
+  fig: ["いちじく", "イチジク"],
+  pistachio: ["ピスタチオ"],
+  pinenut: ["松の実"],
+  hazelnut: ["ヘーゼルナッツ"],
 
   // --- お菓子・スイーツ ---
   shortcake: ["ショートケーキ", "いちごのショートケーキ"],
@@ -177,6 +199,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   strawberryjam: ["いちごジャム", "ストロベリージャム"],
   chocolatespread: ["チョコレートスプレッド", "チョコソース"],
   whippedcream: ["ホイップクリーム", "デコレーションクリーム"],
+  chocolate: ["チョコレート", "チョコ", "板チョコ"],
 
   // --- 調味料・油 ---
   salt: ["塩", "しお"],
@@ -208,6 +231,18 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   oystersauce: ["オイスターソース"],
   toubanjan: ["豆板醤", "トウバンジャン"],
   currypowder: ["カレー粉"],
+  hummus: ["フムス", "ハムス"],
+  tahini: ["タヒニ"],
+  salsa: ["サルサ"],
+  sriracha: ["スリラチャ"],
+  pesto: ["ペスト"],
+  thaicurrypaste: ["タイカレーペースト"],
+  cumin: ["クミン"],
+  turmeric: ["ターメリック", "うこん"],
+  cinnamon: ["シナモン"],
+
+  // --- 飲み物 ---
+  water: ["ミネラルウォーター", "おみず", "水"],
 };
 
 // 見た目の面積が小さすぎる/表記ゆれで衝突しやすい短いキーワードより、

@@ -114,7 +114,7 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsS
     }
   ]
 }
-genreは「和食」「洋食」「中華」「アジア料理」「イタリアン」「フレンチ」「その他」から選んでください。`;
+genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「その他」から選んでください。`;
 
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
