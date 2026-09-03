@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Pin, Lightbulb, PlayCircle, Sparkles, Settings } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, Sparkles, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -10,6 +10,7 @@ import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -51,13 +52,13 @@ type CookingTip = {
 };
 
 const TEMPLATES = [
-  { label: '⏳ 10分時短', query: '10分以内で手早く作れる時短おかず' },
-  { label: '🍱 お弁当用', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
-  { label: '💪 ガッツリ肉', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
-  { label: '🥗 ヘルシー・低糖質', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
-  { label: '🍲 鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
-  { label: '🍰 簡単スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
-  { label: '🍽️ 洗い物ラクラク', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
+  { emoji: '⏳', label: '10分時短', query: '10分以内で手早く作れる時短おかず' },
+  { emoji: '🍱', label: 'お弁当', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
+  { emoji: '💪', label: 'ガッツリ肉', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
+  { emoji: '🥗', label: 'ヘルシー', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
+  { emoji: '🍲', label: '鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
+  { emoji: '🍰', label: 'スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { emoji: '🧽', label: '洗い物ラク', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ];
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
@@ -245,18 +246,21 @@ export default function RecipePage() {
       )}
 
       {/* ヘッダーエリア */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>🍳 AIレシピ提案</h1>
-        <button
-          type="button"
-          className={styles.settingsBtn}
-          onClick={() => setIsSettingsOpen(true)}
-          title="マイ設定"
-        >
-          <Settings size={18} />
-          <span>マイ設定</span>
-        </button>
-      </div>
+      <PageHeader
+        title="AIレシピ提案"
+        subtitle="今日はなに作る？"
+        mascot="bear_hero"
+        actions={
+          <button
+            type="button"
+            className={styles.settingsBtn}
+            onClick={() => setIsSettingsOpen(true)}
+            title="マイ設定"
+          >
+            <Settings size={18} />
+          </button>
+        }
+      />
 
       <ClimateBar />
 
@@ -319,26 +323,22 @@ export default function RecipePage() {
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
             💡 おすすめテンプレート
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TEMPLATES.map((tmpl, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => handleApplyTemplate(tmpl.query)}
-                style={{
-                  background: instruction === tmpl.query ? 'rgba(255, 111, 145, 0.15)' : 'var(--card-bg-solid)',
-                  color: instruction === tmpl.query ? 'var(--primary)' : 'var(--foreground)',
-                  border: instruction === tmpl.query ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                {tmpl.label}
-              </button>
-            ))}
+          {/* モックアップに合わせて、アイコンを上・ラベルを下に置いた横スクロールのタイルにする */}
+          <div className={styles.templateRow}>
+            {TEMPLATES.map((tmpl, i) => {
+              const selected = instruction === tmpl.query;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleApplyTemplate(tmpl.query)}
+                  className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
+                >
+                  <span className={styles.templateEmoji}>{tmpl.emoji}</span>
+                  <span className={styles.templateLabel}>{tmpl.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -445,6 +445,13 @@ export default function RecipePage() {
       {/* レシピ一覧表示 */}
       {recipes.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className={styles.resultsBanner}>
+            <img src="/mascot/bear_serving.png" alt="" width={52} height={52} />
+            <div>
+              <div className={styles.resultsBannerTitle}>{recipes.length}品できたよ！</div>
+              <div className={styles.resultsBannerSub}>気に入ったら保存してね</div>
+            </div>
+          </div>
           {recipes.map((recipe, index) => {
             const isExpanded = expandedIndex === index;
             const isSaved = savedSet.has(index);
@@ -495,11 +502,11 @@ export default function RecipePage() {
                       </div>
                     )}
 
-                    {/* 材料リスト（不足分は赤字＋📌で買い物リストへ） */}
+                    {/* 材料リスト（不足分は赤字＋「追加」ボタンで買い物リストへ） */}
                     <div className={styles.section}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <h3>材料・調味料</h3>
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>不足分は📌で買い物リストへ</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>不足分は「追加」で買い物リストへ</span>
                       </div>
                       <ul className={styles.ingredientList}>
                         {recipe.ingredients.map((item, i) => {
@@ -507,24 +514,27 @@ export default function RecipePage() {
                           const pinKey = `${index}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);
                           return (
-                            <li key={i}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <li key={i} className={missing ? styles.ingredientMissing : undefined}>
+                              <span className={styles.ingredientName}>
                                 <IngredientIcon name={item.name} size={30} />
+                                <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
+                                  {item.name}
+                                </span>
+                              </span>
+                              <span className={styles.ingredientRight}>
+                                <span className={styles.ingredientAmount}>{item.amount}</span>
                                 {missing && (
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handlePinToShopping(index, item.name); }}
-                                    title={isPinned ? '買い物リストに追加済み' : 'ピン留めして買い物リストに追加'}
-                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: isPinned ? 'var(--primary)' : '#ef4444' }}
+                                    className={isPinned ? styles.addedBtn : styles.addToCartBtn}
+                                    disabled={isPinned}
                                   >
-                                    <Pin size={13} fill={isPinned ? 'var(--primary)' : 'none'} />
+                                    {isPinned ? <Check size={15} /> : <Plus size={15} />}
+                                    {isPinned ? '追加済み' : '追加'}
                                   </button>
                                 )}
-                                <span style={{ color: missing ? '#ef4444' : 'var(--foreground)', fontWeight: missing ? 700 : 400 }}>
-                                  {missing ? '' : '• '}{item.name}
-                                </span>
                               </span>
-                              <span className="text-muted">{item.amount}</span>
                             </li>
                           );
                         })}

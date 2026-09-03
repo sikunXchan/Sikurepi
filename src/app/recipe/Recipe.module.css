@@ -277,8 +277,6 @@
 
 .recipeCard {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius);
   overflow: hidden;
@@ -291,8 +289,6 @@
 
 @media (max-width: 768px) {
   .recipeCard {
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     /* Disable 3D perspective on mobile — hurts performance */
     transform-style: flat;
     perspective: none;
@@ -462,14 +458,88 @@
 .ingredientList li {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 15px;
   border-bottom: 1px dashed var(--border);
-  padding-bottom: 6px;
-  align-items: flex-end;
+  padding-bottom: 8px;
+  align-items: center;
+  min-height: 44px;
 }
 
 .ingredientList li:last-child {
   border-bottom: none;
+}
+
+/* 在庫にない材料は行ごと薄い赤地にして、一目で「買い足す物」だと分かるようにする */
+.ingredientMissing {
+  background: rgba(217, 43, 63, 0.06);
+  border-radius: 12px;
+  padding: 4px 8px 8px;
+  margin: 0 -8px;
+}
+
+.ingredientName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ingredientRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ingredientAmount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* タップ領域を44px確保する（従来は13pxのピンアイコンだけで押しにくかった） */
+.addToCartBtn,
+.addedBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.addToCartBtn {
+  background: #d92b3f;
+  color: #ffffff;
+}
+
+.addToCartBtn:hover {
+  background: #b81f31;
+  transform: none;
+  box-shadow: none;
+}
+
+.addedBtn {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: default;
+  opacity: 1;
+}
+
+.addedBtn:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .stepList {
@@ -856,4 +926,93 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* 生成結果の先頭に出すマスコット付きバナー */
+.resultsBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  box-shadow: var(--glass-shadow);
+}
+
+.resultsBannerTitle {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--primary-text);
+}
+
+.resultsBannerSub {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* モックアップ風のカテゴリタイル（アイコン上・ラベル下の横スクロール） */
+.templateRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  /* iOSの慣性スクロールとスナップ */
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.templateRow::-webkit-scrollbar {
+  display: none;
+}
+
+.templateTile {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  width: 72px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 18px;
+  background: var(--card-bg-solid);
+  border: 1.5px solid var(--border);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.templateTile:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--primary-light);
+}
+
+.templateTileActive {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(224, 70, 110, 0.3);
+}
+
+.templateEmoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.templateLabel {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.templateTileActive .templateLabel {
+  color: #ffffff;
 }

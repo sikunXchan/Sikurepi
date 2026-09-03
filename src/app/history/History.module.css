@@ -24,8 +24,6 @@
 
 .recipeCard {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius);
   overflow: hidden;
@@ -181,13 +179,87 @@
 .ingredientList li {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
-  padding-bottom: 4px;
+  gap: 10px;
+  align-items: center;
+  font-size: 15px;
+  padding-bottom: 8px;
+  min-height: 44px;
   border-bottom: 1px dashed var(--border);
 }
 
 .ingredientList li:last-child {
   border-bottom: none;
+}
+
+/* 在庫にない材料は行ごと薄い赤地にして、一目で「買い足す物」だと分かるようにする */
+.ingredientMissing {
+  background: rgba(217, 43, 63, 0.06);
+  border-radius: 12px;
+  padding: 4px 8px 8px;
+  margin: 0 -8px;
+}
+
+.ingredientName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ingredientRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ingredientAmount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* タップ領域を44px確保する（従来は13pxのピンアイコンだけで押しにくかった） */
+.addToCartBtn,
+.addedBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.addToCartBtn {
+  background: #d92b3f;
+  color: #ffffff;
+}
+
+.addToCartBtn:hover {
+  background: #b81f31;
+  transform: none;
+  box-shadow: none;
+}
+
+.addedBtn {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+.addedBtn:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .stepList {
@@ -209,10 +281,6 @@
 }
 
 @media (max-width: 768px) {
-  .recipeCard {
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-  }
 
   .recipeCard:hover {
     transform: none;

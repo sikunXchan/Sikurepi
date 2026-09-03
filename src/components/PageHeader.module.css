@@ -1,0 +1,52 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.mascot {
+  flex-shrink: 0;
+  object-fit: contain;
+  /* ドット絵なので拡大時にぼかさない */
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--primary-text);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 380px) {
+  .title {
+    font-size: 21px;
+  }
+
+  .mascot {
+    width: 46px;
+    height: 46px;
+  }
+}
