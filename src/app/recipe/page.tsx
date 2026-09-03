@@ -21,6 +21,9 @@ import {
   getRecentLocalRecipeNames,
   saveLocalTip,
   isIngredientMissing,
+  getLocalLastRecipeGeneration,
+  setLocalLastRecipeGeneration,
+  DEFAULT_USER_PROFILE,
   Ingredient,
   UserProfile,
   ClimateState,
@@ -69,7 +72,10 @@ const TIP_CATEGORY_COLORS: Record<string, string> = {
 
 export default function RecipePage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
+  // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
+  // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
+  // 安全な初期値を渡し実データはloadLocalData()のuseEffectでのみ取得する
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
@@ -86,12 +92,33 @@ export default function RecipePage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
+  // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
+  const [sessionServings, setSessionServings] = useState<number>(2);
 
   useEffect(() => {
     loadLocalData();
     const handleUpdate = () => loadLocalData();
     window.addEventListener("storage-updated", handleUpdate);
     return () => window.removeEventListener("storage-updated", handleUpdate);
+  }, []);
+
+  // 前回の生成結果を復元する（別タブへ移動して戻ってきても消えないように）。
+  // マウント時に一度だけ行い、storage-updated発火のたびに入力中のフォームを
+  // 上書きしてしまわないようにする。
+  useEffect(() => {
+    const cached = getLocalLastRecipeGeneration();
+    if (cached) {
+      setRecipes(cached.recipes);
+      setCookingTips(cached.cookingTips);
+      setExpandedIndex(cached.expandedIndex);
+      setSavedSet(new Set(cached.savedIndices));
+      setCreationMode(cached.creationMode);
+      setInstruction(cached.instruction);
+      setSelectedIngredientIds(cached.selectedIngredientIds);
+      setSessionServings(cached.servings);
+    } else {
+      setSessionServings(getLocalUserProfile().servings || 2);
+    }
   }, []);
 
   const loadLocalData = () => {
@@ -135,7 +162,7 @@ export default function RecipePage() {
       const payload = {
         ingredients: selectedNames,
         instruction: instruction.trim() || undefined,
-        servings: userProfile.servings || 2,
+        servings: sessionServings,
         userProfile: {
           ...userProfile,
           tastePreferences: userProfile.tastePreferences || [],
@@ -166,14 +193,28 @@ export default function RecipePage() {
         throw new Error("レシピが見つかりませんでした。条件を変えてお試しください。");
       }
 
-      if (data.cooking_tips && data.cooking_tips.length > 0) {
-        setCookingTips(data.cooking_tips);
+      const tips = data.cooking_tips && data.cooking_tips.length > 0 ? data.cooking_tips : [];
+      if (tips.length > 0) {
+        setCookingTips(tips);
         setShowTips(true);
         // Tips を豆知識ライブラリへ自動蓄積
-        data.cooking_tips.forEach((t: CookingTip) => {
+        tips.forEach((t: CookingTip) => {
           saveLocalTip(t.category, t.tip);
         });
       }
+
+      // 別タブへ移動しても前回の生成結果が消えないように保存しておく
+      setLocalLastRecipeGeneration({
+        recipes: data.recipes,
+        cookingTips: tips,
+        expandedIndex: 0,
+        savedIndices: [],
+        creationMode,
+        instruction,
+        selectedIngredientIds,
+        servings: sessionServings,
+        savedAt: new Date().toISOString(),
+      });
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || "エラーが発生しました");
@@ -201,6 +242,16 @@ export default function RecipePage() {
       });
 
       setSavedSet(prev => new Set(prev).add(index));
+
+      // キャッシュ上の保存済みフラグも更新しておく（タブを移動して戻っても保存済み表示が残るように）
+      const cached = getLocalLastRecipeGeneration();
+      if (cached) {
+        setLocalLastRecipeGeneration({
+          ...cached,
+          savedIndices: Array.from(new Set([...cached.savedIndices, index])),
+        });
+      }
+
       confetti({
         particleCount: 50,
         spread: 60,
@@ -355,6 +406,34 @@ export default function RecipePage() {
             onChange={(e) => setInstruction(e.target.value)}
             style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13 }}
           />
+        </div>
+
+        {/* 人数 (マイページの設定をデフォルトに使いつつ、生成のたびに個別に変更できる) */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', display: 'block', marginBottom: 8 }}>
+            👥 今回作る人数
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            {[1, 2, 3, 4].map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setSessionServings(n)}
+                style={{
+                  background: sessionServings === n ? 'rgba(255, 111, 145, 0.1)' : 'var(--background-secondary)',
+                  border: sessionServings === n ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  borderRadius: 12,
+                  padding: '8px 4px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: sessionServings === n ? '#ea580c' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {n}人分
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 在庫選択 (在庫モード時のみ) */}

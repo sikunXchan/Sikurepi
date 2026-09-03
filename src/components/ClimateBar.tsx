@@ -6,6 +6,7 @@ import {
   setLocalClimateState,
   getLocalUserProfile,
   setLocalUserProfile,
+  DEFAULT_CLIMATE_STATE,
   ClimateState
 } from "@/lib/storage";
 import { CLIMATE_PRESETS, getAutoTimeOfDay, fetchRealWeather } from "@/lib/climate";
@@ -21,7 +22,10 @@ const CLIMATE_ICONS: Record<string, string> = {
 };
 
 export default function ClimateBar() {
-  const [climate, setClimate] = useState<ClimateState>(getLocalClimateState());
+  // getLocalClimateState()を直接初期値に渡すとSSR時のデフォルト値とクライアント
+  // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
+  // 安全な初期値を渡し実データはloadState()のuseEffectでのみ取得する
+  const [climate, setClimate] = useState<ClimateState>(DEFAULT_CLIMATE_STATE);
   const [enableClimate, setEnableClimate] = useState(true);
 
   useEffect(() => {
