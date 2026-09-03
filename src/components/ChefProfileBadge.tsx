@@ -5,12 +5,15 @@ import { Flame, Leaf } from "lucide-react";
 import { getLocalUserStats, UserStats } from "@/lib/storage";
 import styles from "./ChefProfileBadge.module.css";
 
+// 絵文字だと「もっとレベルを上げたい」という気持ちにつながりにくいため、
+// アプリの顔であるクマのマスコットをランクごとに変えて表示する。
+// (将来的には昇格演出専用のバッジイラストに差し替え予定)
 const CHEF_RANKS = [
-  { level: 1, name: "見習いシェフ", icon: "🍳" },
-  { level: 2, name: "一人前シェフ", icon: "👨‍🍳" },
-  { level: 3, name: "家庭の料理人", icon: "⭐" },
-  { level: 4, name: "凄腕マスター", icon: "🌟" },
-  { level: 5, name: "三つ星シェフ", icon: "👑" },
+  { level: 1, name: "見習いシェフ", mascot: "bear_reading" },
+  { level: 2, name: "一人前シェフ", mascot: "bear_wave" },
+  { level: 3, name: "家庭の料理人", mascot: "bear_basket" },
+  { level: 4, name: "凄腕マスター", mascot: "bear_serving" },
+  { level: 5, name: "三つ星シェフ", mascot: "bear_hero" },
 ];
 
 export default function ChefProfileBadge() {
@@ -32,7 +35,13 @@ export default function ChefProfileBadge() {
   return (
     <div className={styles.badgeContainer}>
       <div className={styles.rankPill}>
-        <span className={styles.rankIcon}>{currentRank.icon}</span>
+        <img
+          src={`/mascot/${currentRank.mascot}.png`}
+          alt=""
+          className={styles.rankIcon}
+          width={26}
+          height={26}
+        />
         <span className={styles.rankName}>Lv.{stats.chef_level} {currentRank.name}</span>
       </div>
 

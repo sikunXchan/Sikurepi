@@ -27,6 +27,16 @@ const TASTE_OPTIONS = [
   "お酒のおつまみ風",
 ];
 
+const DIETARY_OPTIONS = [
+  "ベジタリアン",
+  "ヴィーガン",
+  "ハラール（イスラム教）",
+  "コーシャ（ユダヤ教）",
+  "豚肉不可",
+  "牛肉不可",
+  "アルコール不可",
+];
+
 const STYLE_OPTIONS = [
   "15分以内の時短",
   "フライパン1つ（ワンパン）",
@@ -85,6 +95,16 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         ? current.filter(s => s !== style)
         : [...current, style];
       return { ...prev, cookingStyles: list };
+    });
+  };
+
+  const toggleDietary = (option: string) => {
+    setProfile(prev => {
+      const current = prev.dietaryRestrictions || [];
+      const list = current.includes(option)
+        ? current.filter(d => d !== option)
+        : [...current, option];
+      return { ...prev, dietaryRestrictions: list };
     });
   };
 
@@ -299,6 +319,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 );
               })}
             </div>
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>🕌 食事制限・宗教上の配慮</label>
+            <div className={styles.tagGrid}>
+              {DIETARY_OPTIONS.map(option => {
+                const active = (profile.dietaryRestrictions || []).includes(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
+                    onClick={() => toggleDietary(option)}
+                  >
+                    {active ? `✓ ${option}` : option}
+                  </button>
+                );
+              })}
+            </div>
+            <span className={styles.hint}>※ 選択すると、アレルギーと同じく絶対に破らない制約としてAIに伝わります（例: ヴィーガンなら肉・魚・卵・乳製品を一切提案しません）</span>
           </div>
 
           <div className={styles.section}>

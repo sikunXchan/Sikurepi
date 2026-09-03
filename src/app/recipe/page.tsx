@@ -141,6 +141,7 @@ export default function RecipePage() {
           tastePreferences: userProfile.tastePreferences || [],
           excludedIngredients: userProfile.excludedIngredients || [],
           cookingStyles: userProfile.cookingStyles || [],
+          dietaryRestrictions: userProfile.dietaryRestrictions || [],
         },
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         recentRecipes,
@@ -562,7 +563,10 @@ export default function RecipePage() {
                       </div>
                       <ol className={styles.stepList}>
                         {recipe.steps.map((step, i) => (
-                          <li key={i}>{step}</li>
+                          <li key={i}>
+                            <span className={styles.stepNumber}>{i + 1}</span>
+                            <span className={styles.stepText}>{step}</span>
+                          </li>
                         ))}
                       </ol>
                     </div>

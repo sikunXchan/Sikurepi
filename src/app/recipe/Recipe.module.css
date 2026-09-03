@@ -457,8 +457,9 @@
 
 .ingredientList li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px 10px;
   font-size: 15px;
   border-bottom: 1px dashed var(--border);
   padding-bottom: 8px;
@@ -482,8 +483,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
-  flex: 1;
+  /* 右側(分量+追加ボタン)が長い行だと名前の幅が数文字分まで潰れ、
+     日本語が1文字ずつ縦に折り返されて読めなくなっていたため、
+     最低幅を確保して先に右側を次の行へ逃がす */
+  min-width: 140px;
+  flex: 1 1 140px;
 }
 
 .ingredientRight {
@@ -491,6 +495,7 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .ingredientAmount {
@@ -542,13 +547,45 @@
   box-shadow: none;
 }
 
+/* 番号だけの箇条書きは色も強調もなく読みにくかったため、
+   ステップごとにピンクの丸番号バッジ＋濃色太字テキストのカードにする */
 .stepList {
-  padding-left: 20px;
+  list-style: none;
+  padding-left: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 14px;
+}
+
+.stepList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255, 111, 145, 0.05);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.stepNumber {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepText {
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.6;
+  color: var(--foreground);
+  padding-top: 3px;
 }
 
 .stepsSectionHeader {
