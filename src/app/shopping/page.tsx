@@ -10,6 +10,7 @@ import {
   toggleLocalShoppingItem,
   ShoppingItem
 } from "@/lib/storage";
+import IngredientIcon from "@/components/IngredientIcon";
 import styles from "./Shopping.module.css";
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
@@ -205,6 +206,7 @@ export default function ShoppingPage() {
                               >
                                 <Check size={16} />
                               </div>
+                              <IngredientIcon name={item.name} size={32} />
                               <span className={styles.itemName}>{item.name}</span>
                             </div>
                             <button

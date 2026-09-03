@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
@@ -358,6 +359,7 @@ export default function HistoryPage() {
                           return (
                             <li key={i}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <IngredientIcon name={item.name} size={30} />
                                 {missing && (
                                   <button
                                     type="button"

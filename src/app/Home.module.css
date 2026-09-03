@@ -211,8 +211,8 @@
 /* Category groups */
 .nameSection {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   flex: 1;
   min-width: 0;
 }

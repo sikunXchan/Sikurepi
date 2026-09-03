@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Pin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -475,6 +476,7 @@ export default function MealPlanPage() {
                                       const isPinned = pinnedToShoppingSet.has(pinKey);
                                       return (
                                         <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                          <IngredientIcon name={it.name} size={28} />
                                           {missing && (
                                             <button
                                               type="button"

@@ -9,6 +9,7 @@ import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -485,6 +486,7 @@ export default function RecipePage() {
                           return (
                             <li key={i}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <IngredientIcon name={item.name} size={30} />
                                 {missing && (
                                   <button
                                     type="button"

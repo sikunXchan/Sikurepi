@@ -7,6 +7,7 @@ import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import InventoryMindMap from "@/components/InventoryMindMap";
+import IngredientIcon from "@/components/IngredientIcon";
 import {
   getLocalIngredients,
   addLocalIngredient,
@@ -283,7 +284,8 @@ export default function Home() {
                           className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""}`}
                         >
                           <div className={styles.nameSection}>
-                            {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6 }} />}
+                            <IngredientIcon name={item.name} size={36} />
+                            {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, flexShrink: 0 }} />}
                             <span>{item.name}</span>
                           </div>
                           <div className={styles.actions}>
