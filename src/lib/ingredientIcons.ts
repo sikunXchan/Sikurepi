@@ -261,10 +261,13 @@ const FLAT: { keyword: string; slug: string }[] = Object.entries(ICON_KEYWORDS)
   .flatMap(([slug, keywords]) => keywords.map((keyword) => ({ keyword, slug })))
   .sort((a, b) => b.keyword.length - a.keyword.length);
 
-// embeddingMatch.ts が「静的キーワードでは判定できなかった食材名」をオフラインの
-// 意味マッチングで判定する際、既存のアイコンキーワード辞書をアンカー(=判定基準の
-// 参照文言)としてそのまま再利用するための公開用エイリアス。
+// 静的キーワードでは判定できなかった食材名(英語表記など)をAPI経由のAI判定
+// (/api/classify-ingredient)に回す際、既存のアイコンキーワード辞書をそのまま
+// 選択肢として再利用するための公開用エイリアス。
 export const ICON_ANCHOR_LIST: { keyword: string; slug: string }[] = FLAT;
+
+// アイコンslugの一覧(重複なし)。AI判定プロンプトの選択肢として使う。
+export const ICON_SLUGS: string[] = Object.keys(ICON_KEYWORDS);
 
 export const ICON_BASE_PATH = "/ingredients/";
 

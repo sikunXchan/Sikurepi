@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import LanguageToggle from "@/components/LanguageToggle";
-import AIMatchConsentModal from "@/components/AIMatchConsentModal";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
@@ -37,7 +36,6 @@ export default function RootLayout({
             {children}
           </div>
           <BottomNav />
-          <AIMatchConsentModal />
         </LanguageProvider>
       </body>
     </html>
