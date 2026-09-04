@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, DISH_LOAD_INSTRUCTION, RecipeProfile } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -18,6 +18,7 @@ function computeDailyTargets(profile: RecipeProfile | null | undefined) {
 }
 
 export async function POST(req: Request) {
+  let language: Language = 'ja';
   try {
     const body = await req.json();
     const {
@@ -30,9 +31,14 @@ export async function POST(req: Request) {
       recentHistory,
       mode,
     } = body;
+    language = body.language === 'en' ? 'en' : 'ja';
 
     if (!Array.isArray(slots) || slots.length === 0) {
-      return NextResponse.json({ error: '献立を生成する日付・食事枠が指定されていません' }, { status: 400 });
+      return NextResponse.json({
+        error: language === 'en'
+          ? 'Please select at least one day and meal slot to generate a plan for'
+          : '献立を生成する日付・食事枠が指定されていません',
+      }, { status: 400 });
     }
 
     const actualProfile = userProfile || profile;
@@ -78,6 +84,7 @@ export async function POST(req: Request) {
 1食あたりの目安: カロリー約${perMealCalories}kcal、タンパク質約${perMealProtein}g、脂質約${perMealFat}g、炭水化物約${perMealCarbs}g
 今回生成する${slots.length}食の合計目安: カロリー約${weeklyCalories}kcal、タンパク質約${weeklyProtein}g、脂質約${weeklyFat}g、炭水化物約${weeklyCarbs}g
 ※ 個々のレシピは目安から前後してよいですが、指定された全レシピの栄養価の合計が、この週間合計目安のプラスマイナス15%程度に収まるように、各食の分量・内容を調整してください。夕食はやや多め、昼食はやや控えめ、など常識的な配分は問題ありません。\n`;
+    const languageSection = buildLanguageSection(language);
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに1品ずつ、家庭で再現できる料理を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
 
@@ -85,7 +92,7 @@ export async function POST(req: Request) {
 ${slotLines}
 
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
 【重要・厳守事項】
 1. 上記の日付・食事枠それぞれに必ず1品ずつ、過不足なくレシピを割り当ててください。
 2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。
@@ -114,7 +121,7 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsS
     }
   ]
 }
-genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。`;
+genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -137,8 +144,16 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     console.error('Weekly Plan Gen Error:', error);
     const status = error?.status || error?.httpStatusCode || error?.code;
     if (status === 429 || status === 503 || status === 'UNAVAILABLE') {
-      return NextResponse.json({ error: 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。' }, { status: 503 });
+      return NextResponse.json({
+        error: language === 'en'
+          ? 'The AI model is temporarily busy. Please try again in a moment.'
+          : 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。',
+      }, { status: 503 });
     }
-    return NextResponse.json({ error: `週間献立の生成に失敗しました: ${error.message}` }, { status: 500 });
+    return NextResponse.json({
+      error: language === 'en'
+        ? `Failed to generate weekly plan: ${error.message}`
+        : `週間献立の生成に失敗しました: ${error.message}`,
+    }, { status: 500 });
   }
 }

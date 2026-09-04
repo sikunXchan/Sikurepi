@@ -187,7 +187,7 @@ export default function HistoryPage() {
           >
             <option value="">{t.history.genreAll}</option>
             {GENRE_OPTIONS.map(g => (
-              <option key={g} value={g}>{g}</option>
+              <option key={g} value={g}>{t.tagLabel[g] || g}</option>
             ))}
           </select>
 
@@ -279,7 +279,7 @@ export default function HistoryPage() {
                     <div className={styles.recipeMetaRow}>
                       <span className={styles.recipeTime}>⏱ {recipe.time}</span>
                       {recipe.genre && (
-                        <span className={styles.genreBadge}>{recipe.genre}</span>
+                        <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
                       {recipe.dish_badge && (
                         <span className={styles.genreBadge}>{recipe.dish_badge}</span>

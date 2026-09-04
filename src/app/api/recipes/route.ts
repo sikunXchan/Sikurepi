@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, DISH_LOAD_INSTRUCTION } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, Language } from '@/lib/ai';
 
 export async function POST(req: Request) {
+  let language: Language = 'ja';
   try {
     const body = await req.json();
     const {
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
       recentHistory,
       mode,
     } = body;
+    language = body.language === 'en' ? 'en' : 'ja';
 
     const actualProfile = userProfile || profile;
     const isFreeMode = mode === 'free' || !ingredients || ingredients.length === 0;
@@ -45,10 +47,11 @@ export async function POST(req: Request) {
 
     const targetServings = servings || actualProfile?.servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
+    const languageSection = buildLanguageSection(language);
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${languageSection}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -80,7 +83,7 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
     { "category": "栄養豆知識", "tip": "食材や栄養に関する豆知識" }
   ]
 }
-genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。`;
+genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -100,8 +103,16 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     console.error('Recipe Gen Error:', error);
     const status = error?.status || error?.httpStatusCode || error?.code;
     if (status === 429 || status === 503 || status === 'UNAVAILABLE') {
-      return NextResponse.json({ error: 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。' }, { status: 503 });
+      return NextResponse.json({
+        error: language === 'en'
+          ? 'The AI model is temporarily busy. Please try again in a moment.'
+          : 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。',
+      }, { status: 503 });
     }
-    return NextResponse.json({ error: `レシピの生成に失敗しました: ${error.message}` }, { status: 500 });
+    return NextResponse.json({
+      error: language === 'en'
+        ? `Failed to generate recipes: ${error.message}`
+        : `レシピの生成に失敗しました: ${error.message}`,
+    }, { status: 500 });
   }
 }

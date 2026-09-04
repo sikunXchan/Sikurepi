@@ -155,6 +155,7 @@ export default function MealPlanPage() {
       climate: profile.enableClimate !== false ? currentClimate : undefined,
       recentHistory,
       mode: ingredients.length > 0 ? 'inventory' : 'free',
+      language,
     };
   };
 
@@ -446,7 +447,7 @@ export default function MealPlanPage() {
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                                 <span className={styles.slotBadge}>{SLOT_LABEL[slot]}</span>
-                                {entry.recipe.genre && <span className={styles.slotBadge}>{entry.recipe.genre}</span>}
+                                {entry.recipe.genre && <span className={styles.slotBadge}>{t.tagLabel[entry.recipe.genre] || entry.recipe.genre}</span>}
                                 {entry.recipe.dish_badge && <span className={styles.slotBadge}>{entry.recipe.dish_badge}</span>}
                               </div>
                               <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.recipe.title}</div>
