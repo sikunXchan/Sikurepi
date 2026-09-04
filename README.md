@@ -33,11 +33,14 @@
 
 1. [Supabase](https://supabase.com/)でプロジェクトを新規作成します。
 2. プロジェクトの「SQL Editor」を開き、このリポジトリの `supabase_schema.sql` の内容をコピーして実行します（`user_data`テーブルとRow Level Securityポリシーが作成されます）。
-3. 「Authentication」>「Providers」で「Email」プロバイダーが有効になっていることを確認します（マジックリンク方式のログインに使用）。
-4. プロジェクトの「Settings」>「API」から `Project URL` と `anon public` キーを控えます。
-5. Vercelの「Settings」>「Environment Variables」に以下を追加し、再デプロイします。
+3. 「Authentication」>「Providers」で「Email」プロバイダーが有効になっていることを確認します。
+4. **「Authentication」>「Email Templates」>「Magic Link」を開き、本文に`{{ .Token }}`を含めるよう編集します**（例: `確認コード: {{ .Token }}`）。これをしないと、メールにはリンクしか入らず、アプリ側で入力してもらう6桁のコードが届きません（デフォルトのテンプレートは`{{ .ConfirmationURL }}`のみでコードが含まれていません）。
+   - ログイン方式に6桁の確認コード入力を採用しているのは、CapacitorのネイティブアプリではSafari側でリンクが開いてしまいアプリ本体のログイン状態に反映されない問題があるため（Universal Linksには有料のApple Developer Programが必要）。
+5. 「Authentication」>「URL Configuration」の「Site URL」を、デプロイ先の本番URL（例: `https://your-app.vercel.app`）に変更しておきます（コード方式では必須ではありませんが、他のメール内リンクにも影響するため）。
+6. プロジェクトの「Settings」>「API Keys」(または「Connect」ボタン)から `Project URL` と `anon public`（または`publishable`）キーを控えます。
+7. Vercelの「Settings」>「Environment Variables」に以下を追加し、再デプロイします。
    - `NEXT_PUBLIC_SUPABASE_URL`: 控えた`Project URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 控えた`anon public`キー
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 控えた`anon public`(`publishable`)キー
 
 ### 5. PWAアイコンの設定
 あなたが提供した「犬のBBQ画像」ファイルを、`public/icon.png` (512x512推奨) として保存してコミットしてからプッシュしてください。PWAのアイコンとして反映されます。

@@ -4,14 +4,15 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-type SendMagicLinkResult = { success: boolean; error?: string };
+type AuthResult = { success: boolean; error?: string };
 
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isSupabaseConfigured: boolean;
-  sendMagicLink: (email: string) => Promise<SendMagicLinkResult>;
+  sendLoginCode: (email: string) => Promise<AuthResult>;
+  verifyLoginCode: (email: string, code: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
 
@@ -20,7 +21,8 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   loading: false,
   isSupabaseConfigured: false,
-  sendMagicLink: async () => ({ success: false, error: "Supabase not configured" }),
+  sendLoginCode: async () => ({ success: false, error: "Supabase not configured" }),
+  verifyLoginCode: async () => ({ success: false, error: "Supabase not configured" }),
   signOut: async () => {},
 });
 
@@ -44,18 +46,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // パスワード管理の手間・漏洩リスクを避けるため、メールのマジックリンクのみに絞る
-  const sendMagicLink = useCallback(async (email: string): Promise<SendMagicLinkResult> => {
+  // パスワード管理の手間・漏洩リスクを避けるため、メールで送る確認コードのみに絞る。
+  // (リンク方式だと、Capacitorのネイティブアプリではメールのリンクが
+  // Safari側で開いてしまい、アプリ本体のログイン状態に反映されないため)
+  const sendLoginCode = useCallback(async (email: string): Promise<AuthResult> => {
     if (!supabase) return { success: false, error: "Supabase not configured" };
     const trimmed = email.trim();
     if (!trimmed) return { success: false, error: "empty email" };
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/mypage" : undefined,
-      },
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmed });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  const verifyLoginCode = useCallback(async (email: string, code: string): Promise<AuthResult> => {
+    if (!supabase) return { success: false, error: "Supabase not configured" };
+    const trimmed = email.trim();
+    const trimmedCode = code.trim();
+    if (!trimmed || !trimmedCode) return { success: false, error: "empty email or code" };
+
+    const { error } = await supabase.auth.verifyOtp({ email: trimmed, token: trimmedCode, type: "email" });
     if (error) return { success: false, error: error.message };
     return { success: true };
   }, []);
@@ -70,7 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     isSupabaseConfigured,
-    sendMagicLink,
+    sendLoginCode,
+    verifyLoginCode,
     signOut,
   };
 
