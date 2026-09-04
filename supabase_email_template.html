@@ -1,0 +1,82 @@
+<!--
+  Sikurepi Login Code Email Template
+  ------------------------------------------
+  In the Supabase dashboard, go to
+  "Authentication" -> "Email Templates" -> "Magic Link" and:
+
+  1. Copy the subject line below into "Subject heading"
+  2. Copy everything between <body> and </body> in this file
+     (excluding this comment and the Subject line) into "Message body"
+
+  {{ .Token }} is automatically replaced by Supabase with the real 6-digit code.
+  The mascot image is hosted on the live production site
+  (https://sikurepi.vercel.app/mascot/bear_wave.png), so it renders as an
+  actual image instead of an emoji — if the production domain ever changes,
+  update the <img src> below to match.
+  Built with table layout + inline styles only, to stay reliable across
+  older email clients like Outlook.
+
+  Subject heading: Your Sikurepi login code
+-->
+<body style="margin:0; padding:0; background-color:#fdf1f4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf1f4; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px; background-color:#ffffff; border-radius:24px; overflow:hidden; box-shadow:0 8px 24px rgba(224,70,110,0.12);">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background:linear-gradient(135deg,#ff8fab 0%,#ff6f91 100%); padding:32px 24px 24px;">
+              <img
+                src="https://sikurepi.vercel.app/mascot/bear_wave.png"
+                width="88" height="88" alt="Sikurepi"
+                style="display:block; width:88px; height:88px; margin:0 auto 12px; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.15));"
+              />
+              <div style="font-size:22px; font-weight:800; color:#ffffff; letter-spacing:0.5px;">Sikurepi</div>
+              <div style="font-size:13px; color:#ffe3ea; margin-top:4px;">AI recipes from what's in your fridge</div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 28px 8px;">
+              <p style="margin:0 0 4px; font-size:16px; font-weight:800; color:#1f2937;">Your login code</p>
+              <p style="margin:0; font-size:13px; line-height:1.7; color:#6b7280;">
+                Enter the 6-digit code below in the Account section of My Page in the Sikurepi app.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Code -->
+          <tr>
+            <td align="center" style="padding:20px 28px 8px;">
+              <div style="background-color:#fff0f3; border:2px dashed #ff9fb5; border-radius:16px; padding:18px 12px; width:100%; box-sizing:border-box;">
+                <span style="font-family:'Courier New',Courier,monospace; font-size:34px; font-weight:800; letter-spacing:10px; color:#e0466e;">
+                  {{ .Token }}
+                </span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Notes -->
+          <tr>
+            <td style="padding:16px 28px 32px;">
+              <p style="margin:0; font-size:12px; line-height:1.7; color:#9ca3af;">
+                This code expires 24 hours after it was issued.<br>
+                If you didn't request this, you can safely ignore this email — no changes will be made to your account.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color:#fafafa; padding:18px 24px; border-top:1px solid #f3f4f6;">
+              <p style="margin:0; font-size:11px; color:#b0b4bb;">Sikurepi</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
