@@ -12,9 +12,12 @@ import { ICON_SLUGS } from '@/lib/ingredientIcons';
 // (経緯) 当初はブラウザ上で完全オフライン動作する埋め込みモデル(EmbeddingGemma +
 // Transformers.js)を試したが、実機で300Mパラメータのモデルをロードした際にメモリ
 // 不足でタブがクラッシュする不具合が発生したため撤回し、軽量・低コストなAPI呼び出し
-// (Gemini Flash-Lite)方式に切り替えた。
-
-const CLASSIFY_MODELS = ['models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
+// (Gemini Flash)方式に切り替えた。
+//
+// 分類だけの軽いタスクなので、最安のgemini-1.5-flash-8b($0.0375/$0.15 per 1M
+// tokens、2.5-flash-liteの約1/3)を優先的に使い、旧世代モデルで将来提供終了に
+// なる可能性も考慮して2.5-flash-lite→2.5-flashへ自動フォールバックする。
+const CLASSIFY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
 
 const CATEGORY_OPTIONS = [...new Set(CATEGORY_RULES.map((r) => r.category))].concat('その他');
 
