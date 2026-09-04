@@ -169,6 +169,11 @@ export default function RecipePage() {
 
       const currentClimate = getLocalClimateState();
       const recentRecipes = getRecentLocalRecipeNames(5);
+      // 「気に入って保存した」という明示的なシグナルから、この人の好みの傾向を
+      // AIに伝え、より本人好みで美味しく感じられる提案につなげる
+      const likedRecipeSummary = getLocalSavedRecipes()
+        .slice(0, 15)
+        .map(r => ({ title: r.title, genre: r.genre }));
 
       const payload = {
         ingredients: selectedNames,
@@ -183,7 +188,11 @@ export default function RecipePage() {
           preferredGenres: userProfile.preferredGenres || [],
         },
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
-        recentRecipes,
+        // 旧実装ではサーバー側が読む項目名(recentHistory)と送信側の項目名
+        // (recentRecipes)が一致しておらず、直近レシピの重複防止が機能して
+        // いなかったため、正しい項目名で送るよう修正
+        recentHistory: recentRecipes,
+        likedRecipeSummary,
         mode: creationMode === 'free' ? 'free' : 'inventory',
         mealStyle,
         language,
