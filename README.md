@@ -14,7 +14,9 @@
    git push -u origin main
    ```
 
-### 2. Vercelのセットアップ (データベース)
+### 2. Vercelのセットアップ (データベース・現在は未使用)
+> ⚠️ **注記**: 現在アプリのデータは端末のlocalStorageのみで管理しており、以下のPostgres/`setup.sql`はどの画面からも呼び出されない未使用のコードです。将来的に整理・削除するか、アカウント連携(下記5番)の実装に置き換える想定です。
+
 1. [Vercel](https://vercel.com/)のダッシュボードにログインし、「Add New...」>「Project」を選択。
 2. 先ほどプッシュしたGitHubリポジトリをインポートし、デプロイを開始します。
 3. デプロイ設定画面の「Storage」タブから「Vercel Postgres」を作成し、プロジェクトにリンクします。
@@ -26,5 +28,16 @@
 2. キーを `GEMINI_API_KEY` とし、値としてあなたの取得したGemini APIキーを入力して保存します。
 3. 新しい環境変数を反映させるため、再度「Deployments」から「Redeploy」を実行します。
 
-### 4. PWAアイコンの設定
+### 4. Supabaseのセットアップ (アカウント連携・任意)
+ログインして複数端末でデータを同期する機能はSupabaseを使っています。設定しなくてもアプリは今まで通りこの端末だけのゲスト利用として動作します。
+
+1. [Supabase](https://supabase.com/)でプロジェクトを新規作成します。
+2. プロジェクトの「SQL Editor」を開き、このリポジトリの `supabase_schema.sql` の内容をコピーして実行します（`user_data`テーブルとRow Level Securityポリシーが作成されます）。
+3. 「Authentication」>「Providers」で「Email」プロバイダーが有効になっていることを確認します（マジックリンク方式のログインに使用）。
+4. プロジェクトの「Settings」>「API」から `Project URL` と `anon public` キーを控えます。
+5. Vercelの「Settings」>「Environment Variables」に以下を追加し、再デプロイします。
+   - `NEXT_PUBLIC_SUPABASE_URL`: 控えた`Project URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 控えた`anon public`キー
+
+### 5. PWAアイコンの設定
 あなたが提供した「犬のBBQ画像」ファイルを、`public/icon.png` (512x512推奨) として保存してコミットしてからプッシュしてください。PWAのアイコンとして反映されます。

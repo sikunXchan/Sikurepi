@@ -3,7 +3,9 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import LanguageToggle from "@/components/LanguageToggle";
 import CookingCheerBear from "@/components/CookingCheerBear";
+import SyncManager from "@/components/SyncManager";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 export const metadata: Metadata = {
   title: "Sikurepi",
@@ -31,14 +33,17 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
-        <LanguageProvider>
-          <LanguageToggle />
-          <div className="container">
-            {children}
-          </div>
-          <BottomNav />
-          <CookingCheerBear />
-        </LanguageProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            <LanguageToggle />
+            <div className="container">
+              {children}
+            </div>
+            <BottomNav />
+            <CookingCheerBear />
+            <SyncManager />
+          </LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -599,10 +599,10 @@ export type AppBackupPayload = {
   weekPlan?: WeeklyPlanEntry[];
 };
 
-export function exportBackupJSON(): void {
-  if (typeof window === 'undefined') return;
-
-  const payload: AppBackupPayload = {
+// アカウント同期(SyncManager)でも同じ形のスナップショットを使うため、
+// 手動バックアップ(exportBackupJSON)と共通化しておく。
+export function buildBackupPayload(): AppBackupPayload {
+  return {
     version: '2.0',
     exportedAt: new Date().toISOString(),
     inventory: getLocalIngredients(),
@@ -614,7 +614,12 @@ export function exportBackupJSON(): void {
     tips: getLocalSavedTips(),
     weekPlan: getLocalWeekPlan(),
   };
+}
 
+export function exportBackupJSON(): void {
+  if (typeof window === 'undefined') return;
+
+  const payload = buildBackupPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -629,6 +634,37 @@ export function exportBackupJSON(): void {
   URL.revokeObjectURL(url);
 }
 
+// アカウント同期(SyncManager)でも、サーバーから取得したスナップショットを
+// ローカルへ反映するのに同じロジックを使うため、JSON文字列を受け取る
+// importBackupJSON と、パース済みオブジェクトを受け取るこちらとで分けている。
+export function applyBackupPayload(data: any): void {
+  if (typeof window === 'undefined') return;
+  if (!data || typeof data !== 'object') return;
+
+  if (Array.isArray(data.inventory)) setStorage(KEYS.INVENTORY, data.inventory);
+  if (Array.isArray(data.shopping)) setStorage(KEYS.SHOPPING, data.shopping);
+  if (Array.isArray(data.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, data.savedRecipes);
+  if (data.stats && typeof data.stats === 'object') setStorage(KEYS.STATS, data.stats);
+  if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
+  if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
+  if (Array.isArray(data.tips)) setStorage(KEYS.TIPS, data.tips);
+  if (Array.isArray(data.weekPlan)) setStorage(KEYS.WEEK_PLAN, data.weekPlan);
+
+  window.dispatchEvent(new Event('storage-updated'));
+}
+
+// ローカルに何かしら意味のあるデータが既にあるかどうか。
+// 初回ログイン時に「ローカルが空ならサーバーの内容をそのまま反映」
+// 「ローカルにデータがあるならサーバーへ送る」を判断するのに使う。
+export function hasLocalData(): boolean {
+  return (
+    getLocalIngredients().length > 0 ||
+    getLocalShoppingItems().length > 0 ||
+    getLocalSavedRecipes().length > 0 ||
+    getLocalUserStats().total_cooked > 0
+  );
+}
+
 export function importBackupJSON(jsonStr: string): { success: boolean; error?: string } {
   if (typeof window === 'undefined') return { success: false, error: 'Window not available' };
 
@@ -637,17 +673,7 @@ export function importBackupJSON(jsonStr: string): { success: boolean; error?: s
     if (!data || typeof data !== 'object') {
       throw new Error('無効なJSONフォーマットです');
     }
-
-    if (Array.isArray(data.inventory)) setStorage(KEYS.INVENTORY, data.inventory);
-    if (Array.isArray(data.shopping)) setStorage(KEYS.SHOPPING, data.shopping);
-    if (Array.isArray(data.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, data.savedRecipes);
-    if (data.stats && typeof data.stats === 'object') setStorage(KEYS.STATS, data.stats);
-    if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
-    if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
-    if (Array.isArray(data.tips)) setStorage(KEYS.TIPS, data.tips);
-    if (Array.isArray(data.weekPlan)) setStorage(KEYS.WEEK_PLAN, data.weekPlan);
-
-    window.dispatchEvent(new Event('storage-updated'));
+    applyBackupPayload(data);
     return { success: true };
   } catch (e: any) {
     console.error('Import error:', e);
