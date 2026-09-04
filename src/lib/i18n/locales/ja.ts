@@ -51,6 +51,7 @@ const ja = {
       "そろそろ出番をちょうだい！",
     ],
     forgottenSuffix: (ageDays: number) => `（在庫${ageDays}日目）`,
+    aiSetupToast: "🧠 初回のみ：多言語対応の判定モデルを準備しています…（次回からは一瞬で使えます）",
   },
   recipe: {
     title: "AIレシピ提案",

@@ -261,7 +261,12 @@ const FLAT: { keyword: string; slug: string }[] = Object.entries(ICON_KEYWORDS)
   .flatMap(([slug, keywords]) => keywords.map((keyword) => ({ keyword, slug })))
   .sort((a, b) => b.keyword.length - a.keyword.length);
 
-const ICON_BASE_PATH = "/ingredients/";
+// embeddingMatch.ts が「静的キーワードでは判定できなかった食材名」をオフラインの
+// 意味マッチングで判定する際、既存のアイコンキーワード辞書をアンカー(=判定基準の
+// 参照文言)としてそのまま再利用するための公開用エイリアス。
+export const ICON_ANCHOR_LIST: { keyword: string; slug: string }[] = FLAT;
+
+export const ICON_BASE_PATH = "/ingredients/";
 
 export function getIngredientIconSlug(ingredientName: string): string | null {
   const name = ingredientName.trim();

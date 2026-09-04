@@ -51,6 +51,7 @@ const en: typeof ja = {
       "Give me my moment to shine!",
     ],
     forgottenSuffix: (ageDays: number) => ` (Day ${ageDays} in stock)`,
+    aiSetupToast: "🧠 First time only: setting up the multilingual matching model… (instant from now on)",
   },
   recipe: {
     title: "AI Recipe Ideas",
