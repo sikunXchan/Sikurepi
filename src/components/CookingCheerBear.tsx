@@ -12,7 +12,7 @@ const SESSION_KEY = "lily_app_cheer_shown_session";
 const BEAR_POSES = [
   "bear_wave.png",
   "bear_love.png",
-  "bear_excited.png",
+  "bear_basket.png",
   "bear_itadakimasu.png",
   "bear_serving.png",
 ];

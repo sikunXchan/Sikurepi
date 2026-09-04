@@ -19,14 +19,13 @@ type ExtractedItem = {
 
 const CATEGORIES = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
 
-// 解析中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
+// 解析中に毎回違う体勢を見せて飽きさせないためのポーズ一覧。
+// CookingCheerBearのBEAR_POSES・レシピ生成中のローディング画像とは
+// 重複しない画像だけを使う。
 const LOADING_POSES = [
   "bear_reading.png",
-  "bear_excited.png",
-  "bear_love.png",
-  "bear_itadakimasu.png",
-  "bear_basket.png",
   "bear_running.png",
+  "bear_sleeping.png",
 ];
 
 export default function ReceiptPage() {
