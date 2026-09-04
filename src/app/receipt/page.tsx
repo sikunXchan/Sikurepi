@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { addLocalIngredient } from "@/lib/storage";
+import { setNavLocked } from "@/lib/navLock";
 import PageHeader from "@/components/PageHeader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Receipt.module.css";
@@ -18,6 +19,15 @@ type ExtractedItem = {
 
 const CATEGORIES = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
 
+// 解析中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
+const LOADING_POSES = [
+  "bear_reading.png",
+  "bear_excited.png",
+  "bear_love.png",
+  "bear_itadakimasu.png",
+  "bear_basket.png",
+];
+
 export default function ReceiptPage() {
   const { t } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
@@ -28,8 +38,12 @@ export default function ReceiptPage() {
   const [extractedList, setExtractedList] = useState<ExtractedItem[]>([]);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [success, setSuccess] = useState(false);
+  const [loadingPose, setLoadingPose] = useState(LOADING_POSES[0]);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // このページを離れる際は、ロックしたままにならないよう必ず解除する
+  useEffect(() => () => setNavLocked(false), []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
@@ -47,9 +61,13 @@ export default function ReceiptPage() {
     if (files.length === 0) return;
 
     setLoading(true);
+    setLoadingPose(LOADING_POSES[Math.floor(Math.random() * LOADING_POSES.length)]);
     setErrorMsg("");
     setExtractedList([]);
     setSuccess(false);
+    // 解析中にタブ移動されると通信中のリクエストごと処理が失われてしまうため、
+    // 完了/失敗するまでボトムナビの遷移をロックする
+    setNavLocked(true);
 
     try {
       const formData = new FormData();
@@ -85,6 +103,7 @@ export default function ReceiptPage() {
       setErrorMsg(e.message);
     } finally {
       setLoading(false);
+      setNavLocked(false);
     }
   };
 
@@ -305,7 +324,8 @@ export default function ReceiptPage() {
       {loading && (
         <div className={styles.loadingState}>
           <motion.img
-            src="/mascot/bear_reading.png"
+            key={loadingPose}
+            src={`/mascot/${loadingPose}`}
             alt=""
             width={96}
             height={96}
