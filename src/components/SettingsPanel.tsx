@@ -69,11 +69,15 @@ type Props = {
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const { t } = useLanguage();
-  const { user, isSupabaseConfigured, sendMagicLink, signOut } = useAuth();
+  const { user, isSupabaseConfigured, sendLoginCode, verifyLoginCode, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [accountEmail, setAccountEmail] = useState("");
   const [accountSending, setAccountSending] = useState(false);
   const [accountMessage, setAccountMessage] = useState<string | null>(null);
+  // コード送信後は入力欄を「確認コード入力」に切り替える
+  const [accountCodeSent, setAccountCodeSent] = useState(false);
+  const [accountCode, setAccountCode] = useState("");
+  const [accountVerifying, setAccountVerifying] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   // getLocalUserStats()を直接初期値に渡すとハイドレーションミスマッチになるため、
   // 安全な初期値を渡し実データはマウント後のuseEffectでのみ取得する
@@ -186,17 +190,30 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     reader.readAsText(file);
   };
 
-  const handleSendMagicLink = async () => {
+  const handleSendLoginCode = async () => {
     if (!accountEmail.trim() || accountSending) return;
     setAccountSending(true);
     setAccountMessage(null);
-    const res = await sendMagicLink(accountEmail.trim());
+    const res = await sendLoginCode(accountEmail.trim());
     setAccountSending(false);
-    setAccountMessage(
-      res.success
-        ? t.settings.accountMagicLinkSent(accountEmail.trim())
-        : t.settings.accountMagicLinkError(res.error || "")
-    );
+    if (res.success) {
+      setAccountCodeSent(true);
+      setAccountMessage(t.settings.accountCodeSent(accountEmail.trim()));
+    } else {
+      setAccountMessage(t.settings.accountCodeError(res.error || ""));
+    }
+  };
+
+  const handleVerifyLoginCode = async () => {
+    if (!accountCode.trim() || accountVerifying) return;
+    setAccountVerifying(true);
+    setAccountMessage(null);
+    const res = await verifyLoginCode(accountEmail.trim(), accountCode.trim());
+    setAccountVerifying(false);
+    if (!res.success) {
+      setAccountMessage(t.settings.accountCodeError(res.error || ""));
+    }
+    // 成功時はuseAuthのsessionが更新され、ログイン後の画面に自動で切り替わる
   };
 
   return (
@@ -528,7 +545,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                   <span>{t.settings.accountLogout}</span>
                 </button>
               </div>
-            ) : (
+            ) : !accountCodeSent ? (
               <div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input
@@ -544,12 +561,64 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={styles.downloadBtn}
                     style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
                     disabled={accountSending || !accountEmail.trim()}
-                    onClick={handleSendMagicLink}
+                    onClick={handleSendLoginCode}
                   >
                     <Mail size={15} />
-                    <span>{accountSending ? t.settings.accountSending : t.settings.accountSendMagicLink}</span>
+                    <span>{accountSending ? t.settings.accountSending : t.settings.accountSendCode}</span>
                   </button>
                 </div>
+                {accountMessage && (
+                  <div className={styles.importStatusAlert} style={{ marginTop: 10 }}>
+                    {accountMessage}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className={styles.hint} style={{ display: 'block', marginBottom: 10 }}>
+                  {t.settings.accountCodeSent(accountEmail.trim())}
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={styles.input}
+                    style={{ flex: '1 1 120px', width: 'auto' }}
+                    placeholder={t.settings.accountCodePlaceholder}
+                    value={accountCode}
+                    onChange={(e) => setAccountCode(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className={styles.downloadBtn}
+                    style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+                    disabled={accountVerifying || !accountCode.trim()}
+                    onClick={handleVerifyLoginCode}
+                  >
+                    <Check size={15} />
+                    <span>{accountVerifying ? t.settings.accountVerifying : t.settings.accountVerifyCode}</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    marginTop: 8,
+                    background: 'none',
+                    border: 'none',
+                    color: '#6b7280',
+                    fontSize: 13,
+                    padding: 4,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                  onClick={() => {
+                    setAccountCodeSent(false);
+                    setAccountCode("");
+                    setAccountMessage(null);
+                  }}
+                >
+                  {t.settings.accountBackToEmail}
+                </button>
                 {accountMessage && (
                   <div className={styles.importStatusAlert} style={{ marginTop: 10 }}>
                     {accountMessage}
