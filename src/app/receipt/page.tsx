@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { addLocalIngredient } from "@/lib/storage";
 import PageHeader from "@/components/PageHeader";
@@ -303,9 +304,14 @@ export default function ReceiptPage() {
 
       {loading && (
         <div className={styles.loadingState}>
-          <div className="spinner-container">
-            <Loader2 className="spinner" size={48} />
-          </div>
+          <motion.img
+            src="/mascot/bear_reading.png"
+            alt=""
+            width={96}
+            height={96}
+            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
           <p>{t.receipt.analyzingText}</p>
         </div>
       )}

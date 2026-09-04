@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres';
+import { computeChefLevel } from './storage';
 
 export type Ingredient = {
   id: number;
@@ -447,8 +448,7 @@ export async function recordCookingDone(userId: string = 'anonymous_user', consu
 
     const newTotal = stats.total_cooked + 1;
     const newSavedFood = stats.saved_food_count + consumedFoodCount;
-    // シェフレベル計算: 3回でLv2, 7回でLv3, 15回でLv4, 30回でLv5...
-    const newLevel = Math.max(1, Math.min(10, Math.floor(Math.sqrt(newTotal * 2)) + 1));
+    const newLevel = computeChefLevel(newTotal);
 
     const { rows } = await sql<UserStats>`
       INSERT INTO user_stats (user_id, streak_days, last_cooked_date, total_cooked, saved_food_count, chef_level, updated_at)

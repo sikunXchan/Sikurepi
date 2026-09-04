@@ -16,11 +16,13 @@ export async function POST(req: Request) {
       userProfile,
       recentHistory,
       mode,
+      mealStyle,
     } = body;
     language = body.language === 'en' ? 'en' : 'ja';
 
     const actualProfile = userProfile || profile;
     const isFreeMode = mode === 'free' || !ingredients || ingredients.length === 0;
+    const isSetMeal = mealStyle === 'set';
 
     const ingredientsSection = isFreeMode
       ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
@@ -45,13 +47,16 @@ export async function POST(req: Request) {
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
       : '';
 
-    const targetServings = servings || actualProfile?.servings || 2;
+    const targetServings = servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
+    const mealStyleSection = isSetMeal
+      ? `\n【重要：定食セット構成】\n単品の料理候補を複数出すのではなく、主菜1品・副菜1〜2品・汁物1品（和食以外のジャンルなら、それに相当する主菜・副菜・スープ等の構成でよい）からなる、レストランの定食のような統一感のある「1組のセット」を提案してください。セット内の各品は、味付け・ジャンル・食感のバランスが取れており、全体で1食分として栄養バランスが良くなるよう調整してください。各レシピの"course"には「主菜」「副菜」「汁物」「ご飯・主食」のいずれかを必ず指定してください${language === 'en' ? '（courseの値は必ずこの日本語表記のまま出力し、翻訳しないでください。表示側で翻訳します）' : ''}。\n`
+      : '';
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${languageSection}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${languageSection}${mealStyleSection}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -60,7 +65,10 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
 4. 【栄養バランス】すべてのレシピでPFCバランス（タンパク質・脂質・炭水化物）を計算し、1人分あたりの推定栄養価（カロリー, タンパク質g, 脂質g, 炭水化物g）を算出してください。
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
 6. ${DISH_LOAD_INSTRUCTION}
-7. 以下のJSON構造で、"recipes"配列の中に複数のレシピデータを格納して返してください。"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
+7. ${isSetMeal
+        ? '以下のJSON構造で、"recipes"配列の中に定食セットを構成する各品(主菜・副菜・汁物など、通常3〜4品)のレシピデータを格納して返してください。'
+        : '以下のJSON構造で、"recipes"配列の中に複数の独立した料理の候補データを格納して返してください。'
+      }"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
 {
   "recipes": [
     {
@@ -68,7 +76,7 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
       "time": "調理時間目安（例：15分）",
       "genre": "和食",
       "climate_badge": "☀️ 猛暑に最適",
-      "dish_badge": "🍽️ 洗い物少なめ（2点）",
+      "dish_badge": "🍽️ 洗い物少なめ（2点）",${isSetMeal ? '\n      "course": "主菜（または副菜・汁物・ご飯・主食）",' : ''}
       "ingredients": [
         { "name": "使用する具材または調味料", "amount": "分量の目安（例：豚バラ肉200g、トマト1個、ポン酢 大さじ2など）" }
       ],

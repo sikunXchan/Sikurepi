@@ -89,10 +89,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     setForgottenItems(getForgottenIngredients());
   }, []);
 
-  const handleServingsChange = (n: number) => {
-    setProfile(prev => ({ ...prev, servings: n }));
-  };
-
   const toggleTaste = (taste: string) => {
     setProfile(prev => {
       const current = prev.tastePreferences || [];
@@ -263,43 +259,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               <span>{t.settings.seasoningsToggleLabel}</span>
             </label>
             <span className={styles.hint}>{t.settings.seasoningsHint}</span>
-          </div>
-
-          <div className={styles.section}>
-            <label className={styles.sectionLabel}>{t.settings.servingsLabel}</label>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 14, padding: '8px 12px' }}>
-              <button
-                type="button"
-                onClick={() => handleServingsChange(Math.max(1, profile.servings - 1))}
-                disabled={profile.servings <= 1}
-                style={{
-                  width: 40, height: 40, borderRadius: '50%', border: 'none',
-                  background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)', color: 'white',
-                  fontSize: 20, fontWeight: 900, cursor: 'pointer',
-                  opacity: profile.servings <= 1 ? 0.4 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                −
-              </button>
-              <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
-                {t.settings.servingsUnit(profile.servings)}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleServingsChange(Math.min(15, profile.servings + 1))}
-                disabled={profile.servings >= 15}
-                style={{
-                  width: 40, height: 40, borderRadius: '50%', border: 'none',
-                  background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)', color: 'white',
-                  fontSize: 20, fontWeight: 900, cursor: 'pointer',
-                  opacity: profile.servings >= 15 ? 0.4 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                ＋
-              </button>
-            </div>
           </div>
 
           <div className={styles.section}>

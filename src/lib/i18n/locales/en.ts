@@ -16,6 +16,18 @@ const en: typeof ja = {
     toggleLabel: "日本語",
     switchedTo: "Switched to English",
   },
+  cheer: {
+    messages: [
+      "Great job cooking today!",
+      "Cooking is hard work — you're doing amazing!",
+      "Thanks for the delicious meal~",
+      "Every meal you cook adds up. Nice work!",
+      "Hope you had a good day! 🍚",
+      "Take it easy, no need to rush.",
+      "I'm cheering for your home cooking!",
+      "Today's meal looks great too~",
+    ],
+  },
   category: {
     '野菜': 'Vegetables',
     '肉': 'Meat',
@@ -69,6 +81,14 @@ const en: typeof ja = {
     settingsButtonTitle: "My Settings",
     modeInventory: "🧺 From my pantry",
     modeFree: "✨ Free request",
+    mealStyleSingle: "🍽️ Single dish",
+    mealStyleSet: "🍱 Full set meal",
+    courseLabel: {
+      '主菜': 'Main',
+      '副菜': 'Side',
+      '汁物': 'Soup',
+      'ご飯・主食': 'Rice & Staple',
+    },
     templatesLabel: "💡 Quick templates",
     templates: {
       quick: "10-min",
@@ -280,8 +300,6 @@ const en: typeof ja = {
     climateToggleLabel: "🌤️ Enable weather-linked recipe suggestions",
     seasoningsToggleLabel: "🧂 Assume basic seasonings (salt, soy sauce, etc.) are always on hand",
     seasoningsHint: "※ Turn this off to only use seasonings that are actually in your pantry, showing any that are missing",
-    servingsLabel: "👥 Default servings",
-    servingsUnit: (n: number) => `${n} serving${n === 1 ? "" : "s"}`,
     pfcLabel: "🎯 Daily nutrition targets (used for your weekly meal plan)",
     caloriesPlaceholder: "Target calories (e.g. 2000)",
     proteinPlaceholder: "Target protein g (e.g. 75)",

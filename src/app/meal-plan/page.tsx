@@ -336,7 +336,7 @@ export default function MealPlanPage() {
         {t.mealPlan.description}
       </p>
 
-      <div className="card" style={{ padding: 16 }}>
+      <div className="card" style={{ padding: 16, pointerEvents: generating ? 'none' : undefined, opacity: generating ? 0.5 : 1, transition: 'opacity 0.2s' }} aria-disabled={generating}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {days.map(d => {
             const lunchOn = !!active[`${d.date}_lunch`];
@@ -391,7 +391,7 @@ export default function MealPlanPage() {
             alt={t.mealPlan.generatingAlt}
             width={96}
             height={96}
-            animate={{ y: [0, -8, 0] }}
+            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.generatingText}</p>

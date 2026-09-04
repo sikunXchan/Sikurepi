@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
-import confetti from "canvas-confetti";
 import { consumeLocalIngredients, recordLocalCookingDone, NutritionData } from "@/lib/storage";
+import IngredientIcon from "./IngredientIcon";
 import styles from "./CookedModal.module.css";
 
 type RecipeLike = {
@@ -41,6 +41,15 @@ export default function CookedModal({
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  // 食材が四方八方に飛び散るアニメーション用に、食材ごとの飛び方をランダムに1回だけ決めておく
+  const [scatter] = useState(() =>
+    rawIngredients.map(() => ({
+      dx: (Math.random() - 0.5) * 280,
+      dy: 160 + Math.random() * 140,
+      rotate: (Math.random() - 0.5) * 540,
+      delay: Math.random() * 0.2,
+    }))
+  );
 
   const toggleItem = (name: string) => {
     setSelectedItems((prev) => {
@@ -62,12 +71,6 @@ export default function CookedModal({
       recordLocalCookingDone(consumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
 
       setDone(true);
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ["#ff6f91", "#20b2aa", "#10b981", "#fbbf24"],
-      });
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
       setTimeout(() => {
@@ -94,7 +97,24 @@ export default function CookedModal({
           onClick={(e) => e.stopPropagation()}
         >
           {done ? (
-            <div className={styles.doneState}>
+            <div className={styles.doneState} style={{ position: "relative", overflow: "hidden" }}>
+              {rawIngredients.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  style={{ position: "absolute", top: "18%", left: "50%", marginLeft: -16, pointerEvents: "none" }}
+                  initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 }}
+                  animate={{
+                    x: scatter[idx]?.dx ?? 0,
+                    y: scatter[idx]?.dy ?? 0,
+                    opacity: 0,
+                    rotate: scatter[idx]?.rotate ?? 0,
+                    scale: 0.6,
+                  }}
+                  transition={{ duration: 1.1, delay: scatter[idx]?.delay ?? 0, ease: "easeIn" }}
+                >
+                  <IngredientIcon name={item.name} size={32} />
+                </motion.div>
+              ))}
               <div className={styles.doneIcon}>🎉</div>
               <h3>調理完了！お疲れさまでした！</h3>
               <p>自炊記録と在庫が更新されました</p>
