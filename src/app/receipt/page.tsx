@@ -26,6 +26,7 @@ const LOADING_POSES = [
   "bear_love.png",
   "bear_itadakimasu.png",
   "bear_basket.png",
+  "bear_running.png",
 ];
 
 export default function ReceiptPage() {
