@@ -8,7 +8,7 @@ const PRODUCTION_URL = 'https://lily-cooking.vercel.app';
 
 const config: CapacitorConfig = {
   appId: 'com.lilycooking.app',
-  appName: 'Sikunrepi',
+  appName: 'Sikurepi',
   webDir: 'www',
   server: {
     url: PRODUCTION_URL,

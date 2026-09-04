@@ -66,8 +66,8 @@ export default function ChefProfileBadge() {
           src={`/ranks/${currentBadge.badge}.png`}
           alt=""
           className={styles.rankIcon}
-          width={24}
-          height={32}
+          width={36}
+          height={48}
         />
         <span className={styles.rankName}>Lv.{stats.chef_level} {rankName}</span>
       </div>

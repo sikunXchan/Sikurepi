@@ -72,7 +72,7 @@ const TIP_CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function RecipePage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -176,6 +176,7 @@ export default function RecipePage() {
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         recentRecipes,
         mode: creationMode === 'free' ? 'free' : 'inventory',
+        language,
       };
 
       const res = await fetch("/api/recipes", {
@@ -560,7 +561,7 @@ export default function RecipePage() {
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
                       {recipe.genre && (
-                        <span className={styles.genreBadge}>{recipe.genre}</span>
+                        <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
                       {recipe.climate_badge && (
                         <span className={styles.climateBadge}>🌤️ {recipe.climate_badge}</span>

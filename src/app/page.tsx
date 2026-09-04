@@ -17,6 +17,7 @@ import {
   getForgottenIngredients,
   Ingredient
 } from "@/lib/storage";
+import { matchIngredientSemantic, subscribeEmbeddingStatus } from "@/lib/embeddingMatch";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Home.module.css";
 
@@ -163,12 +164,40 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
   const [forgottenIds, setForgottenIds] = useState<Set<number>>(new Set());
+  const categoryTouchedRef = useRef(categoryTouched);
+  const categoryMatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const categoryMatchToken = useRef(0);
+  const aiSetupToastShown = useRef(false);
 
   useEffect(() => {
     loadIngredients();
     const handleUpdate = () => loadIngredients();
     window.addEventListener("storage-updated", handleUpdate);
     return () => window.removeEventListener("storage-updated", handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    categoryTouchedRef.current = categoryTouched;
+  }, [categoryTouched]);
+
+  useEffect(() => {
+    return () => {
+      if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
+    };
+  }, []);
+
+  // 静的キーワードでは判定できなかった食材名(英語表記など)が入力された時だけ、
+  // オフラインの意味マッチング(embeddingMatch.ts)がモデルを初めて読み込む。
+  // その間だけ一度きり「準備中」であることをトーストで案内する。
+  useEffect(() => {
+    const unsubscribe = subscribeEmbeddingStatus((s) => {
+      if (!aiSetupToastShown.current && (s === "loading-model" || s === "preparing-anchors")) {
+        aiSetupToastShown.current = true;
+        showToast(t.home.aiSetupToast);
+      }
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadIngredients = () => {
@@ -193,6 +222,8 @@ export default function Home() {
     }
 
     addLocalIngredient(cleanName, selectedCategory);
+    if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
+    categoryMatchToken.current++;
     setNewName("");
     setSelectedCategory("その他");
     setCategoryTouched(false);
@@ -204,7 +235,26 @@ export default function Home() {
     setNewName(value);
     // カテゴリを手動で選んでいない間は、入力中の食材名から自動でカテゴリを判定する
     if (!categoryTouched) {
-      setSelectedCategory(inferIngredientCategory(value));
+      const inferred = inferIngredientCategory(value);
+      setSelectedCategory(inferred);
+
+      if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
+      // 静的キーワードでは「その他」にしかならなかった場合だけ、少し入力が
+      // 落ち着いてから(デバウンス)オフラインの意味マッチングで判定し直す。
+      // 英語などの食材名でも、日本語キーワード辞書に意味的に近いものが
+      // あればカテゴリを引き継げる。
+      if (inferred === "その他" && value.trim().length >= 2) {
+        const myToken = ++categoryMatchToken.current;
+        categoryMatchTimer.current = setTimeout(() => {
+          matchIngredientSemantic(value.trim())
+            .then((result) => {
+              // 入力がさらに変わった/カテゴリを手動選択された場合は結果を捨てる
+              if (categoryMatchToken.current !== myToken || categoryTouchedRef.current) return;
+              if (result?.category) setSelectedCategory(result.category);
+            })
+            .catch(() => {});
+        }, 500);
+      }
     }
   };
 

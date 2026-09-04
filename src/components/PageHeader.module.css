@@ -3,6 +3,9 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 4px;
+  /* 右上固定の言語トグルボタン(LanguageToggle)と長いタイトル文字列(英語表示時)が
+     重ならないよう、常にスペースを確保しておく */
+  padding-right: 96px;
 }
 
 .mascot {
@@ -40,7 +43,7 @@
   gap: 8px;
 }
 
-@media (max-width: 380px) {
+@media (max-width: 440px) {
   .title {
     font-size: 21px;
   }

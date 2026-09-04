@@ -46,6 +46,7 @@ export default function BottomNav() {
               href={item.path}
               className={styles.primaryItem}
               data-nav={item.name}
+              data-nav-key={item.key}
               aria-current={isActive ? "page" : undefined}
             >
               <span className={`${styles.fab} ${isActive ? styles.fabActive : ""}`}>
@@ -62,6 +63,7 @@ export default function BottomNav() {
             href={item.path}
             className={`${styles.navItem} ${isActive ? styles.active : ""}`}
             data-nav={item.name}
+            data-nav-key={item.key}
             aria-current={isActive ? "page" : undefined}
           >
             {isActive && <div className={styles.activeIndicator} />}

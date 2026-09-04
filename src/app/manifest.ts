@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Sikunrepi',
-    short_name: 'Sikunrepi',
+    name: 'Sikurepi',
+    short_name: 'Sikurepi',
     description: 'Smart recipe generator from your receipts',
     start_url: '/',
     display: 'standalone',

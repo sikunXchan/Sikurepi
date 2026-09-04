@@ -47,6 +47,16 @@ export type ClimateInfo = {
   advice?: string;
 };
 
+export type Language = 'ja' | 'en';
+
+// UIの選択言語をAIの出力言語に反映するセクション。
+// "genre"だけは在庫アイコン・フィルター等の内部分類キーとして日本語の固定リストを
+// そのまま使い続ける必要があるため、翻訳対象から明示的に除外する。
+export function buildLanguageSection(language: Language = 'ja'): string {
+  if (language !== 'en') return '';
+  return `\n【出力言語（最重要）】\nJSON内の"title"、"ingredients"（"name"・"amount"とも）、"steps"、"tips"、"climate_badge"、"dish_badge"、"cooking_tips"（"category"・"tip"とも）は、すべて自然で読みやすい英語（English）で出力してください。ただし"genre"の値だけは翻訳せず、後述の日本語の選択肢リストの中からそのまま日本語表記で選んでください（内部的な分類キーとして使用するため）。\n`;
+}
+
 // ユーザープロファイル（マイ一括設定）セクションを組み立てる
 export function buildProfileSection(profile: RecipeProfile | null | undefined): string {
   if (!profile) return '';

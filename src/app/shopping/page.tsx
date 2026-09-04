@@ -12,6 +12,7 @@ import {
 } from "@/lib/storage";
 import IngredientIcon from "@/components/IngredientIcon";
 import PageHeader from "@/components/PageHeader";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Shopping.module.css";
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
@@ -39,6 +40,7 @@ function inferCategory(name: string): string {
 }
 
 export default function ShoppingPage() {
+  const { t } = useLanguage();
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function ShoppingPage() {
     const startX = rect.left + rect.width / 2;
     const startY = rect.top + rect.height / 2;
 
-    const targetEl = document.querySelector('[data-nav="在庫"]');
+    const targetEl = document.querySelector('[data-nav-key="inventory"]');
     if (!targetEl) {
       toggleLocalShoppingItem(item.id);
       loadItems();
@@ -152,21 +154,21 @@ export default function ShoppingPage() {
   return (
     <div className={styles.container} ref={containerRef}>
       <PageHeader
-        title="買い物リスト"
-        subtitle="売り場ごとにまとめておいたよ"
+        title={t.shopping.title}
+        subtitle={t.shopping.subtitle}
         mascot="bear_basket"
       />
 
       <form onSubmit={handleAdd} className={styles.addForm}>
         <input
           type="text"
-          placeholder="買うものを入力 (例: 鶏むね肉、玉ねぎ)"
+          placeholder={t.shopping.addPlaceholder}
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
         <button type="submit" disabled={!newName.trim()}>
           <Plus size={20} />
-          追加
+          {t.shopping.addButton}
         </button>
       </form>
 
@@ -188,8 +190,8 @@ export default function ShoppingPage() {
                   <div key={aisle} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
                       <span>{AISLE_ICONS[aisle] || '🍽️'}</span>
-                      <span>{aisle} 売り場</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{aisleItems.length}件</span>
+                      <span>{`${t.shopping.aisle[aisle] || aisle} ${t.shopping.aisleSuffix}`.trim()}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{t.shopping.itemCount(aisleItems.length)}</span>
                     </div>
 
                     <ul className={styles.list}>
@@ -207,7 +209,7 @@ export default function ShoppingPage() {
                               <div
                                 className={styles.checkbox}
                                 onClick={(e) => handleComplete(item, e)}
-                                title="購入完了（冷蔵庫へ送る）"
+                                title={t.shopping.checkboxTitle}
                               >
                                 <Check size={16} />
                               </div>
@@ -217,7 +219,7 @@ export default function ShoppingPage() {
                             <button
                               className={styles.deleteBtn}
                               onClick={() => handleDelete(item.id)}
-                              aria-label="削除"
+                              aria-label={t.shopping.deleteAriaLabel}
                             >
                               <Trash2 size={18} />
                             </button>
@@ -232,7 +234,7 @@ export default function ShoppingPage() {
           ) : (
             <div className={styles.emptyState}>
               <img src="/mascot/bear_basket.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
-              <p>買い物リストは空です</p>
+              <p>{t.shopping.emptyState}</p>
             </div>
           )}
         </>

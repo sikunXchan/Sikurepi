@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import { addLocalIngredient } from "@/lib/storage";
 import PageHeader from "@/components/PageHeader";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Receipt.module.css";
 
 type ExtractedItem = {
@@ -17,6 +18,7 @@ type ExtractedItem = {
 const CATEGORIES = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
 
 export default function ReceiptPage() {
+  const { t } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function ReceiptPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "読み取りに失敗しました");
+        throw new Error(data.error || t.receipt.errorReadFailed);
       }
 
       const rawItems = data.ingredients || [];
@@ -73,7 +75,7 @@ export default function ReceiptPage() {
       })).filter((i: ExtractedItem) => i.name.trim() !== '');
 
       if (parsed.length === 0) {
-        throw new Error("画像から食材が検出されませんでした。別の写真でお試しください。");
+        throw new Error(t.receipt.errorNoIngredientsDetected);
       }
 
       setExtractedList(parsed);
@@ -127,7 +129,7 @@ export default function ReceiptPage() {
       });
     } catch (e: any) {
       console.error(e);
-      alert("在庫への追加中にエラーが発生しました");
+      alert(t.receipt.errorSaveFailed);
     } finally {
       setSaving(false);
     }
@@ -136,13 +138,13 @@ export default function ReceiptPage() {
   return (
     <div className={styles.container}>
       <PageHeader
-        title="食材スキャン"
-        subtitle="レシートを撮るだけで登録できるよ"
+        title={t.receipt.title}
+        subtitle={t.receipt.subtitle}
         mascot="bear_wave"
       />
 
       <p className="text-muted mb-4" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>
-        レシートや冷蔵庫・食材の写真をアップロードすると、AIが食材を自動検出します（複数枚同時OK）。
+        {t.receipt.description}
       </p>
 
       {errorMsg && (
@@ -157,16 +159,16 @@ export default function ReceiptPage() {
             <CheckCircle size={40} />
           </div>
           <div>
-            <p style={{ fontWeight: 700, fontSize: '18px', color: 'var(--primary)', marginBottom: '8px' }}>登録完了！</p>
+            <p style={{ fontWeight: 700, fontSize: '18px', color: 'var(--primary)', marginBottom: '8px' }}>{t.receipt.successTitle}</p>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
-              {registeredCount}件の食材を冷蔵庫の在庫に追加しました。
+              {t.receipt.successText(registeredCount)}
             </p>
             <button
               className={styles.submitBtn}
               onClick={() => router.push("/")}
               style={{ marginTop: "12px" }}
             >
-              冷蔵庫の在庫を確認する
+              {t.receipt.checkInventoryButton}
             </button>
           </div>
         </div>
@@ -178,13 +180,13 @@ export default function ReceiptPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={18} color="#ff6f91" />
-              検出結果の確認・編集
+              {t.receipt.reviewTitle}
             </h3>
-            <span style={{ fontSize: 13, color: '#6b7280' }}>{extractedList.length}件</span>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>{t.receipt.reviewCount(extractedList.length)}</span>
           </div>
 
           <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>
-            誤認識した食材の修正・削除や、カテゴリの変更ができます。確認後に在庫へ追加してください。
+            {t.receipt.reviewHint}
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', paddingRight: 4, marginBottom: 16 }}>
@@ -193,7 +195,7 @@ export default function ReceiptPage() {
                 <input
                   type="text"
                   value={item.name}
-                  placeholder="食材名"
+                  placeholder={t.receipt.namePlaceholder}
                   onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
                   style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 14, background: 'white' }}
                 />
@@ -203,13 +205,13 @@ export default function ReceiptPage() {
                   style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, background: 'white', color: '#4b5563' }}
                 >
                   {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat} value={cat}>{t.category[cat] || cat}</option>
                   ))}
                 </select>
                 <button
                   onClick={() => handleItemDelete(item.id)}
                   style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}
-                  title="削除"
+                  title={t.receipt.deleteTitle}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -236,7 +238,7 @@ export default function ReceiptPage() {
                 fontWeight: 700,
               }}
             >
-              <Plus size={15} /> 食材を追加
+              <Plus size={15} /> {t.receipt.addItemButton}
             </button>
           </div>
 
@@ -246,7 +248,7 @@ export default function ReceiptPage() {
             disabled={saving || extractedList.filter(i => i.name.trim() !== '').length === 0}
           >
             {saving ? <Loader2 className="spinner" size={20} /> : <CheckCircle size={20} />}
-            {extractedList.filter(i => i.name.trim() !== '').length}件を冷蔵庫に追加する
+            {t.receipt.saveButton(extractedList.filter(i => i.name.trim() !== '').length)}
           </button>
         </div>
       )}
@@ -280,8 +282,8 @@ export default function ReceiptPage() {
                   <Camera size={36} className="text-muted" />
                   <ImageIcon size={36} className="text-muted" />
                 </div>
-                <span style={{ fontWeight: 700, color: '#374151' }}>写真を選択 / 撮影（複数可）</span>
-                <span style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>レシート・冷蔵庫の中・食材</span>
+                <span style={{ fontWeight: 700, color: '#374151' }}>{t.receipt.selectPhotoLabel}</span>
+                <span style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>{t.receipt.selectPhotoHint}</span>
               </div>
             )}
           </label>
@@ -293,7 +295,7 @@ export default function ReceiptPage() {
               style={{ marginTop: "20px" }}
             >
               <Upload size={20} />
-              {files.length}枚の画像を解析する
+              {t.receipt.analyzeButton(files.length)}
             </button>
           )}
         </>
@@ -304,7 +306,7 @@ export default function ReceiptPage() {
           <div className="spinner-container">
             <Loader2 className="spinner" size={48} />
           </div>
-          <p>AIが画像を解析して食材を抽出中...</p>
+          <p>{t.receipt.analyzingText}</p>
         </div>
       )}
     </div>
