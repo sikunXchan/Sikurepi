@@ -121,7 +121,14 @@ export async function generateWithRetry(
             console.warn(`All retries exhausted for model ${model}, trying next model...`);
           }
         } else {
-          throw err;
+          // リトライ対象外(不正なパラメータ・非対応モデル等)のエラーでも、
+          // フォールバック配列に他のモデルが残っていれば試す価値があるため
+          // (例: 世代の異なるモデルを混在させた際、片方だけthinkingConfig等の
+          // パラメータを受け付けない、といったモデル固有の非互換を吸収する)、
+          // ここでは即座に諦めず次のモデルに進む。全モデルを使い切った時だけ
+          // 最終的にエラーを投げる。
+          console.warn(`Model ${model} failed with non-retryable error (${status || code || err?.message}), trying next model...`);
+          break;
         }
       }
     }

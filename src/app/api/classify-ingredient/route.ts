@@ -44,9 +44,11 @@ export async function POST(req: Request) {
       ai,
       {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        // thinkingConfigは付けない: gemini-1.5-flash-8bのような旧世代モデルは
+        // 「thinking」機能自体が無くこのパラメータを認識できないため、付けると
+        // リクエストごと拒否されてしまう(単純な分類タスクなので無しでも問題ない)。
         config: {
           responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 0 },
         },
       },
       CLASSIFY_MODELS
