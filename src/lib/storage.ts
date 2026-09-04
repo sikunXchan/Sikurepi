@@ -286,6 +286,14 @@ export function toggleLocalIngredientPin(id: number): void {
   setStorage(KEYS.INVENTORY, updated);
 }
 
+// カテゴリの意味マッチング判定(非同期)が完了する前にEnterで追加された場合、
+// 「その他」のまま登録された食材を後から正しいカテゴリへ更新するために使う。
+export function updateLocalIngredientCategory(id: number, category: string): void {
+  const list = getLocalIngredients();
+  const updated = list.map(i => i.id === id ? { ...i, category } : i);
+  setStorage(KEYS.INVENTORY, updated);
+}
+
 export function consumeLocalIngredients(ingredientNames: string[]): number {
   const list = getLocalIngredients();
   const normalizedTargets = new Set(ingredientNames.map(n => n.trim().toLowerCase()));

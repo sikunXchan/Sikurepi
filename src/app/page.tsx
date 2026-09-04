@@ -13,6 +13,7 @@ import {
   addLocalIngredient,
   deleteLocalIngredient,
   toggleLocalIngredientPin,
+  updateLocalIngredientCategory,
   inferIngredientCategory,
   getForgottenIngredients,
   Ingredient
@@ -167,6 +168,11 @@ export default function Home() {
   const categoryTouchedRef = useRef(categoryTouched);
   const categoryMatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const categoryMatchToken = useRef(0);
+  // デバウンス待ち、またはAPIリクエストが完了していない間はtrue。
+  // この間にEnterで追加されると、結果の反映先をフォームではなく
+  // 追加済みの食材に付け替える(下のcategoryMatchTarget)
+  const categoryMatchPending = useRef(false);
+  const categoryMatchTarget = useRef<{ type: "form" } | { type: "item"; id: number }>({ type: "form" });
 
   useEffect(() => {
     loadIngredients();
@@ -206,9 +212,16 @@ export default function Home() {
       return;
     }
 
-    addLocalIngredient(cleanName, selectedCategory);
-    if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
-    categoryMatchToken.current++;
+    const newItem = addLocalIngredient(cleanName, selectedCategory);
+
+    // カテゴリの自動判定(意味マッチング)がまだ進行中(デバウンス待ち/API応答待ち)
+    // の場合、判定をキャンセルせず継続させ、結果が出た時点で今追加した
+    // この食材のカテゴリを後から更新できるようにする。以前はここで即座に
+    // キャンセルしていたため、判定が終わる前にEnterで送信すると「その他」の
+    // ままになってしまっていた。
+    if (categoryMatchPending.current) {
+      categoryMatchTarget.current = { type: "item", id: newItem.id };
+    }
     setNewName("");
     setSelectedCategory("その他");
     setCategoryTouched(false);
@@ -230,14 +243,28 @@ export default function Home() {
       // あればカテゴリを引き継げる。
       if (inferred === "その他" && value.trim().length >= 2) {
         const myToken = ++categoryMatchToken.current;
+        categoryMatchPending.current = true;
+        categoryMatchTarget.current = { type: "form" };
         categoryMatchTimer.current = setTimeout(() => {
           matchIngredientSemantic(value.trim())
             .then((result) => {
-              // 入力がさらに変わった/カテゴリを手動選択された場合は結果を捨てる
-              if (categoryMatchToken.current !== myToken || categoryTouchedRef.current) return;
-              if (result?.category) setSelectedCategory(result.category);
+              // 入力がさらに変わった場合は結果を捨てる
+              if (categoryMatchToken.current !== myToken) return;
+              categoryMatchPending.current = false;
+              if (!result?.category) return;
+
+              const target = categoryMatchTarget.current;
+              if (target.type === "item") {
+                // 判定が終わる前にEnterで追加済みだった場合、その食材を後から更新する
+                updateLocalIngredientCategory(target.id, result.category);
+                loadIngredients();
+              } else if (!categoryTouchedRef.current) {
+                setSelectedCategory(result.category);
+              }
             })
-            .catch(() => {});
+            .catch(() => {
+              categoryMatchPending.current = false;
+            });
         }, 500);
       }
     }
