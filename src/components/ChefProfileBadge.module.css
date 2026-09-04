@@ -19,7 +19,11 @@
   background: rgba(255, 111, 145, 0.14);
   padding: 4px 12px 4px 4px;
   border-radius: 20px;
-  flex-shrink: 0;
+  /* 英語のランク名(例: "Chef de Cuisine")は日本語より長く、幅の狭い端末だと
+     アイコンとテキストが縦に折り返ってしまっていたため、横並びを維持しつつ
+     テキスト側だけ省略記号で収める */
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .rankIcon {
@@ -33,6 +37,10 @@
   font-size: 14px;
   font-weight: 900;
   color: var(--primary-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .metricsGroup {
