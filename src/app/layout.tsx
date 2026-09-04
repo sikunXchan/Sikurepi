@@ -5,7 +5,7 @@ import LanguageToggle from "@/components/LanguageToggle";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "Sikunrepi",
+  title: "Sikurepi",
   description: "Smart recipe generator from your receipts",
   manifest: "/manifest.json",
   icons: {
