@@ -1,0 +1,46 @@
+.wrapper {
+  position: fixed;
+  /* ボトムナビ(高さ約64px+セーフエリア)から半分くらいよじ登って顔を出している見た目にする */
+  bottom: calc(34px + env(safe-area-inset-bottom));
+  right: 14px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bear {
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.bubble {
+  position: relative;
+  max-width: 170px;
+  margin-bottom: 6px;
+  padding: 10px 14px;
+  background: var(--card-bg-solid, #fff);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  right: 22px;
+  width: 14px;
+  height: 14px;
+  background: var(--card-bg-solid, #fff);
+  border-right: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  transform: rotate(45deg);
+}

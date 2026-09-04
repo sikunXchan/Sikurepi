@@ -14,6 +14,19 @@ const ja = {
     toggleLabel: "English",
     switchedTo: "日本語に切り替えました",
   },
+  // 下タブによじ登ってくる熊マスコットが表示するねぎらいメッセージ(ランダムに1つ選ぶ)
+  cheer: {
+    messages: [
+      "今日も自炊お疲れ様！",
+      "ご飯作るのって大変だよね、えらい！",
+      "美味しいご飯、ありがとう〜",
+      "毎日の積み重ね、すごいことだよ",
+      "今日も一日お疲れ様でした🍚",
+      "無理せず、ゆっくりいこうね",
+      "あなたの自炊、応援してるよ！",
+      "今日のごはんも美味しそう〜",
+    ],
+  },
   // 食材カテゴリの表示名。保存データ自体は常に日本語のキー(「野菜」等)のまま扱い、
   // 表示するときだけこの辞書で変換する(データ構造・CATEGORY_RULES等には影響しない)。
   category: {
@@ -69,6 +82,14 @@ const ja = {
     settingsButtonTitle: "マイ設定",
     modeInventory: "🧺 在庫から作る",
     modeFree: "✨ 自由に作る",
+    mealStyleSingle: "🍽️ 単品で作る",
+    mealStyleSet: "🍱 定食セットで作る",
+    courseLabel: {
+      '主菜': '主菜',
+      '副菜': '副菜',
+      '汁物': '汁物',
+      'ご飯・主食': 'ご飯・主食',
+    } as Record<string, string>,
     templatesLabel: "💡 おすすめテンプレート",
     templates: {
       quick: "10分時短",
@@ -289,8 +310,6 @@ const ja = {
     climateToggleLabel: "🌤️ 気候・天気に連動したレシピ提案を有効にする",
     seasoningsToggleLabel: "🧂 塩・醤油などの基本調味料は常備している前提でレシピを提案する",
     seasoningsHint: "※ OFFにすると、調味料も在庫にあるものだけを使ってレシピを提案し、不足分もきちんと表示します",
-    servingsLabel: "👥 基本の人数",
-    servingsUnit: (n: number) => `${n}人分`,
     pfcLabel: "🎯 1日のPFC目標（週間献立の栄養バランスに使用）",
     caloriesPlaceholder: "目標カロリー（例: 2000）",
     proteinPlaceholder: "目標タンパク質g（例: 75）",

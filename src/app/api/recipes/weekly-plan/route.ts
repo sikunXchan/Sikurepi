@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const profileSection = buildProfileSection(actualProfile);
     const seasoningSection = buildSeasoningSection(actualProfile?.assumeSeasoningsAvailable !== false);
 
-    const targetServings = actualProfile?.servings || 2;
+    const targetServings = 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0

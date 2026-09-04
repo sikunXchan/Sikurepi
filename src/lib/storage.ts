@@ -64,7 +64,6 @@ export type UserStats = {
 };
 
 export type UserProfile = {
-  servings: number;
   tastePreferences: string[];
   excludedIngredients: string[];
   cookingStyles: string[];
@@ -242,6 +241,16 @@ function setStorage<T>(key: string, value: T): void {
   }
 }
 
+// 単純な Date.now() をIDに使うと、レシート一括登録のような同期forループ内で
+// 複数件を追加した際に同じミリ秒になり、全く別の食材が同一IDを持ってしまう
+// (在庫のチェック選択・削除・ピン留めが別アイテムに誤爆する不具合の原因だった)。
+// 同一ミリ秒内でも呼び出すたびに必ず値が増える単調増加IDにして衝突を防ぐ。
+let idCounter = 0;
+function generateId(): number {
+  idCounter = (idCounter + 1) % 1000;
+  return Date.now() * 1000 + idCounter;
+}
+
 // --- 在庫 (Inventory) ---
 
 export function getLocalIngredients(): Ingredient[] {
@@ -256,7 +265,7 @@ export function getLocalIngredients(): Ingredient[] {
 export function addLocalIngredient(name: string, category: string = 'その他'): Ingredient {
   const list = getLocalIngredients();
   const newItem: Ingredient = {
-    id: Date.now(),
+    id: generateId(),
     name: name.trim(),
     is_pinned: false,
     category,
@@ -302,7 +311,7 @@ export function getLocalShoppingItems(): ShoppingItem[] {
 export function addLocalShoppingItem(name: string, category: string = 'その他'): ShoppingItem {
   const list = getLocalShoppingItems();
   const newItem: ShoppingItem = {
-    id: Date.now(),
+    id: generateId(),
     name: name.trim(),
     category,
     is_completed: false,
@@ -336,7 +345,7 @@ export function saveLocalRecipe(recipe: Omit<SavedRecipe, 'id' | 'saved_at'>): S
   const list = getLocalSavedRecipes();
   const newItem: SavedRecipe = {
     ...recipe,
-    id: Date.now(),
+    id: generateId(),
     saved_at: new Date().toISOString(),
   };
   setStorage(KEYS.SAVED_RECIPES, [newItem, ...list]);
@@ -394,6 +403,28 @@ export function getLocalUserStats(): UserStats {
   return getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
 }
 
+// ブリガード・ド・キュイジーヌの階級(Lv.1〜10)に必要な累計自炊回数のしきい値。
+// 以前は sqrt(2n)+1 で最大レベルに41回で到達してしまい簡単すぎたため、
+// 最上位(エグゼクティブシェフ)には555回の自炊が必要になるよう調整した
+// (段階が上がるほど必要回数の伸びが大きくなる、いわゆるRPG的な成長曲線)。
+const LEVEL_THRESHOLDS = [0, 5, 15, 35, 65, 110, 170, 260, 380, 555];
+
+export function computeChefLevel(totalCooked: number): number {
+  let level = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    if (totalCooked >= LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return level;
+}
+
+// 現在のレベルと次のレベルに必要な回数(進捗バー表示用)。最大レベルではnextを返さない。
+export function getChefLevelProgress(totalCooked: number): { level: number; currentThreshold: number; nextThreshold: number | null } {
+  const level = computeChefLevel(totalCooked);
+  const currentThreshold = LEVEL_THRESHOLDS[level - 1];
+  const nextThreshold = level < LEVEL_THRESHOLDS.length ? LEVEL_THRESHOLDS[level] : null;
+  return { level, currentThreshold, nextThreshold };
+}
+
 export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null, ingredientNames: string[] = []): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
@@ -411,7 +442,7 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
 
   const newTotal = stats.total_cooked + 1;
   const newSavedFood = stats.saved_food_count + consumedCount;
-  const newLevel = Math.max(1, Math.min(10, Math.floor(Math.sqrt(newTotal * 2)) + 1));
+  const newLevel = computeChefLevel(newTotal);
 
   const addCals = nutrition?.calories || 0;
   const addProtein = nutrition?.protein_g || 0;
@@ -489,7 +520,6 @@ export function incrementFreeGenerationsUsed(): number {
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  servings: 2,
   tastePreferences: [],
   excludedIngredients: [],
   cookingStyles: [],

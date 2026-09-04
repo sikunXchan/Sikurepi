@@ -43,6 +43,7 @@ type Recipe = {
   genre?: string;
   climate_badge?: string;
   dish_badge?: string;
+  course?: string;
   ingredients: RecipeItem[];
   steps: string[];
   tips: string;
@@ -65,6 +66,14 @@ const TEMPLATES = [
   { emoji: '🧽', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ] as const;
 
+// 定食モードで各品に付くコース名(主菜/副菜/汁物/ご飯・主食)のアイコン
+const COURSE_EMOJI: Record<string, string> = {
+  '主菜': '🍖',
+  '副菜': '🥗',
+  '汁物': '🍲',
+  'ご飯・主食': '🍚',
+};
+
 const TIP_CATEGORY_COLORS: Record<string, string> = {
   '保存方法': '#20b2aa',
   '調理のコツ': '#ff6f91',
@@ -86,6 +95,8 @@ export default function RecipePage() {
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [creationMode, setCreationMode] = useState<'inventory' | 'free'>('inventory');
+  // 単品の候補を複数出すか、主菜・副菜・汁物からなる定食セットを1組出すか
+  const [mealStyle, setMealStyle] = useState<'single' | 'set'>('single');
   const [instruction, setInstruction] = useState("");
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>([]);
   const [showTips, setShowTips] = useState(false);
@@ -118,8 +129,6 @@ export default function RecipePage() {
       setInstruction(cached.instruction);
       setSelectedIngredientIds(cached.selectedIngredientIds);
       setSessionServings(cached.servings);
-    } else {
-      setSessionServings(getLocalUserProfile().servings || 2);
     }
   }, []);
 
@@ -176,6 +185,7 @@ export default function RecipePage() {
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         recentRecipes,
         mode: creationMode === 'free' ? 'free' : 'inventory',
+        mealStyle,
         language,
       };
 
@@ -320,6 +330,9 @@ export default function RecipePage() {
 
       <ClimateBar />
 
+      {/* AI生成中は下のフォーム一式を操作不可にし、リクエスト内容が生成中に
+          変わってしまう混乱を防ぐ(ボタン自体は押せるが見た目にも分かるよう薄くする) */}
+      <div style={{ pointerEvents: loading ? 'none' : undefined, opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }} aria-disabled={loading}>
       {/* AI作成モード切り替え (在庫から作成 ⇄ 自由作成) */}
       <div style={{
         display: 'flex',
@@ -369,6 +382,58 @@ export default function RecipePage() {
           }}
         >
           {t.recipe.modeFree}
+        </button>
+      </div>
+
+      {/* 単品の候補を複数出す ⇄ 主菜・副菜・汁物からなる定食セットを1組出す */}
+      <div style={{
+        display: 'flex',
+        background: 'var(--card-bg-solid)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 16,
+        padding: 4,
+        gap: 4,
+        marginBottom: 12,
+      }}>
+        <button
+          type="button"
+          onClick={() => setMealStyle('single')}
+          style={{
+            flex: 1,
+            background: mealStyle === 'single' ? 'var(--gradient-cool)' : 'transparent',
+            color: mealStyle === 'single' ? 'white' : 'var(--text-secondary)',
+            border: 'none',
+            boxShadow: 'none',
+            borderRadius: 12,
+            padding: '10px 8px',
+            fontSize: 14,
+            fontWeight: 800,
+            cursor: 'pointer',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.recipe.mealStyleSingle}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMealStyle('set')}
+          style={{
+            flex: 1,
+            background: mealStyle === 'set' ? 'var(--gradient-cool)' : 'transparent',
+            color: mealStyle === 'set' ? 'white' : 'var(--text-secondary)',
+            border: 'none',
+            boxShadow: 'none',
+            borderRadius: 12,
+            padding: '10px 8px',
+            fontSize: 14,
+            fontWeight: 800,
+            cursor: 'pointer',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.recipe.mealStyleSet}
         </button>
       </div>
 
@@ -517,6 +582,7 @@ export default function RecipePage() {
           )}
         </button>
       </div>
+      </div>
 
       {loading && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
@@ -525,7 +591,7 @@ export default function RecipePage() {
             alt={t.recipe.loadingAlt}
             width={96}
             height={96}
-            animate={{ y: [0, -8, 0] }}
+            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.recipe.loadingText}</p>
@@ -560,6 +626,9 @@ export default function RecipePage() {
                 >
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
+                      {recipe.course && (
+                        <span className={styles.genreBadge}>{COURSE_EMOJI[recipe.course] || '🍽️'} {t.recipe.courseLabel[recipe.course] || recipe.course}</span>
+                      )}
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
