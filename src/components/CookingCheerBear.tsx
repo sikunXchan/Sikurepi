@@ -8,6 +8,15 @@ import styles from "./CookingCheerBear.module.css";
 
 const SESSION_KEY = "lily_app_cheer_shown_session";
 
+// 表情豊かなクマシェフの持ちポーズ数種類からランダムに選び、毎回違う顔で出迎える
+const BEAR_POSES = [
+  "bear_wave.png",
+  "bear_love.png",
+  "bear_excited.png",
+  "bear_itadakimasu.png",
+  "bear_serving.png",
+];
+
 // 自炊してくれたことをねぎらう、下タブによじ登ってくる熊のマスコット。
 // アプリを開いた時(セッション中1回だけ)、これまでに1回でも自炊記録があれば登場し、
 // 定型のねぎらいメッセージを吹き出しで表示する。タップで下に降りて消える。
@@ -15,6 +24,7 @@ export default function CookingCheerBear() {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState("");
+  const [pose, setPose] = useState(BEAR_POSES[0]);
 
   useEffect(() => {
     try {
@@ -29,9 +39,11 @@ export default function CookingCheerBear() {
 
     const messages = t.cheer.messages;
     const chosen = messages[Math.floor(Math.random() * messages.length)];
+    const chosenPose = BEAR_POSES[Math.floor(Math.random() * BEAR_POSES.length)];
 
     const timer = setTimeout(() => {
       setMessage(chosen);
+      setPose(chosenPose);
       setVisible(true);
       try {
         sessionStorage.setItem(SESSION_KEY, "1");
@@ -66,10 +78,10 @@ export default function CookingCheerBear() {
             {message}
           </motion.div>
           <motion.img
-            src="/mascot/bear_wave.png"
+            src={`/mascot/${pose}`}
             alt=""
-            width={64}
-            height={64}
+            width={104}
+            height={104}
             className={styles.bear}
             animate={{ rotate: [-3, 3, -3] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}

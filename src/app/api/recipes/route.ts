@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     const ingredientsSection = isFreeMode
       ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
-      : `【現在の在庫食材】\n${ingredients.join(', ')}\n`;
+      : `【現在の在庫食材】\n${ingredients.join(', ')}\n【重要：在庫優先の原則】これらの在庫食材をできるだけ中心に据えて構成し、在庫にない食材の追加は「その料理を成立させるために本当に必要なもの」に限定してください。在庫食材だけでは品数が少なく完全な一皿になりにくい場合も、無関係な食材を大量に追加するのではなく、在庫食材の分量を増やしたり調理法を工夫したりして対応することを優先してください。\n`;
 
     const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
       ? `\n【ピン留め食材（これらを必ず主役・または必須で使用してください！）】\n${pinnedIngredients.join(', ')}\n`

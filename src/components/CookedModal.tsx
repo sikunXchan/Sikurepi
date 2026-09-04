@@ -41,13 +41,13 @@ export default function CookedModal({
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  // 食材が四方八方に飛び散るアニメーション用に、食材ごとの飛び方をランダムに1回だけ決めておく
+  // 食材が四方八方に大きく飛び散るアニメーション用に、食材ごとの飛び方をランダムに1回だけ決めておく
   const [scatter] = useState(() =>
     rawIngredients.map(() => ({
-      dx: (Math.random() - 0.5) * 280,
-      dy: 160 + Math.random() * 140,
-      rotate: (Math.random() - 0.5) * 540,
-      delay: Math.random() * 0.2,
+      dx: (Math.random() - 0.5) * 440,
+      dy: 220 + Math.random() * 200,
+      rotate: (Math.random() - 0.5) * 720,
+      delay: Math.random() * 0.25,
     }))
   );
 
@@ -77,7 +77,7 @@ export default function CookedModal({
         if (onCompleted) onCompleted();
         if (onSuccess) onSuccess();
         onClose();
-      }, 1000);
+      }, 2600);
     } catch (e) {
       console.error(e);
       alert("エラーが発生しました");
@@ -101,21 +101,30 @@ export default function CookedModal({
               {rawIngredients.map((item, idx) => (
                 <motion.div
                   key={idx}
-                  style={{ position: "absolute", top: "18%", left: "50%", marginLeft: -16, pointerEvents: "none" }}
+                  style={{ position: "absolute", top: "30%", left: "50%", marginLeft: -22, pointerEvents: "none" }}
                   initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 }}
                   animate={{
                     x: scatter[idx]?.dx ?? 0,
                     y: scatter[idx]?.dy ?? 0,
                     opacity: 0,
                     rotate: scatter[idx]?.rotate ?? 0,
-                    scale: 0.6,
+                    scale: 0.7,
                   }}
-                  transition={{ duration: 1.1, delay: scatter[idx]?.delay ?? 0, ease: "easeIn" }}
+                  transition={{ duration: 1.3, delay: 0.3 + (scatter[idx]?.delay ?? 0), ease: "easeIn" }}
                 >
-                  <IngredientIcon name={item.name} size={32} />
+                  <IngredientIcon name={item.name} size={44} />
                 </motion.div>
               ))}
-              <div className={styles.doneIcon}>🎉</div>
+              <motion.img
+                src="/mascot/bear_hero.png"
+                alt=""
+                width={132}
+                height={132}
+                className={styles.doneBear}
+                initial={{ scale: 0.3, opacity: 0, rotate: -8 }}
+                animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 16 }}
+              />
               <h3>調理完了！お疲れさまでした！</h3>
               <p>自炊記録と在庫が更新されました</p>
             </div>
