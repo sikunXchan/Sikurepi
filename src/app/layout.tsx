@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import LanguageToggle from "@/components/LanguageToggle";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "AI Cooking",
+  title: "Sikunrepi",
   description: "Smart recipe generator from your receipts",
   manifest: "/manifest.json",
   icons: {
@@ -28,10 +30,13 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
-        <div className="container">
-          {children}
-        </div>
-        <BottomNav />
+        <LanguageProvider>
+          <LanguageToggle />
+          <div className="container">
+            {children}
+          </div>
+          <BottomNav />
+        </LanguageProvider>
       </body>
     </html>
   );

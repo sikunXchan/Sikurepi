@@ -29,6 +29,7 @@ import {
   ClimateState,
   NutritionData
 } from "@/lib/storage";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Recipe.module.css";
 
 type RecipeItem = {
@@ -55,14 +56,14 @@ type CookingTip = {
 };
 
 const TEMPLATES = [
-  { emoji: '⏳', label: '10分時短', query: '10分以内で手早く作れる時短おかず' },
-  { emoji: '🍱', label: 'お弁当', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
-  { emoji: '💪', label: 'ガッツリ肉', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
-  { emoji: '🥗', label: 'ヘルシー', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
-  { emoji: '🍲', label: '鍋・スープ', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
-  { emoji: '🍰', label: 'スイーツ', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
-  { emoji: '🧽', label: '洗い物ラク', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
-];
+  { emoji: '⏳', key: 'quick', query: '10分以内で手早く作れる時短おかず' },
+  { emoji: '🍱', key: 'bento', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
+  { emoji: '💪', key: 'meaty', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
+  { emoji: '🥗', key: 'healthy', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
+  { emoji: '🍲', key: 'soup', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
+  { emoji: '🍰', key: 'sweets', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { emoji: '🧽', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
+] as const;
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
   '保存方法': '#20b2aa',
@@ -71,6 +72,7 @@ const TIP_CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function RecipePage() {
+  const { t } = useLanguage();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -184,14 +186,14 @@ export default function RecipePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "レシピの生成に失敗しました");
+        throw new Error(data.error || t.recipe.errorGenerateFailed);
       }
 
       if (data.recipes && data.recipes.length > 0) {
         setRecipes(data.recipes);
         setExpandedIndex(0);
       } else {
-        throw new Error("レシピが見つかりませんでした。条件を変えてお試しください。");
+        throw new Error(t.recipe.errorNoRecipes);
       }
 
       const tips = data.cooking_tips && data.cooking_tips.length > 0 ? data.cooking_tips : [];
@@ -218,7 +220,7 @@ export default function RecipePage() {
       });
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "エラーが発生しました");
+      setErrorMsg(err.message || t.recipe.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -259,10 +261,10 @@ export default function RecipePage() {
         origin: { y: 0.7 },
         colors: ['#ff6f91', '#20b2aa', '#fbbf24', '#f472b6'],
       });
-      showToast(`💾 「${r.title}」をレシピ履歴に保存しました！`);
+      showToast(t.recipe.savedToast(r.title));
     } catch (e) {
       console.error(e);
-      showToast("保存に失敗しました");
+      showToast(t.recipe.saveFailedToast);
     } finally {
       setSavingIndex(null);
     }
@@ -273,7 +275,7 @@ export default function RecipePage() {
     if (pinnedToShoppingSet.has(key)) return;
     addLocalShoppingItem(ingredientName);
     setPinnedToShoppingSet(prev => new Set(prev).add(key));
-    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
+    showToast(t.recipe.pinnedToShoppingToast(ingredientName));
   };
 
   return (
@@ -300,15 +302,15 @@ export default function RecipePage() {
 
       {/* ヘッダーエリア */}
       <PageHeader
-        title="AIレシピ提案"
-        subtitle="今日はなに作る？"
+        title={t.recipe.title}
+        subtitle={t.recipe.subtitle}
         mascot="bear_hero"
         actions={
           <button
             type="button"
             className={styles.settingsBtn}
             onClick={() => setIsSettingsOpen(true)}
-            title="マイ設定"
+            title={t.recipe.settingsButtonTitle}
           >
             <Settings size={18} />
           </button>
@@ -345,7 +347,7 @@ export default function RecipePage() {
             whiteSpace: 'nowrap',
           }}
         >
-          🧺 在庫から作る
+          {t.recipe.modeInventory}
         </button>
         <button
           type="button"
@@ -365,7 +367,7 @@ export default function RecipePage() {
             whiteSpace: 'nowrap',
           }}
         >
-          ✨ 自由に作る
+          {t.recipe.modeFree}
         </button>
       </div>
 
@@ -374,7 +376,7 @@ export default function RecipePage() {
         {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
-            💡 おすすめテンプレート
+            {t.recipe.templatesLabel}
           </div>
           {/* モックアップに合わせて、アイコンを上・ラベルを下に置いた横スクロールのタイルにする */}
           <div className={styles.templateRow}>
@@ -388,7 +390,7 @@ export default function RecipePage() {
                   className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
                 >
                   <span className={styles.templateEmoji}>{tmpl.emoji}</span>
-                  <span className={styles.templateLabel}>{tmpl.label}</span>
+                  <span className={styles.templateLabel}>{t.recipe.templates[tmpl.key]}</span>
                 </button>
               );
             })}
@@ -398,11 +400,11 @@ export default function RecipePage() {
         {/* 自由リクエスト入力 */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', display: 'block', marginBottom: 8 }}>
-            📝 リクエスト・気分
+            {t.recipe.requestLabel}
           </label>
           <textarea
             rows={2}
-            placeholder="例: 子供が喜ぶチーズ料理、フライパン1つで作れるパスタ、さっぱりした副菜など"
+            placeholder={t.recipe.requestPlaceholder}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13 }}
@@ -412,7 +414,7 @@ export default function RecipePage() {
         {/* 人数 (マイページの設定をデフォルトに使いつつ、生成のたびに個別に変更できる。大人数の集まり等も想定し1〜15人分まで対応) */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', display: 'block', marginBottom: 8 }}>
-            👥 今回作る人数
+            {t.recipe.servingsLabel}
           </label>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--background-secondary)', border: '1px solid var(--border)', borderRadius: 14, padding: '8px 12px' }}>
             <button
@@ -430,7 +432,7 @@ export default function RecipePage() {
               −
             </button>
             <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
-              {sessionServings}人分
+              {t.recipe.servingsUnit(sessionServings)}
             </span>
             <button
               type="button"
@@ -453,8 +455,8 @@ export default function RecipePage() {
         {creationMode === 'inventory' && (
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
-              🧺 使いたい食材を選択
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>未選択なら全在庫からAIが判断</span>
+              {t.recipe.selectIngredientsLabel}
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.recipe.selectIngredientsHint}</span>
             </div>
             {ingredients.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -488,7 +490,7 @@ export default function RecipePage() {
               </div>
             ) : (
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                冷蔵庫に食材がありません。「自由作成」モードをご利用いただくか、在庫画面から追加してください。
+                {t.recipe.noIngredients}
               </p>
             )}
           </div>
@@ -504,12 +506,12 @@ export default function RecipePage() {
           {loading ? (
             <>
               <Loader2 className="spinner" size={18} />
-              AIシェフが絶品レシピを考案中...
+              {t.recipe.generateLoading}
             </>
           ) : (
             <>
               <Sparkles size={18} />
-              ✨ AIにレシピを提案してもらう！
+              {t.recipe.generateButton}
             </>
           )}
         </button>
@@ -519,13 +521,13 @@ export default function RecipePage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
           <motion.img
             src="/mascot/bear_delivering.png"
-            alt="AIシェフが考案中"
+            alt={t.recipe.loadingAlt}
             width={96}
             height={96}
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>AIシェフが厨房で腕をふるっています…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.recipe.loadingText}</p>
         </div>
       )}
 
@@ -541,8 +543,8 @@ export default function RecipePage() {
           <div className={styles.resultsBanner}>
             <img src="/mascot/bear_serving.png" alt="" width={52} height={52} />
             <div>
-              <div className={styles.resultsBannerTitle}>{recipes.length}品できたよ！</div>
-              <div className={styles.resultsBannerSub}>気に入ったら保存してね</div>
+              <div className={styles.resultsBannerTitle}>{t.recipe.resultsBannerTitle(recipes.length)}</div>
+              <div className={styles.resultsBannerSub}>{t.recipe.resultsBannerSub}</div>
             </div>
           </div>
           {recipes.map((recipe, index) => {
@@ -586,7 +588,7 @@ export default function RecipePage() {
                       disabled={isSaved || savingIndex === index}
                     >
                       {isSaved ? <Check size={14} /> : <Bookmark size={14} />}
-                      {isSaved ? "保存済み" : "保存"}
+                      {isSaved ? t.recipe.saved : t.recipe.save}
                     </button>
                     <button className={styles.expandBtn}>
                       {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -605,8 +607,8 @@ export default function RecipePage() {
                     {/* 材料リスト（不足分は赤字＋「追加」ボタンで買い物リストへ） */}
                     <div className={styles.section}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <h3>材料・調味料</h3>
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>不足分は「追加」で買い物リストへ</span>
+                        <h3>{t.recipe.ingredientsSectionTitle}</h3>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.recipe.ingredientsSectionHint}</span>
                       </div>
                       <ul className={styles.ingredientList}>
                         {recipe.ingredients.map((item, i) => {
@@ -631,7 +633,7 @@ export default function RecipePage() {
                                     disabled={isPinned}
                                   >
                                     {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                    {isPinned ? '追加済み' : '追加'}
+                                    {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
                                   </button>
                                 )}
                               </span>
@@ -644,13 +646,13 @@ export default function RecipePage() {
                     {/* 作り方 */}
                     <div className={styles.section}>
                       <div className={styles.sectionHeader}>
-                        <h3>作り方</h3>
+                        <h3>{t.recipe.stepsSectionTitle}</h3>
                         <button
                           className={styles.startCookingBtn}
                           onClick={(e) => { e.stopPropagation(); setCookingRecipeIndex(index); }}
                         >
                           <PlayCircle size={16} />
-                          クッキングモード
+                          {t.recipe.cookingModeButton}
                         </button>
                       </div>
                       <ol className={styles.stepList}>
@@ -665,7 +667,7 @@ export default function RecipePage() {
 
                     {recipe.tips && (
                       <div className={styles.tipsBox}>
-                        <strong>💡 シェフのコツ: </strong> {recipe.tips}
+                        <strong>{t.recipe.tipsPrefix}</strong> {recipe.tips}
                       </div>
                     )}
 
@@ -690,7 +692,7 @@ export default function RecipePage() {
                         }}
                         onClick={() => setCookedModalRecipe(recipe)}
                       >
-                        🍳 この料理を作った！（在庫を減らしPFCを記録）
+                        {t.recipe.cookedButton}
                       </button>
                     </div>
                   </div>
@@ -710,7 +712,7 @@ export default function RecipePage() {
           >
             <span className={styles.cookingTipsTitle}>
               <Lightbulb size={18} color="#8b5cf6" />
-              料理のコツ &amp; 豆知識（ライブラリに保存済み）
+              {t.recipe.cookingTipsHeader}
             </span>
             {showTips ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
@@ -761,7 +763,7 @@ export default function RecipePage() {
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadLocalData();
-              showToast("🎉 自炊記録とお使いの在庫を更新しました！");
+              showToast(t.recipe.cookedCompletedToast);
             }}
           />
         )}
