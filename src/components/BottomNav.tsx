@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Home, Receipt, ChefHat, BookOpen, ShoppingCart, CalendarDays, UserRound } from "lucide-react";
 import { getForgottenIngredients } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { NAV_LOCK_EVENT } from "@/lib/navLock";
 import styles from "./BottomNav.module.css";
 
 export default function BottomNav() {
@@ -13,6 +14,8 @@ export default function BottomNav() {
   const { t } = useLanguage();
   // 「食材が呼びかける」対象がいる間、在庫タブに気づけるよう赤いバッジを出す
   const [forgottenCount, setForgottenCount] = useState(0);
+  // レシート解析中など、離脱すると処理が失われる画面ではタブ移動をロックする
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     const update = () => setForgottenCount(getForgottenIngredients().length);
@@ -20,6 +23,18 @@ export default function BottomNav() {
     window.addEventListener("storage-updated", update);
     return () => window.removeEventListener("storage-updated", update);
   }, []);
+
+  useEffect(() => {
+    const onLockChange = (e: Event) => {
+      setLocked(Boolean((e as CustomEvent<{ locked: boolean }>).detail?.locked));
+    };
+    window.addEventListener(NAV_LOCK_EVENT, onLockChange);
+    return () => window.removeEventListener(NAV_LOCK_EVENT, onLockChange);
+  }, []);
+
+  const guardClick = (e: React.MouseEvent) => {
+    if (locked) e.preventDefault();
+  };
 
   // primary: モックアップの中央FABに相当する主要アクション（レシピを作る）
   // レシピを中央（左右3つずつ）に置くため、タブ数は7つ。
@@ -34,7 +49,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className={styles.nav}>
+    <nav className={`${styles.nav} ${locked ? styles.navLocked : ""}`} aria-disabled={locked}>
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.path;
@@ -48,6 +63,7 @@ export default function BottomNav() {
               data-nav={item.name}
               data-nav-key={item.key}
               aria-current={isActive ? "page" : undefined}
+              onClick={guardClick}
             >
               <span className={`${styles.fab} ${isActive ? styles.fabActive : ""}`}>
                 <Icon size={24} />
@@ -65,6 +81,7 @@ export default function BottomNav() {
             data-nav={item.name}
             data-nav-key={item.key}
             aria-current={isActive ? "page" : undefined}
+            onClick={guardClick}
           >
             {isActive && <div className={styles.activeIndicator} />}
             <span className={styles.iconWrap}>

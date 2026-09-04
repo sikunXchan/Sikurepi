@@ -17,10 +17,11 @@ import {
   SavedTip,
   Ingredient
 } from "@/lib/storage";
-import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database } from "lucide-react";
+import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 import styles from "./ProfileSettingsModal.module.css";
 
 // 優先ジャンル選択の選択肢。ジャンル別サムネイルと同じ一覧を使い回して二重管理を防ぐ
@@ -68,7 +69,11 @@ type Props = {
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const { t } = useLanguage();
+  const { user, isSupabaseConfigured, sendMagicLink, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountSending, setAccountSending] = useState(false);
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   // getLocalUserStats()を直接初期値に渡すとハイドレーションミスマッチになるため、
   // 安全な初期値を渡し実データはマウント後のuseEffectでのみ取得する
@@ -179,6 +184,19 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleSendMagicLink = async () => {
+    if (!accountEmail.trim() || accountSending) return;
+    setAccountSending(true);
+    setAccountMessage(null);
+    const res = await sendMagicLink(accountEmail.trim());
+    setAccountSending(false);
+    setAccountMessage(
+      res.success
+        ? t.settings.accountMagicLinkSent(accountEmail.trim())
+        : t.settings.accountMagicLinkError(res.error || "")
+    );
   };
 
   return (
@@ -489,6 +507,58 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
 
       {activeTab === 'backup' && (
         <div className={styles.body}>
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>{t.settings.accountTitle}</label>
+            <p className={styles.hint} style={{ display: 'block', marginBottom: 10 }}>
+              {t.settings.accountDescription}
+            </p>
+
+            {!isSupabaseConfigured ? (
+              <p className={styles.hint}>{t.settings.accountNotConfigured}</p>
+            ) : user ? (
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', margin: '0 0 4px' }}>
+                  {t.settings.accountLoggedInAs(user.email || '')}
+                </p>
+                <p className={styles.hint} style={{ display: 'block', marginBottom: 10 }}>
+                  {t.settings.accountSyncNote}
+                </p>
+                <button type="button" className={styles.uploadBtn} onClick={() => signOut()}>
+                  <LogOut size={15} />
+                  <span>{t.settings.accountLogout}</span>
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    type="email"
+                    className={styles.input}
+                    style={{ flex: '1 1 160px', width: 'auto' }}
+                    placeholder={t.settings.accountEmailPlaceholder}
+                    value={accountEmail}
+                    onChange={(e) => setAccountEmail(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className={styles.downloadBtn}
+                    style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+                    disabled={accountSending || !accountEmail.trim()}
+                    onClick={handleSendMagicLink}
+                  >
+                    <Mail size={15} />
+                    <span>{accountSending ? t.settings.accountSending : t.settings.accountSendMagicLink}</span>
+                  </button>
+                </div>
+                {accountMessage && (
+                  <div className={styles.importStatusAlert} style={{ marginTop: 10 }}>
+                    {accountMessage}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <p className={styles.description}>
             {t.settings.backupDescription}
           </p>

@@ -15,6 +15,7 @@ export async function POST(req: Request) {
       profile,
       userProfile,
       recentHistory,
+      likedRecipeSummary,
       mode,
       mealStyle,
     } = body;
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
 
     const ingredientsSection = isFreeMode
       ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
-      : `【現在の在庫食材】\n${ingredients.join(', ')}\n`;
+      : `【現在の在庫食材】\n${ingredients.join(', ')}\n【重要：在庫優先の原則】これらの在庫食材をできるだけ中心に据えて構成し、在庫にない食材の追加は「その料理を成立させるために本当に必要なもの」に限定してください。在庫食材だけでは品数が少なく完全な一皿になりにくい場合も、無関係な食材を大量に追加するのではなく、在庫食材の分量を増やしたり調理法を工夫したりして対応することを優先してください。\n`;
 
     const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
       ? `\n【ピン留め食材（これらを必ず主役・または必須で使用してください！）】\n${pinnedIngredients.join(', ')}\n`
@@ -47,6 +48,15 @@ export async function POST(req: Request) {
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
       : '';
 
+    // ユーザーが「気に入って保存した」レシピの履歴から、好みの傾向をAIに学習させる。
+    // 同じ料理を繰り返させるのではなく、傾向（ジャンル・味付けの系統）を汲み取って
+    // 新しい提案の精度を上げるための参考情報として渡す。
+    const tasteLearningSection = Array.isArray(likedRecipeSummary) && likedRecipeSummary.length > 0
+      ? `\n【このユーザーが過去に気に入って保存したレシピ（好みの学習用の参考情報）】\n${likedRecipeSummary
+          .map((r: { title?: string; genre?: string | null }) => `・${r.title}${r.genre ? `（${r.genre}）` : ''}`)
+          .join('\n')}\nこれらから読み取れる味付け・ジャンル・食材選びの傾向をくみ取り、同じ料理を繰り返すのではなく「この人がきっと美味しいと感じるであろう」新しい一皿の精度を高めるための参考にしてください。\n`
+      : '';
+
     const targetServings = servings || 2;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
@@ -56,7 +66,7 @@ export async function POST(req: Request) {
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${languageSection}${mealStyleSection}
+${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${mealStyleSection}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -64,8 +74,9 @@ ${seasoningSection}${pinnedSection}${climateSection}${profileSection}${condition
 3. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
 4. 【栄養バランス】すべてのレシピでPFCバランス（タンパク質・脂質・炭水化物）を計算し、1人分あたりの推定栄養価（カロリー, タンパク質g, 脂質g, 炭水化物g）を算出してください。
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
-6. ${DISH_LOAD_INSTRUCTION}
-7. ${isSetMeal
+6. 【本当に美味しい仕上がりへのこだわり】提案する前に、実際に味見したときの味を頭の中で具体的に想像してください。甘味・塩味・酸味・苦味・旨味のバランス、香りの立たせ方（仕上げのひと振り・香味油・薬味など）、食感のコントラスト（カリカリ×とろとろ等）のうち最低1つは意識的に取り入れ、単に食材を組み合わせただけの平凡な一皿ではなく「これは美味しそう」と一目で伝わる工夫を必ず盛り込んでください。
+7. ${DISH_LOAD_INSTRUCTION}
+8. ${isSetMeal
         ? '以下のJSON構造で、"recipes"配列の中に定食セットを構成する各品(主菜・副菜・汁物など、通常3〜4品)のレシピデータを格納して返してください。'
         : '以下のJSON構造で、"recipes"配列の中に複数の独立した料理の候補データを格納して返してください。'
       }"climate_badge"には気候マッチ度を示す短いタグ（例：「☀️ 猛暑に最適」「🌧️ 体ポカポカ」など）を記載してください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
@@ -97,7 +108,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 4000 },
+        // 「本当に美味しい一皿」への工夫を考えさせる分、思考の余地を少し広げる
+        thinkingConfig: { thinkingBudget: 6000 },
       }
     });
 
