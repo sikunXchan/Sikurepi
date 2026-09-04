@@ -1,0 +1,72 @@
+<!--
+  Sikurepi ログインコードメール テンプレート
+  ------------------------------------------
+  Supabaseダッシュボード →「Authentication」→「Email Templates」→「Magic Link」を開き、
+
+  1. 「Subject heading」に下記の件名をコピー
+  2. 「Message body」にこのファイルの<body>〜</body>の中身(このコメントとSubjectの行を除く全体)を貼り付け
+
+  {{ .Token }} の部分がSupabaseによって実際の6桁コードに自動置換されます。
+  テーブルレイアウト・インラインstyleのみで組んでいるのは、Outlook等の
+  古いメールクライアントでも崩れにくくするためです。
+
+  Subject heading: Sikurepiのログインコード 🍳
+-->
+<body style="margin:0; padding:0; background-color:#fdf1f4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf1f4; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px; background-color:#ffffff; border-radius:24px; overflow:hidden; box-shadow:0 8px 24px rgba(224,70,110,0.12);">
+
+          <!-- ヘッダー -->
+          <tr>
+            <td align="center" style="background:linear-gradient(135deg,#ff8fab 0%,#ff6f91 100%); padding:36px 24px 28px;">
+              <div style="font-size:44px; line-height:1; margin-bottom:8px;">🐻‍❄️👩‍🍳</div>
+              <div style="font-size:22px; font-weight:800; color:#ffffff; letter-spacing:0.5px;">Sikurepi</div>
+              <div style="font-size:13px; color:#ffe3ea; margin-top:4px;">冷蔵庫の在庫からAIがレシピを提案</div>
+            </td>
+          </tr>
+
+          <!-- 本文 -->
+          <tr>
+            <td style="padding:32px 28px 8px;">
+              <p style="margin:0 0 4px; font-size:16px; font-weight:800; color:#1f2937;">ログインコードのご案内</p>
+              <p style="margin:0; font-size:13px; line-height:1.7; color:#6b7280;">
+                以下の6桁のコードをSikurepiアプリの「マイページ」内、アカウント連携の入力欄にご入力ください。
+              </p>
+            </td>
+          </tr>
+
+          <!-- コード -->
+          <tr>
+            <td align="center" style="padding:20px 28px 8px;">
+              <div style="background-color:#fff0f3; border:2px dashed #ff9fb5; border-radius:16px; padding:18px 12px; width:100%; box-sizing:border-box;">
+                <span style="font-family:'Courier New',Courier,monospace; font-size:34px; font-weight:800; letter-spacing:10px; color:#e0466e;">
+                  {{ .Token }}
+                </span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- 注意書き -->
+          <tr>
+            <td style="padding:16px 28px 32px;">
+              <p style="margin:0; font-size:12px; line-height:1.7; color:#9ca3af;">
+                ⏱️ このコードの有効期限は発行から24時間です。<br>
+                🔒 心当たりがない場合は、このメールを無視してください。アカウントに変更は加えられません。
+              </p>
+            </td>
+          </tr>
+
+          <!-- フッター -->
+          <tr>
+            <td align="center" style="background-color:#fafafa; padding:18px 24px; border-top:1px solid #f3f4f6;">
+              <p style="margin:0; font-size:11px; color:#b0b4bb;">今日も一日お疲れ様でした 🍚 &nbsp;|&nbsp; Sikurepi</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
