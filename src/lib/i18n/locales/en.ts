@@ -51,7 +51,17 @@ const en: typeof ja = {
       "Give me my moment to shine!",
     ],
     forgottenSuffix: (ageDays: number) => ` (Day ${ageDays} in stock)`,
-    aiSetupToast: "🧠 First time only: setting up the multilingual matching model… (instant from now on)",
+  },
+  aiMatch: {
+    consentTitle: "Multilingual ingredient matching",
+    consentBody: "When you type an ingredient name in a language other than Japanese (like English), this app downloads an offline matching model just once (roughly 400MB or more in total). We recommend doing this on Wi-Fi. Once downloaded, it works instantly offline from then on.",
+    consentAccept: "Download & enable",
+    consentDecline: "Skip for now",
+    workingTitle: "Setting up…",
+    workingBody: "Downloading and preparing the matching model. Feel free to keep using the app in the meantime.",
+    progressPreparing: "Preparing…",
+    dismissHint: "Closing this keeps the download running in the background. If you fully close or reload the app before it finishes, the incomplete part will restart next time.",
+    dismiss: "Close",
   },
   recipe: {
     title: "AI Recipe Ideas",

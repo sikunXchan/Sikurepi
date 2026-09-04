@@ -59,6 +59,122 @@ export function subscribeEmbeddingStatus(fn: (s: EmbeddingStatus) => void): () =
   return () => statusListeners.delete(fn);
 }
 
+// --- ダウンロード進捗(0-100)。ファイル単位のbytes loaded/totalを合算する ---
+const fileProgress = new Map<string, { loaded: number; total: number }>();
+let lastReportedProgress = 0;
+const progressListeners = new Set<(pct: number) => void>();
+
+export function subscribeDownloadProgress(fn: (pct: number) => void): () => void {
+  progressListeners.add(fn);
+  return () => progressListeners.delete(fn);
+}
+
+export function getDownloadProgress(): number {
+  return lastReportedProgress;
+}
+
+function resetProgress() {
+  fileProgress.clear();
+  lastReportedProgress = 0;
+}
+
+// Transformers.jsのprogress_callbackが渡してくるイベント形式(status: initiate/download/
+// progress/done、file/loaded/totalを含む)を集計してざっくりした全体パーセントに変換する。
+// ライブラリのバージョンによりフィールドが変わる可能性があるため、値が無い/想定外でも
+// 例外を投げず無視するだけにする(進捗表示が出ないだけで機能自体は壊さない)。
+function handleProgressEvent(data: unknown) {
+  try {
+    const e = data as { status?: string; file?: string; loaded?: number; total?: number };
+    if (!e || typeof e !== "object") return;
+    if (e.status === "progress" && e.file && typeof e.loaded === "number" && typeof e.total === "number" && e.total > 0) {
+      fileProgress.set(e.file, { loaded: e.loaded, total: e.total });
+    } else if (e.status === "done" && e.file) {
+      const existing = fileProgress.get(e.file);
+      if (existing) fileProgress.set(e.file, { loaded: existing.total, total: existing.total });
+    } else {
+      return;
+    }
+    let loaded = 0;
+    let total = 0;
+    for (const f of fileProgress.values()) {
+      loaded += f.loaded;
+      total += f.total;
+    }
+    if (total > 0) {
+      lastReportedProgress = Math.min(100, Math.round((loaded / total) * 100));
+      progressListeners.forEach((fn) => fn(lastReportedProgress));
+    }
+  } catch {
+    // 進捗表示は付加価値であり、失敗しても本体機能に影響させない
+  }
+}
+
+// --- ユーザーの同意(初回の大容量ダウンロードは明示的な許可を取ってから行う) ---
+const CONSENT_KEY = "lily_app_ai_match_consent";
+let consentAccepted = false;
+let consentDeclinedThisSession = false;
+let consentPromptPending = false;
+let pendingConsentResolvers: Array<(accepted: boolean) => void> = [];
+const consentRequestListeners = new Set<() => void>();
+
+function hasStoredConsent(): boolean {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === "accepted";
+  } catch {
+    return false;
+  }
+}
+
+export function isConsentPromptPending(): boolean {
+  return consentPromptPending;
+}
+
+export function subscribeConsentRequest(fn: () => void): () => void {
+  consentRequestListeners.add(fn);
+  return () => consentRequestListeners.delete(fn);
+}
+
+// ユーザーがダイアログで「ダウンロードして有効にする」を選んだ時に呼ぶ。
+// 一度承諾すれば、以降のセッションでもlocalStorageを見て二度と聞かない。
+export function acceptAIMatching(): void {
+  consentAccepted = true;
+  consentPromptPending = false;
+  try {
+    localStorage.setItem(CONSENT_KEY, "accepted");
+  } catch {
+    // 保存に失敗しても、このタブ内では承諾済み扱いのまま進める
+  }
+  const resolvers = pendingConsentResolvers;
+  pendingConsentResolvers = [];
+  resolvers.forEach((r) => r(true));
+}
+
+// ユーザーがダイアログで「今回はスキップ」を選んだ時に呼ぶ。
+// このタブ/セッション内では再度聞かない(次回アプリを開いた時にはまた確認する)。
+export function declineAIMatching(): void {
+  consentDeclinedThisSession = true;
+  consentPromptPending = false;
+  const resolvers = pendingConsentResolvers;
+  pendingConsentResolvers = [];
+  resolvers.forEach((r) => r(false));
+}
+
+async function ensureConsent(): Promise<boolean> {
+  if (consentAccepted || hasStoredConsent()) {
+    consentAccepted = true;
+    return true;
+  }
+  if (consentDeclinedThisSession) return false;
+
+  return new Promise<boolean>((resolve) => {
+    pendingConsentResolvers.push(resolve);
+    if (!consentPromptPending) {
+      consentPromptPending = true;
+      consentRequestListeners.forEach((fn) => fn());
+    }
+  });
+}
+
 // --- 正規表現アンカーの抽出 ---
 // CATEGORY_RULES の各パターンは否定先読み/後読み((?!...)/(?<!...))を含むが、これは
 // 「キャッサバ」が「サバ」に誤爆する等、文字列部分一致特有の衝突を避けるための
@@ -121,10 +237,22 @@ let extractorPromise: Promise<Extractor | null> | null = null;
 async function getExtractor(): Promise<Extractor | null> {
   if (extractorPromise) return extractorPromise;
   extractorPromise = (async () => {
+    // 数百MB規模のダウンロードになるため、明示的な同意が取れるまではモデルの
+    // 取得を一切開始しない(同意ダイアログが表示され、ユーザーの応答を待つ)。
+    const consented = await ensureConsent();
+    if (!consented) {
+      setStatus("idle");
+      return null;
+    }
+
     try {
       setStatus("loading-model");
+      resetProgress();
       const { pipeline } = await import("@huggingface/transformers");
-      const extractor = (await pipeline("feature-extraction", MODEL_ID, { dtype: "q8" })) as unknown as Extractor;
+      const extractor = (await pipeline("feature-extraction", MODEL_ID, {
+        dtype: "q8",
+        progress_callback: handleProgressEvent,
+      })) as unknown as Extractor;
       return extractor;
     } catch (err) {
       // オフライン・通信制限・非対応ブラウザ等、理由を問わず読み込みに失敗したら

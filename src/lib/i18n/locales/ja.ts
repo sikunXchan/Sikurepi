@@ -51,7 +51,17 @@ const ja = {
       "そろそろ出番をちょうだい！",
     ],
     forgottenSuffix: (ageDays: number) => `（在庫${ageDays}日目）`,
-    aiSetupToast: "🧠 初回のみ：多言語対応の判定モデルを準備しています…（次回からは一瞬で使えます）",
+  },
+  aiMatch: {
+    consentTitle: "多言語食材名の自動判定",
+    consentBody: "食材名を日本語以外（英語など）で入力すると、オフラインで動く判定モデルを初回のみダウンロードします（合計 約400MB以上）。Wi-Fi環境でのご利用をおすすめします。一度ダウンロードすれば、次回からは瞬時にオフラインで使えます。",
+    consentAccept: "ダウンロードして有効にする",
+    consentDecline: "今回はスキップ",
+    workingTitle: "準備中…",
+    workingBody: "判定モデルをダウンロード・準備しています。このまま他の操作を続けてもかまいません。",
+    progressPreparing: "準備しています…",
+    dismissHint: "閉じてもダウンロードはバックグラウンドで続きます。ただし完全に閉じた場合や再読み込みした場合は、未完了だった分は次回また最初からになります。",
+    dismiss: "閉じる",
   },
   recipe: {
     title: "AIレシピ提案",
