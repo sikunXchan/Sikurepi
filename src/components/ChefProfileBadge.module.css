@@ -2,6 +2,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   background: var(--card-bg-solid);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
@@ -18,11 +19,12 @@
   background: rgba(255, 111, 145, 0.14);
   padding: 5px 12px;
   border-radius: 20px;
+  flex-shrink: 0;
 }
 
 .rankIcon {
-  width: 26px;
-  height: 26px;
+  width: auto;
+  height: 32px;
   object-fit: contain;
   flex-shrink: 0;
 }

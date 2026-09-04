@@ -17,6 +17,7 @@ import {
   getForgottenIngredients,
   Ingredient
 } from "@/lib/storage";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Home.module.css";
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -42,17 +43,10 @@ const LONG_PRESS_MS = 550;
 
 // 食品ロス防止: 長く放置され直近の料理で使われていない食材に、
 // アイコンの顔から吹き出しで呼びかけてもらう
-const FORGOTTEN_MESSAGES = [
-  "私のこと忘れてない？",
-  "そろそろ使ってほしいな…",
-  "冷蔵庫の隅で待ってるよ〜",
-  "そろそろ食べ頃かも…！",
-  "そろそろ出番をちょうだい！",
-];
-
-function getForgottenMessage(id: number, ageDays: number): string {
-  const msg = FORGOTTEN_MESSAGES[id % FORGOTTEN_MESSAGES.length];
-  return `${msg}（在庫${ageDays}日目）`;
+function getForgottenMessage(t: ReturnType<typeof useLanguage>["t"], id: number, ageDays: number): string {
+  const messages = t.home.forgottenMessages;
+  const msg = messages[id % messages.length];
+  return `${msg}${t.home.forgottenSuffix(ageDays)}`;
 }
 
 function SwipeableIngredientRow({
@@ -72,6 +66,7 @@ function SwipeableIngredientRow({
   onDelete: (id: number, name: string) => void;
   onTogglePin: (item: Ingredient) => void;
 }) {
+  const { t } = useLanguage();
   const x = useMotionValue(0);
   const bgOpacity = useTransform(x, [SWIPE_OPEN_X, SWIPE_OPEN_X / 2, 0], [1, 1, 0]);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,7 +108,7 @@ function SwipeableIngredientRow({
             onOpenChange(null);
             onDelete(item.id, item.name);
           }}
-          title="削除"
+          title={t.home.deleteButtonTitle}
         >
           <Trash2 size={20} />
         </button>
@@ -146,7 +141,7 @@ function SwipeableIngredientRow({
               {item.name}
             </span>
             {isForgotten && (
-              <span className={styles.forgottenCallout}>💬 {getForgottenMessage(item.id, ageDays)}</span>
+              <span className={styles.forgottenCallout}>💬 {getForgottenMessage(t, item.id, ageDays)}</span>
             )}
           </div>
         </div>
@@ -156,6 +151,7 @@ function SwipeableIngredientRow({
 }
 
 export default function Home() {
+  const { t } = useLanguage();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
@@ -192,7 +188,7 @@ export default function Home() {
     if (!cleanName) return;
 
     if (ingredients.some(i => i.name.toLowerCase() === cleanName.toLowerCase())) {
-      showToast("⚠️ その食材はすでに在庫にあります。");
+      showToast(t.home.alreadyInStock);
       return;
     }
 
@@ -201,7 +197,7 @@ export default function Home() {
     setSelectedCategory("その他");
     setCategoryTouched(false);
     loadIngredients();
-    showToast(`✨ 「${cleanName}」を冷蔵庫に追加しました！`);
+    showToast(t.home.addedToast(cleanName));
   };
 
   const handleNameChange = (value: string) => {
@@ -215,7 +211,7 @@ export default function Home() {
   const handleDelete = (id: number, name?: string) => {
     deleteLocalIngredient(id);
     loadIngredients();
-    if (name) showToast(`🗑️ 「${name}」を削除しました`);
+    if (name) showToast(t.home.deletedToast(name));
   };
 
   const handleTogglePin = (item: Ingredient) => {
@@ -274,15 +270,15 @@ export default function Home() {
 
       {/* ヘッダーエリア */}
       <PageHeader
-        title="冷蔵庫の在庫"
-        subtitle="いま家にあるものを教えてね"
+        title={t.home.title}
+        subtitle={t.home.subtitle}
         mascot="bear_basket"
         actions={
           <button
             type="button"
             className={styles.settingsBtn}
             onClick={() => setIsSettingsOpen(true)}
-            title="マイ設定・自炊統計"
+            title={t.home.settingsButtonTitle}
           >
             <Settings size={18} />
           </button>
@@ -296,28 +292,28 @@ export default function Home() {
         <div className={styles.addForm}>
           <input
             type="text"
-            placeholder="食材名を入力 (例: トマト、豚バラ肉)"
+            placeholder={t.home.addPlaceholder}
             value={newName}
             onChange={(e) => handleNameChange(e.target.value)}
           />
           <button type="submit" disabled={!newName.trim()}>
             <Plus size={20} />
-            追加
+            {t.home.addButton}
           </button>
         </div>
         <div className={styles.categorySelectRow}>
-          <label className={styles.categorySelectLabel}>カテゴリ:</label>
+          <label className={styles.categorySelectLabel}>{t.home.categoryLabel}</label>
           <select
             className={styles.categorySelect}
             value={selectedCategory}
             onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
           >
             {CATEGORY_ORDER.map(cat => (
-              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {cat}</option>
+              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {t.category[cat] || cat}</option>
             ))}
           </select>
           {!categoryTouched && newName.trim() && selectedCategory !== 'その他' && (
-            <span className={styles.autoCategoryHint}>自動で判定したよ</span>
+            <span className={styles.autoCategoryHint}>{t.home.autoCategoryHint}</span>
           )}
         </div>
       </form>
@@ -342,7 +338,7 @@ export default function Home() {
                 >
                   <span className={styles.categoryTitle}>
                     <span>{icon}</span>
-                    <span>{category}</span>
+                    <span>{t.category[category] || category}</span>
                     <span className={styles.categoryCount}>{items.length}</span>
                   </span>
                   <span className={styles.categoryChevron}>{isCollapsed ? '›' : '⌄'}</span>
@@ -381,7 +377,7 @@ export default function Home() {
       {!loading && !hasIngredients && (
         <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
           <img src="/mascot/bear_sleeping.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
-          <p>在庫がありません。上のフォームから追加してください。</p>
+          <p>{t.home.emptyState}</p>
         </div>
       )}
 

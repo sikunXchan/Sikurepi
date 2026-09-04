@@ -3,24 +3,24 @@
 import { useEffect, useState } from "react";
 import { Flame, Leaf } from "lucide-react";
 import { getLocalUserStats, UserStats } from "@/lib/storage";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./ChefProfileBadge.module.css";
 
-// 絵文字だと「もっとレベルを上げたい」という気持ちにつながりにくいため、
-// アプリの顔であるクマのマスコットをランクごとに変えて表示する。
-// (将来的には昇格演出専用のバッジイラストに差し替え予定)
-// chef_levelはstorage.tsのsqrt式で1〜10にクランプされているため、
-// 段階も10段まで用意し、6以降が「三つ星シェフ」に張り付いたままにならないようにする。
-const CHEF_RANKS = [
-  { level: 1, name: "見習いシェフ", mascot: "bear_reading" },
-  { level: 2, name: "一人前シェフ", mascot: "bear_wave" },
-  { level: 3, name: "家庭の料理人", mascot: "bear_basket" },
-  { level: 4, name: "凄腕マスター", mascot: "bear_serving" },
-  { level: 5, name: "三つ星シェフ", mascot: "bear_hero" },
-  { level: 6, name: "予約殺到の人気シェフ", mascot: "bear_excited" },
-  { level: 7, name: "食卓のヒーロー", mascot: "bear_itadakimasu" },
-  { level: 8, name: "愛され料理人", mascot: "bear_love" },
-  { level: 9, name: "満腹幸せの伝道師", mascot: "bear_sleeping" },
-  { level: 10, name: "キッチンレジェンド", mascot: "bear_delivering" },
+// ブリガード・ド・キュイジーヌ(伝統的なフランス料理の厨房組織)にちなんだ
+// ランク別バッジイラスト(public/ranks/)をレベルごとに表示する。
+// chef_levelはstorage.tsのsqrt式で1〜10にクランプされているため、段階も10段。
+// ランク名自体はi18n辞書(chefRanks)側で管理する。
+const CHEF_BADGES = [
+  { level: 1, badge: "commis" },
+  { level: 2, badge: "premier_commis" },
+  { level: 3, badge: "garde_manger" },
+  { level: 4, badge: "poissonnier" },
+  { level: 5, badge: "rotisseur" },
+  { level: 6, badge: "saucier" },
+  { level: 7, badge: "aboyer" },
+  { level: 8, badge: "sous_chef" },
+  { level: 9, badge: "chef_de_cuisine" },
+  { level: 10, badge: "chef_executif" },
 ];
 
 // getLocalUserStats()をuseStateの初期値に直接渡すと、SSR時(window無し→
@@ -42,6 +42,7 @@ const INITIAL_STATS: UserStats = {
 };
 
 export default function ChefProfileBadge() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
 
   useEffect(() => {
@@ -55,31 +56,32 @@ export default function ChefProfileBadge() {
     };
   }, []);
 
-  const currentRank = CHEF_RANKS.slice().reverse().find((r) => stats.chef_level >= r.level) || CHEF_RANKS[0];
+  const currentBadge = CHEF_BADGES.slice().reverse().find((r) => stats.chef_level >= r.level) || CHEF_BADGES[0];
+  const rankName = t.chefRanks[currentBadge.level - 1];
 
   return (
     <div className={styles.badgeContainer}>
       <div className={styles.rankPill}>
         <img
-          src={`/mascot/${currentRank.mascot}.png`}
+          src={`/ranks/${currentBadge.badge}.png`}
           alt=""
           className={styles.rankIcon}
-          width={26}
-          height={26}
+          width={24}
+          height={32}
         />
-        <span className={styles.rankName}>Lv.{stats.chef_level} {currentRank.name}</span>
+        <span className={styles.rankName}>Lv.{stats.chef_level} {rankName}</span>
       </div>
 
       <div className={styles.metricsGroup}>
-        <div className={styles.metricItem} title="連続自炊日数">
+        <div className={styles.metricItem} title={t.chefBadge.streakTitle}>
           <Flame className={styles.streakIcon} size={15} />
-          <span className={styles.metricValue}>{stats.streak_days}日連続</span>
+          <span className={styles.metricValue}>{t.chefBadge.streakLabel(stats.streak_days)}</span>
         </div>
 
         {stats.saved_food_count > 0 && (
-          <div className={styles.metricItem} title="食品ロス削減（使い切った食材数）">
+          <div className={styles.metricItem} title={t.chefBadge.savedTitle}>
             <Leaf className={styles.leafIcon} size={14} />
-            <span className={styles.metricValue}>{stats.saved_food_count}個救済</span>
+            <span className={styles.metricValue}>{t.chefBadge.savedLabel(stats.saved_food_count)}</span>
           </div>
         )}
       </div>

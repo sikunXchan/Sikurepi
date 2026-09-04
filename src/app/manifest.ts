@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'AI Cooking Assistant',
-    short_name: 'AI Cooking',
+    name: 'Sikunrepi',
+    short_name: 'Sikunrepi',
     description: 'Smart recipe generator from your receipts',
     start_url: '/',
     display: 'standalone',

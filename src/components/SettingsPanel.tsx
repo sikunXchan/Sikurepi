@@ -20,6 +20,7 @@ import {
 import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./ProfileSettingsModal.module.css";
 
 // 優先ジャンル選択の選択肢。ジャンル別サムネイルと同じ一覧を使い回して二重管理を防ぐ
@@ -66,6 +67,7 @@ type Props = {
 // マイ設定モーダルとマイページの両方から使われる共通の中身。
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   // getLocalUserStats()を直接初期値に渡すとハイドレーションミスマッチになるため、
@@ -170,14 +172,14 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       const content = event.target?.result as string;
       const res = importBackupJSON(content);
       if (res.success) {
-        setImportStatus("✅ データの復元に成功しました！");
+        setImportStatus(t.settings.importSuccess);
         setProfile(getLocalUserProfile());
         setStats(getLocalUserStats());
         setTips(getLocalSavedTips());
         setForgottenItems(getForgottenIngredients());
         if (onSaved) onSaved();
       } else {
-        setImportStatus(`❌ 復元失敗: ${res.error}`);
+        setImportStatus(t.settings.importError(res.error || ""));
       }
     };
     reader.readAsText(file);
@@ -192,7 +194,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           onClick={() => setActiveTab('profile')}
         >
           <User size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          マイ設定
+          {t.settings.tabProfile}
         </button>
         <button
           type="button"
@@ -200,7 +202,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           onClick={() => setActiveTab('stats')}
         >
           <Activity size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          自炊記録
+          {t.settings.tabStats}
         </button>
         <button
           type="button"
@@ -208,7 +210,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           onClick={() => setActiveTab('tips')}
         >
           <Lightbulb size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          豆知識 ({tips.length})
+          {t.settings.tabTips(tips.length)}
         </button>
         <button
           type="button"
@@ -216,26 +218,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           onClick={() => setActiveTab('backup')}
         >
           <Database size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          保存
+          {t.settings.tabBackup}
         </button>
       </div>
 
       {activeTab === 'profile' && (
         <div className={styles.body}>
           <p className={styles.description}>
-            あなたの好みや環境を登録すると、AIシェフが毎回最適なレシピを自動提案します。
+            {t.settings.profileDescription}
           </p>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>📍 お住まいの地域（大雑把な住所）</label>
+            <label className={styles.sectionLabel}>{t.settings.addressLabel}</label>
             <input
               type="text"
               className={styles.input}
-              placeholder="例: 東京都、大阪市、福岡県など"
+              placeholder={t.settings.addressPlaceholder}
               value={profile.address || ''}
               onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
             />
-            <span className={styles.hint}>※ 無料の気象APIでリアルタイムの天気・気温を自動反映するために使用します</span>
+            <span className={styles.hint}>{t.settings.addressHint}</span>
           </div>
 
           <div className={styles.section}>
@@ -246,7 +248,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 onChange={(e) => setProfile(prev => ({ ...prev, enableClimate: e.target.checked }))}
                 style={{ width: 16, height: 16, accentColor: '#ff6f91' }}
               />
-              <span>🌤️ 気候・天気に連動したレシピ提案を有効にする</span>
+              <span>{t.settings.climateToggleLabel}</span>
             </label>
           </div>
 
@@ -258,13 +260,13 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 onChange={(e) => setProfile(prev => ({ ...prev, assumeSeasoningsAvailable: e.target.checked }))}
                 style={{ width: 16, height: 16, accentColor: '#ff6f91' }}
               />
-              <span>🧂 塩・醤油などの基本調味料は常備している前提でレシピを提案する</span>
+              <span>{t.settings.seasoningsToggleLabel}</span>
             </label>
-            <span className={styles.hint}>※ OFFにすると、調味料も在庫にあるものだけを使ってレシピを提案し、不足分もきちんと表示します</span>
+            <span className={styles.hint}>{t.settings.seasoningsHint}</span>
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>👥 基本の人数</label>
+            <label className={styles.sectionLabel}>{t.settings.servingsLabel}</label>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 14, padding: '8px 12px' }}>
               <button
                 type="button"
@@ -281,7 +283,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 −
               </button>
               <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
-                {profile.servings}人分
+                {t.settings.servingsUnit(profile.servings)}
               </span>
               <button
                 type="button"
@@ -301,13 +303,13 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>🎯 1日のPFC目標（週間献立の栄養バランスに使用）</label>
+            <label className={styles.sectionLabel}>{t.settings.pfcLabel}</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 type="number"
                 min={0}
                 className={styles.input}
-                placeholder="目標カロリー（例: 2000）"
+                placeholder={t.settings.caloriesPlaceholder}
                 value={profile.targetCalories ?? ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, targetCalories: e.target.value ? Number(e.target.value) : null }))}
               />
@@ -315,19 +317,20 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 type="number"
                 min={0}
                 className={styles.input}
-                placeholder="目標タンパク質g（例: 75）"
+                placeholder={t.settings.proteinPlaceholder}
                 value={profile.targetProtein ?? ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, targetProtein: e.target.value ? Number(e.target.value) : null }))}
               />
             </div>
-            <span className={styles.hint}>※ 空欄の場合、厚生労働省「日本人の食事摂取基準」の目安（2000kcal、たんぱく質エネルギー比13〜20%）から自動算出します</span>
+            <span className={styles.hint}>{t.settings.pfcHint}</span>
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>🍽️ 優先的に食べたい料理ジャンル</label>
+            <label className={styles.sectionLabel}>{t.settings.preferredGenresLabel}</label>
             <div className={styles.tagGrid}>
               {PREFERRED_GENRE_OPTIONS.map(genre => {
                 const active = (profile.preferredGenres || []).includes(genre);
+                const label = t.tagLabel[genre] || genre;
                 return (
                   <button
                     key={genre}
@@ -335,19 +338,20 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
                     onClick={() => togglePreferredGenre(genre)}
                   >
-                    {active ? `✓ ${genre}` : genre}
+                    {active ? `✓ ${label}` : label}
                   </button>
                 );
               })}
             </div>
-            <span className={styles.hint}>※ 未選択ならすべてのジャンルから提案します。選ぶと「できるだけ」優先しますが、アレルギーのように完全に他を除外するわけではありません</span>
+            <span className={styles.hint}>{t.settings.preferredGenresHint}</span>
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>👅 味・栄養のこだわり</label>
+            <label className={styles.sectionLabel}>{t.settings.tasteLabel}</label>
             <div className={styles.tagGrid}>
               {TASTE_OPTIONS.map(taste => {
                 const active = (profile.tastePreferences || []).includes(taste);
+                const label = t.tagLabel[taste] || taste;
                 return (
                   <button
                     key={taste}
@@ -355,7 +359,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
                     onClick={() => toggleTaste(taste)}
                   >
-                    {active ? `✓ ${taste}` : taste}
+                    {active ? `✓ ${label}` : label}
                   </button>
                 );
               })}
@@ -363,10 +367,11 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>⏱️ 調理スタイル</label>
+            <label className={styles.sectionLabel}>{t.settings.styleLabel}</label>
             <div className={styles.tagGrid}>
               {STYLE_OPTIONS.map(style => {
                 const active = (profile.cookingStyles || []).includes(style);
+                const label = t.tagLabel[style] || style;
                 return (
                   <button
                     key={style}
@@ -374,7 +379,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
                     onClick={() => toggleStyle(style)}
                   >
-                    {active ? `✓ ${style}` : style}
+                    {active ? `✓ ${label}` : label}
                   </button>
                 );
               })}
@@ -382,10 +387,11 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>🕌 食事制限・宗教上の配慮</label>
+            <label className={styles.sectionLabel}>{t.settings.dietaryLabel}</label>
             <div className={styles.tagGrid}>
               {DIETARY_OPTIONS.map(option => {
                 const active = (profile.dietaryRestrictions || []).includes(option);
+                const label = t.tagLabel[option] || option;
                 return (
                   <button
                     key={option}
@@ -393,24 +399,24 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={`${styles.tagBtn} ${active ? styles.tagBtnActive : ""}`}
                     onClick={() => toggleDietary(option)}
                   >
-                    {active ? `✓ ${option}` : option}
+                    {active ? `✓ ${label}` : label}
                   </button>
                 );
               })}
             </div>
-            <span className={styles.hint}>※ 選択すると、アレルギーと同じく絶対に破らない制約としてAIに伝わります（例: ヴィーガンなら肉・魚・卵・乳製品を一切提案しません）</span>
+            <span className={styles.hint}>{t.settings.dietaryHint}</span>
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>🚫 苦手・アレルギー・除外食材</label>
+            <label className={styles.sectionLabel}>{t.settings.excludedLabel}</label>
             <input
               type="text"
               className={styles.input}
-              placeholder="例: エビ, パクチー, 辛いもの (カンマ区切り)"
+              placeholder={t.settings.excludedPlaceholder}
               value={excludedInput}
               onChange={(e) => setExcludedInput(e.target.value)}
             />
-            <span className={styles.hint}>※ AIがこれらの食材を含まないレシピを考案します</span>
+            <span className={styles.hint}>{t.settings.excludedHint}</span>
           </div>
         </div>
       )}
@@ -418,26 +424,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       {activeTab === 'stats' && (
         <div className={styles.body}>
           <p className={styles.description}>
-            「この料理を作った！」ボタンを押すことで自炊実績が、食材を使い切ることで食品ロス削減の記録がここに自動蓄積されます。
+            {t.settings.statsDescription}
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🍳 累計自炊</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{stats.total_cooked}回</div>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>{t.settings.statTotalCooked}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#ff6f91', marginTop: 2 }}>{t.settings.statTotalCookedUnit(stats.total_cooked)}</div>
             </div>
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🔥 連続記録</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>{stats.streak_days}日</div>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>{t.settings.statStreak}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>{t.settings.statStreakUnit(stats.streak_days)}</div>
             </div>
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>🌱 救済した食材</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{stats.saved_food_count}個</div>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>{t.settings.statSaved}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>{t.settings.statSavedUnit(stats.saved_food_count)}</div>
             </div>
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>💬 いま呼びかけている食材</label>
+            <label className={styles.sectionLabel}>{t.settings.callingIngredientsLabel}</label>
             {forgottenItems.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {forgottenItems.map((item) => {
@@ -447,7 +453,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                       <IngredientIcon name={item.name} size={30} />
                       <div>
                         <div style={{ fontWeight: 800, color: '#111827', fontSize: 13 }}>{item.name}</div>
-                        <div style={{ fontSize: 12, color: '#e0466e', fontWeight: 700 }}>そろそろ使ってほしいな…（在庫{ageDays}日目）</div>
+                        <div style={{ fontSize: 12, color: '#e0466e', fontWeight: 700 }}>{t.settings.callingIngredientMessage(ageDays)}</div>
                       </div>
                     </div>
                   );
@@ -455,13 +461,13 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               </div>
             ) : (
               <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>
-                今のところ忘れられている食材はなさそう！このまま食品ロスゼロを目指そう✨
+                {t.settings.noCallingIngredients}
               </p>
             )}
           </div>
 
           <div className={styles.section}>
-            <label className={styles.sectionLabel}>🕒 最近の調理履歴</label>
+            <label className={styles.sectionLabel}>{t.settings.recentHistoryLabel}</label>
             {(stats.cooked_records && stats.cooked_records.length > 0) ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                 {stats.cooked_records.map((rec, i) => (
@@ -478,7 +484,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>自炊記録はまだありません</p>
+              <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>{t.settings.noHistory}</p>
             )}
           </div>
         </div>
@@ -487,26 +493,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       {activeTab === 'tips' && (
         <div className={styles.body}>
           <p className={styles.description}>
-            AIシェフが提案した「料理のコツ＆豆知識」が自動でここに保存されます。いつでも復習に役立てられます。
+            {t.settings.tipsDescription}
           </p>
 
           {tips.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tips.map((t) => (
-                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '10px 12px', gap: 8 }}>
+              {tips.map((tip) => (
+                <div key={tip.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '10px 12px', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: 4, marginRight: 6 }}>
-                      {t.category}
+                      {tip.category}
                     </span>
                     <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.4 }}>
-                      {t.tip}
+                      {tip.tip}
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleDeleteTip(t.id)}
+                    onClick={() => handleDeleteTip(tip.id)}
                     style={{ background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', padding: 2 }}
-                    title="削除"
+                    title={t.settings.deleteTipTitle}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -516,7 +522,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           ) : (
             <div style={{ textAlign: 'center', padding: '30px 0', color: '#9ca3af' }}>
               <Lightbulb size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
-              <p style={{ fontSize: 13 }}>レシピを生成すると、シェフのコツや豆知識がここに自動蓄積されます</p>
+              <p style={{ fontSize: 13 }}>{t.settings.noTips}</p>
             </div>
           )}
         </div>
@@ -525,7 +531,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       {activeTab === 'backup' && (
         <div className={styles.body}>
           <p className={styles.description}>
-            冷蔵庫の在庫、買い物リスト、保存レシピ、PFC自炊統計、豆知識ライブラリをひとつのJSONファイルとして端末にダウンロード保存・復元できます。
+            {t.settings.backupDescription}
           </p>
 
           <div className={styles.backupSection}>
@@ -536,7 +542,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 onClick={handleDownloadBackup}
               >
                 <Download size={15} />
-                <span>JSONバックアップ保存</span>
+                <span>{t.settings.downloadBackup}</span>
               </button>
 
               <button
@@ -545,7 +551,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload size={15} />
-                <span>JSONファイルから復元</span>
+                <span>{t.settings.restoreBackup}</span>
               </button>
               <input
                 type="file"
@@ -570,7 +576,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         <div className={styles.footer}>
           <button type="button" className={styles.saveBtn} onClick={handleSave}>
             <Check size={18} />
-            {savedFlash ? "保存しました！" : "設定を保存して適用"}
+            {savedFlash ? t.settings.savedButton : t.settings.saveButton}
           </button>
         </div>
       )}
