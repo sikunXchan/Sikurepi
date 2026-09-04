@@ -17,7 +17,7 @@ import {
   getForgottenIngredients,
   Ingredient
 } from "@/lib/storage";
-import { matchIngredientSemantic, subscribeEmbeddingStatus } from "@/lib/embeddingMatch";
+import { matchIngredientSemantic } from "@/lib/embeddingMatch";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Home.module.css";
 
@@ -167,7 +167,6 @@ export default function Home() {
   const categoryTouchedRef = useRef(categoryTouched);
   const categoryMatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const categoryMatchToken = useRef(0);
-  const aiSetupToastShown = useRef(false);
 
   useEffect(() => {
     loadIngredients();
@@ -184,20 +183,6 @@ export default function Home() {
     return () => {
       if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
     };
-  }, []);
-
-  // 静的キーワードでは判定できなかった食材名(英語表記など)が入力された時だけ、
-  // オフラインの意味マッチング(embeddingMatch.ts)がモデルを初めて読み込む。
-  // その間だけ一度きり「準備中」であることをトーストで案内する。
-  useEffect(() => {
-    const unsubscribe = subscribeEmbeddingStatus((s) => {
-      if (!aiSetupToastShown.current && (s === "loading-model" || s === "preparing-anchors")) {
-        aiSetupToastShown.current = true;
-        showToast(t.home.aiSetupToast);
-      }
-    });
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadIngredients = () => {
