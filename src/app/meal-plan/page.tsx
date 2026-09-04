@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,22 +26,21 @@ import {
   WeeklyPlanEntry,
 } from "@/lib/storage";
 import { isNativeApp, hasPremiumEntitlement, purchasePremium } from "@/lib/purchases";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
 
-const SLOT_LABEL: Record<MealSlot, string> = { lunch: "☀️ 昼", dinner: "🌙 夜" };
-const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土'];
 const SLOTS: MealSlot[] = ['lunch', 'dinner'];
 
 type DayInfo = { date: string; label: string };
 
-function buildDays(): DayInfo[] {
+function buildDays(weekday: string[]): DayInfo[] {
   const days: DayInfo[] = [];
   const today = new Date();
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     const date = d.toISOString().split('T')[0];
-    const label = `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY[d.getDay()]})`;
+    const label = `${d.getMonth() + 1}/${d.getDate()}(${weekday[d.getDay()]})`;
     days.push({ date, label });
   }
   return days;
@@ -71,10 +70,12 @@ const iconBtn: CSSProperties = {
 };
 
 export default function MealPlanPage() {
-  const [days] = useState<DayInfo[]>(() => buildDays());
+  const { t, language } = useLanguage();
+  const SLOT_LABEL: Record<MealSlot, string> = { lunch: t.mealPlan.slotLunch, dinner: t.mealPlan.slotDinner };
+  const days = useMemo(() => buildDays(t.mealPlan.weekdayShort), [language]);
   const [active, setActive] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    buildDays().forEach(d => {
+    buildDays(t.mealPlan.weekdayShort).forEach(d => {
       init[`${d.date}_lunch`] = false;
       init[`${d.date}_dinner`] = true;
     });
@@ -188,7 +189,7 @@ export default function MealPlanPage() {
   const handleGenerate = async () => {
     const slots = activeSlots();
     if (slots.length === 0) {
-      setErrorMsg("少なくとも1つの日付・食事枠を選んでください");
+      setErrorMsg(t.mealPlan.errorNoSlots);
       return;
     }
     if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
@@ -204,16 +205,16 @@ export default function MealPlanPage() {
         body: JSON.stringify(buildPayload(slots)),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "週間献立の生成に失敗しました");
+      if (!res.ok) throw new Error(data.error || t.mealPlan.errorGenerateFailed);
 
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
       if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
       loadData();
-      showToast(`🪄 ${entries.length}食分の献立を生成しました！`);
+      showToast(t.mealPlan.generatedToast(entries.length));
     } catch (err: any) {
-      setErrorMsg(err.message || "エラーが発生しました");
+      setErrorMsg(err.message || t.mealPlan.errorGeneric);
     } finally {
       setGenerating(false);
     }
@@ -227,7 +228,7 @@ export default function MealPlanPage() {
       if (result.success) {
         setIsPremium(true);
         setShowPaywall(false);
-        showToast("👑 プレミアムプランへようこそ！これから週間献立を無制限に生成できます");
+        showToast(t.mealPlan.premiumWelcomeToast);
       } else if (result.error) {
         setPurchaseError(result.error);
       }
@@ -247,14 +248,14 @@ export default function MealPlanPage() {
         body: JSON.stringify(buildPayload([{ date, mealSlot }])),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "作り直しに失敗しました");
+      if (!res.ok) throw new Error(data.error || t.mealPlan.errorRegenFailed);
       const r = (data.plan || [])[0];
-      if (!r) throw new Error("レシピが見つかりませんでした");
+      if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries([mapPlanItem(r)]);
       loadData();
-      showToast("🔄 この1食を作り直しました");
+      showToast(t.mealPlan.regeneratedToast);
     } catch (err: any) {
-      showToast(err.message || "作り直しに失敗しました");
+      showToast(err.message || t.mealPlan.errorRegenFailed);
     } finally {
       setRegeneratingKey(null);
     }
@@ -277,11 +278,11 @@ export default function MealPlanPage() {
       });
     });
     if (needed.size === 0) {
-      showToast("在庫だけで足りています！");
+      showToast(t.mealPlan.allInStockToast);
       return;
     }
     needed.forEach(name => addLocalShoppingItem(name));
-    showToast(`🛒 不足食材 ${needed.size}件を買い物リストに追加しました！`);
+    showToast(t.mealPlan.addedMissingToast(needed.size));
   };
 
   const handlePinToShopping = (slotKey: string, ingredientName: string) => {
@@ -289,7 +290,7 @@ export default function MealPlanPage() {
     if (pinnedToShoppingSet.has(pinKey)) return;
     addLocalShoppingItem(ingredientName);
     setPinnedToShoppingSet(prev => new Set(prev).add(pinKey));
-    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
+    showToast(t.mealPlan.pinnedToShoppingToast(ingredientName));
   };
 
   const weeklyNutritionSum = () => {
@@ -319,19 +320,19 @@ export default function MealPlanPage() {
       )}
 
       <PageHeader
-        title="週間献立プランナー"
-        subtitle="1週間ぶん、まとめて考えるよ"
+        title={t.mealPlan.title}
+        subtitle={t.mealPlan.subtitle}
         mascot="bear_itadakimasu"
         actions={
           isNativeApp() && isPremium ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: '#b45309', background: 'rgba(245, 158, 11, 0.14)', padding: '5px 11px', borderRadius: 20 }}>
-              <Crown size={13} /> プレミアム
+              <Crown size={13} /> {t.mealPlan.premiumBadge}
             </span>
           ) : undefined
         }
       />
       <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-        いらない日・食事はチェックを外してから生成してください。今日から7日分、在庫とPFC目標に合わせてAIが自動で組みます。
+        {t.mealPlan.description}
       </p>
 
       <div className="card" style={{ padding: 16 }}>
@@ -342,14 +343,14 @@ export default function MealPlanPage() {
             return (
               <div key={d.date} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px dashed var(--border)' }}>
                 <span style={{ width: 64, fontSize: 13, fontWeight: 700, color: 'var(--foreground)', flexShrink: 0 }}>{d.label}</span>
-                <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} style={chip(lunchOn)}>☀️ 昼</button>
-                <button type="button" onClick={() => toggleSlot(d.date, 'dinner')} style={chip(dinnerOn)}>🌙 夜</button>
+                <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} style={chip(lunchOn)}>{t.mealPlan.slotLunch}</button>
+                <button type="button" onClick={() => toggleSlot(d.date, 'dinner')} style={chip(dinnerOn)}>{t.mealPlan.slotDinner}</button>
                 <button
                   type="button"
                   onClick={() => toggleDay(d.date, false)}
                   style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', background: 'none', border: 'none', boxShadow: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', padding: '6px 8px' }}
                 >
-                  この日はいらない
+                  {t.mealPlan.skipDay}
                 </button>
               </div>
             );
@@ -366,18 +367,18 @@ export default function MealPlanPage() {
           {generating ? (
             <>
               <Loader2 className="spinner" size={18} />
-              AIシェフが週間献立を考案中...
+              {t.mealPlan.generateLoading}
             </>
           ) : (
             <>
               <Sparkles size={18} />
-              🪄 週間献立を自動生成
+              {t.mealPlan.generateButton}
             </>
           )}
         </button>
         {isNativeApp() && !isPremium && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
-            無料プラン: 残り{Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed())}回生成できます
+            {t.mealPlan.freeRemaining(Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed()))}
           </p>
         )}
       </div>
@@ -386,13 +387,13 @@ export default function MealPlanPage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
           <motion.img
             src="/mascot/bear_basket.png"
-            alt="AIシェフが献立を考案中"
+            alt={t.mealPlan.generatingAlt}
             width={96}
             height={96}
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>1週間分の献立をバランスよく組み立てています…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.generatingText}</p>
         </div>
       )}
 
@@ -404,11 +405,11 @@ export default function MealPlanPage() {
 
       {plan.length > 0 && (
         <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--foreground)' }}>📊 週間PFCサマリー（現在の献立合計）</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--foreground)' }}>{t.mealPlan.weeklySummaryTitle}</div>
           <NutritionChart nutrition={weeklyNutritionSum()} />
           {weeklyTargets && (
             <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
-              週間目標目安: {weeklyTargets.calories}kcal / P{weeklyTargets.protein_g}g・F{weeklyTargets.fat_g}g・C{weeklyTargets.carbs_g}g
+              {t.mealPlan.weeklyTargetText(weeklyTargets.calories, weeklyTargets.protein_g, weeklyTargets.fat_g, weeklyTargets.carbs_g)}
             </p>
           )}
           <button
@@ -416,7 +417,7 @@ export default function MealPlanPage() {
             onClick={handleAddMissingToShopping}
             style={{ width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--gradient-cool)', color: 'white', border: 'none', borderRadius: 12, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
-            <ShoppingCart size={15} /> 不足食材を買い物リストへ一括追加
+            <ShoppingCart size={15} /> {t.mealPlan.addMissingButton}
           </button>
         </div>
       )}
@@ -437,7 +438,7 @@ export default function MealPlanPage() {
                     <div key={key} className={styles.slotCard}>
                       {!entry ? (
                         <div style={{ padding: 14, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
-                          {SLOT_LABEL[slot]}・未生成
+                          {t.mealPlan.notGenerated(SLOT_LABEL[slot])}
                         </div>
                       ) : (
                         <>
@@ -458,7 +459,7 @@ export default function MealPlanPage() {
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRegenerateSlot(d.date, slot); }}
                                 disabled={regeneratingKey === key}
-                                title="この1食だけ作り直す"
+                                title={t.mealPlan.regenerateTitle}
                                 style={iconBtn}
                               >
                                 {regeneratingKey === key ? <Loader2 className="spinner" size={14} /> : <RefreshCw size={14} />}
@@ -466,7 +467,7 @@ export default function MealPlanPage() {
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveSlot(d.date, slot); }}
-                                title="この予定を削除"
+                                title={t.mealPlan.removeTitle}
                                 style={iconBtn}
                               >
                                 <Trash2 size={14} />
@@ -489,7 +490,7 @@ export default function MealPlanPage() {
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>材料<span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>不足分は「追加」で買い物リストへ</span></div>
+                                  <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>{t.mealPlan.ingredientsTitle}<span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.mealPlan.ingredientsHint}</span></div>
                                   <ul style={{ fontSize: 14, marginBottom: 10, padding: 0, listStyle: 'none' }}>
                                     {(entry.recipe.ingredients || []).map((it, i) => {
                                       const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
@@ -523,14 +524,14 @@ export default function MealPlanPage() {
                                                 cursor: isPinned ? 'default' : 'pointer',
                                               }}
                                             >
-                                              {isPinned ? '追加済み' : '＋ 追加'}
+                                              {isPinned ? t.mealPlan.added : t.mealPlan.addShort}
                                             </button>
                                           )}
                                         </li>
                                       );
                                     })}
                                   </ul>
-                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>作り方</div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{t.mealPlan.stepsTitle}</div>
                                   <ol style={{ fontSize: 13, color: 'var(--foreground)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                     {(entry.recipe.steps || []).map((s, i) => (
                                       <li key={i}>{s}</li>
@@ -577,9 +578,9 @@ export default function MealPlanPage() {
                 <X size={18} />
               </button>
               <Crown size={40} color="#f59e0b" style={{ marginBottom: 8 }} />
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>プレミアムプラン</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>{t.mealPlan.paywallTitle}</h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
-                無料プランの週間献立生成（{FREE_WEEKLY_PLAN_GENERATIONS}回）を使い切りました。プレミアムプランに登録すると、週間献立の自動生成が無制限になります。
+                {t.mealPlan.paywallText(FREE_WEEKLY_PLAN_GENERATIONS)}
               </p>
               {purchaseError && (
                 <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 13, marginBottom: 12 }}>
@@ -593,7 +594,7 @@ export default function MealPlanPage() {
                 className="btn-primary"
                 style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 700 }}
               >
-                {purchasing ? (<><Loader2 className="spinner" size={16} />処理中...</>) : (<><Crown size={16} />プレミアムプランに登録する</>)}
+                {purchasing ? (<><Loader2 className="spinner" size={16} />{t.mealPlan.purchaseProcessing}</>) : (<><Crown size={16} />{t.mealPlan.purchaseButton}</>)}
               </button>
               <button
                 type="button"
@@ -601,7 +602,7 @@ export default function MealPlanPage() {
                 disabled={purchasing}
                 style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', padding: 8 }}
               >
-                また今度にする
+                {t.mealPlan.purchaseLater}
               </button>
             </motion.div>
           </motion.div>

@@ -10,6 +10,7 @@ import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
@@ -25,14 +26,10 @@ import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
 const GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS);
-const TIME_OPTIONS = [
-  { label: 'すべて', value: '' },
-  { label: '10分以内', value: '10' },
-  { label: '30分以内', value: '30' },
-  { label: '60分以内', value: '60' },
-];
 
 export default function HistoryPage() {
+  const { t, language } = useLanguage();
+  const TIME_OPTIONS = t.history.timeOptions;
   const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -69,7 +66,7 @@ export default function HistoryPage() {
     if (pinnedToShoppingSet.has(key)) return;
     addLocalShoppingItem(ingredientName);
     setPinnedToShoppingSet(prev => new Set(prev).add(key));
-    showToast(`📌 「${ingredientName}」を買い物リストに追加しました！`);
+    showToast(t.recipe.pinnedToShoppingToast(ingredientName));
   };
 
   const showToast = (msg: string) => {
@@ -114,7 +111,7 @@ export default function HistoryPage() {
     setModalOpen(false);
     setTargetId(null);
     loadRecipes();
-    showToast("🗑️ レシピを履歴から削除しました");
+    showToast(t.history.deletedToast);
   };
 
   // サムネイルは犬(main.png/sub.png)固定だったのを、レシピの主材料アイコンに変更。
@@ -127,7 +124,7 @@ export default function HistoryPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ja-JP", {
+    return date.toLocaleDateString(language === "ja" ? "ja-JP" : "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -159,8 +156,8 @@ export default function HistoryPage() {
       )}
 
       <PageHeader
-        title="レシピ履歴・保存"
-        subtitle="お気に入りをふり返ろう"
+        title={t.history.title}
+        subtitle={t.history.subtitle}
         mascot="bear_reading"
       />
 
@@ -170,7 +167,7 @@ export default function HistoryPage() {
           <Search size={16} className={styles.searchIcon} />
           <input
             type="text"
-            placeholder="料理名・食材名で検索…"
+            placeholder={t.history.searchPlaceholder}
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
             className={styles.searchInput}
@@ -188,7 +185,7 @@ export default function HistoryPage() {
             onChange={e => setFilterGenre(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="">ジャンル: すべて</option>
+            <option value="">{t.history.genreAll}</option>
             {GENRE_OPTIONS.map(g => (
               <option key={g} value={g}>{g}</option>
             ))}
@@ -199,23 +196,23 @@ export default function HistoryPage() {
             onChange={e => setFilterTimeMax(e.target.value)}
             className={styles.filterSelect}
           >
-            {TIME_OPTIONS.map(t => (
-              <option key={t.value} value={t.value}>
-                {t.value ? `⏱ ${t.label}` : '時間: すべて'}
+            {TIME_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.value ? `⏱ ${opt.label}` : t.history.timeAll}
               </option>
             ))}
           </select>
 
           {hasFilters && (
             <button className={styles.clearFiltersBtn} onClick={clearFilters}>
-              <X size={13} /> リセット
+              <X size={13} /> {t.history.resetFilters}
             </button>
           )}
         </div>
 
         {hasFilters && (
           <p className={styles.filterResult}>
-            {filteredRecipes.length} 件 / 全{allRecipes.length}件
+            {t.history.filterResultCount(filteredRecipes.length, allRecipes.length)}
           </p>
         )}
       </div>
@@ -237,16 +234,16 @@ export default function HistoryPage() {
               <div className={styles.modalIcon}>
                 <Trash2 size={32} />
               </div>
-              <h2 className={styles.modalTitle}>本当に削除しますか？</h2>
+              <h2 className={styles.modalTitle}>{t.history.deleteConfirmTitle}</h2>
               <p className={styles.modalText}>
-                このレシピを履歴から削除します。<br />この操作は取り消せません。
+                {t.history.deleteConfirmLine1}<br />{t.history.deleteConfirmLine2}
               </p>
               <div className={styles.modalActions}>
                 <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
-                  キャンセル
+                  {t.history.cancel}
                 </button>
                 <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
-                  削除する
+                  {t.history.confirmDelete}
                 </button>
               </div>
             </motion.div>
@@ -319,7 +316,7 @@ export default function HistoryPage() {
                     onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(recipe); }}
                   >
                     <PlayCircle size={15} />
-                    クッキング
+                    {t.history.cookingButton}
                   </button>
 
                   <button
@@ -342,13 +339,13 @@ export default function HistoryPage() {
                     }}
                     onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(recipe); }}
                   >
-                    🍳 この料理を作った！
+                    {t.history.cookedButton}
                   </button>
 
                   <button
                     className={styles.deleteBtn}
                     onClick={(e) => { e.stopPropagation(); confirmDelete(recipe.id); }}
-                    title="削除"
+                    title={t.history.deleteButtonTitle}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -358,13 +355,13 @@ export default function HistoryPage() {
                   <div className={styles.detailBody}>
                     {recipe.nutrition && (
                       <div className={styles.nutritionSection}>
-                        <h3 className={styles.nutritionTitle}>📊 栄養バランス</h3>
+                        <h3 className={styles.nutritionTitle}>{t.history.nutritionTitle}</h3>
                         <NutritionChart nutrition={recipe.nutrition} />
                       </div>
                     )}
 
                     <div className={styles.section}>
-                      <h3>材料・調味料</h3>
+                      <h3>{t.history.ingredientsTitle}</h3>
                       <ul className={styles.ingredientList}>
                         {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => {
                           const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
@@ -388,7 +385,7 @@ export default function HistoryPage() {
                                     disabled={isPinned}
                                   >
                                     {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                    {isPinned ? '追加済み' : '追加'}
+                                    {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
                                   </button>
                                 )}
                               </span>
@@ -399,7 +396,7 @@ export default function HistoryPage() {
                     </div>
 
                     <div className={styles.section}>
-                      <h3>作り方</h3>
+                      <h3>{t.history.stepsTitle}</h3>
                       <ol className={styles.stepList}>
                         {(Array.isArray(recipe.steps) ? recipe.steps : []).map((step, i) => (
                           <li key={i}>
@@ -412,7 +409,7 @@ export default function HistoryPage() {
 
                     {recipe.tips && (
                       <div className={styles.tipsBox}>
-                        <strong>💡 ポイント: </strong> {recipe.tips}
+                        <strong>{t.history.tipsPrefix}</strong> {recipe.tips}
                       </div>
                     )}
                   </div>
@@ -424,15 +421,15 @@ export default function HistoryPage() {
           {filteredRecipes.length === 0 && allRecipes.length > 0 && (
             <div className={styles.emptyState}>
               <Search size={48} style={{ opacity: 0.4 }} />
-              <p>条件に合うレシピが見つかりませんでした</p>
-              <button className={styles.clearFiltersBtn2} onClick={clearFilters}>フィルターをリセット</button>
+              <p>{t.history.noFilterResults}</p>
+              <button className={styles.clearFiltersBtn2} onClick={clearFilters}>{t.history.resetFiltersButton2}</button>
             </div>
           )}
 
           {allRecipes.length === 0 && (
             <div className={styles.emptyState}>
               <img src="/mascot/bear_reading.png" alt="" width={96} height={96} />
-              <p>保存されたレシピはありません</p>
+              <p>{t.history.emptyState}</p>
             </div>
           )}
         </>
@@ -446,7 +443,7 @@ export default function HistoryPage() {
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadRecipes();
-              showToast("🎉 自炊記録とお使いの在庫を更新しました！");
+              showToast(t.recipe.cookedCompletedToast);
             }}
           />
         )}
