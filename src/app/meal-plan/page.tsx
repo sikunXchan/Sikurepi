@@ -6,6 +6,7 @@ import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingC
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
+import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
@@ -538,7 +539,11 @@ export default function MealPlanPage() {
                                       <li key={i}>{s}</li>
                                     ))}
                                   </ol>
-                                  {entry.recipe.tips && <div className={styles.slotTips}>💡 {entry.recipe.tips}</div>}
+                                  {entry.recipe.tips && (
+                                    <div className={styles.slotTips}>
+                                      <UiIcon slug="tips_idea" size={16} alt="" /> {entry.recipe.tips}
+                                    </div>
+                                  )}
                                 </div>
                               </motion.div>
                             )}

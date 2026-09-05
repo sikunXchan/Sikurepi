@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
+import UiIcon from "./UiIcon";
 import styles from "./ProfileSettingsModal.module.css";
 
 type Props = {
@@ -18,7 +19,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.headerTitle}>
-            <span>⚙️</span>
+            <UiIcon slug="gear_settings" size={24} alt="" />
             <h2>設定・自炊データ</h2>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>

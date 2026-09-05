@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import CookedModal from "./CookedModal";
 import IngredientIcon from "./IngredientIcon";
+import UiIcon from "./UiIcon";
 import styles from "./CookingSession.module.css";
 
 type IngredientItem = {
@@ -374,7 +375,7 @@ export default function CookingSession({
                 style={{ marginBottom: "12px", background: "linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)", color: "white" }}
                 onClick={() => setShowCookedModal(true)}
               >
-                🍳 在庫の消費を記録する
+                <UiIcon slug="cooking_pot" size={18} alt="" /> 在庫の消費を記録する
               </button>
               <button className={styles.finishBtn} onClick={onClose}>
                 閉じる
