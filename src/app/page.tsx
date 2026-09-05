@@ -16,28 +16,13 @@ import {
   toggleLocalIngredientPin,
   inferIngredientCategory,
   getForgottenIngredients,
+  CATEGORY_ORDER,
+  CATEGORY_ICON_SLUGS,
   Ingredient
 } from "@/lib/storage";
 import { matchIngredientSemantic } from "@/lib/embeddingMatch";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Home.module.css";
-
-const CATEGORY_ICON_SLUGS: Record<string, string> = {
-  '野菜': 'vegetables',
-  '肉': 'meat',
-  '魚介類': 'seafood',
-  '乳製品・卵': 'dairy_egg',
-  '穀物・パン': 'grains_bread',
-  '調味料': 'seasoning',
-  'お菓子・スイーツ': 'sweets_category',
-  '果物': 'fruits',
-  '豆類': 'beans_nuts',
-  'ナッツ類': 'beans_nuts',
-  '飲み物': 'drinks',
-  'その他': 'other',
-};
-
-const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', 'ナッツ類', '果物', 'お菓子・スイーツ', '調味料', '飲み物', 'その他'];
 
 const SWIPE_OPEN_X = -88;
 const SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
