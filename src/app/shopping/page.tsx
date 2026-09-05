@@ -11,20 +11,21 @@ import {
   ShoppingItem
 } from "@/lib/storage";
 import IngredientIcon from "@/components/IngredientIcon";
+import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Shopping.module.css";
 
 const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
 
-const AISLE_ICONS: Record<string, string> = {
-  '野菜・果物': '🥦',
-  '精肉': '🥩',
-  '鮮魚': '🐟',
-  '卵・乳製品': '🥚',
-  '穀物・豆腐': '🌾',
-  '調味料': '🧂',
-  'その他': '🍽️',
+const AISLE_ICON_SLUGS: Record<string, string> = {
+  '野菜・果物': 'vegetables',
+  '精肉': 'meat',
+  '鮮魚': 'seafood',
+  '卵・乳製品': 'dairy_egg',
+  '穀物・豆腐': 'grains_bread',
+  '調味料': 'seasoning',
+  'その他': 'other',
 };
 
 // 食材名から売り場カテゴリを自動判定
@@ -189,7 +190,7 @@ export default function ShoppingPage() {
                 return (
                   <div key={aisle} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                      <span>{AISLE_ICONS[aisle] || '🍽️'}</span>
+                      <UiIcon slug={AISLE_ICON_SLUGS[aisle] || 'other'} size={20} alt={aisle} />
                       <span>{`${t.shopping.aisle[aisle] || aisle} ${t.shopping.aisleSuffix}`.trim()}</span>
                       <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{t.shopping.itemCount(aisleItems.length)}</span>
                     </div>

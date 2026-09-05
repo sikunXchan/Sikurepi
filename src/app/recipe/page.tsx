@@ -10,6 +10,7 @@ import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
@@ -56,22 +57,23 @@ type CookingTip = {
   tip: string;
 };
 
+// quickだけ対応するイラストが無いため絵文字のまま(iconSlugはnull)
 const TEMPLATES = [
-  { emoji: '⏳', key: 'quick', query: '10分以内で手早く作れる時短おかず' },
-  { emoji: '🍱', key: 'bento', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
-  { emoji: '💪', key: 'meaty', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
-  { emoji: '🥗', key: 'healthy', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
-  { emoji: '🍲', key: 'soup', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
-  { emoji: '🍰', key: 'sweets', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
-  { emoji: '🧽', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
+  { emoji: '⏳', iconSlug: null, key: 'quick', query: '10分以内で手早く作れる時短おかず' },
+  { emoji: '🍱', iconSlug: 'bento', key: 'bento', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
+  { emoji: '💪', iconSlug: 'stamina', key: 'meaty', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
+  { emoji: '🥗', iconSlug: 'healthy', key: 'healthy', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
+  { emoji: '🍲', iconSlug: 'hotpot', key: 'soup', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
+  { emoji: '🍰', iconSlug: 'sweets_template', key: 'sweets', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { emoji: '🧽', iconSlug: 'dishwashing', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ] as const;
 
 // 定食モードで各品に付くコース名(主菜/副菜/汁物/ご飯・主食)のアイコン
-const COURSE_EMOJI: Record<string, string> = {
-  '主菜': '🍖',
-  '副菜': '🥗',
-  '汁物': '🍲',
-  'ご飯・主食': '🍚',
+const COURSE_ICON_SLUGS: Record<string, string> = {
+  '主菜': 'main_dish',
+  '副菜': 'side_dish',
+  '汁物': 'soup_course',
+  'ご飯・主食': 'rice_staple',
 };
 
 const TIP_CATEGORY_COLORS: Record<string, string> = {
@@ -464,7 +466,11 @@ export default function RecipePage() {
                   onClick={() => handleApplyTemplate(tmpl.query)}
                   className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
                 >
-                  <span className={styles.templateEmoji}>{tmpl.emoji}</span>
+                  {tmpl.iconSlug ? (
+                    <UiIcon slug={tmpl.iconSlug} size={28} alt={tmpl.key} className={styles.templateEmoji} />
+                  ) : (
+                    <span className={styles.templateEmoji}>{tmpl.emoji}</span>
+                  )}
                   <span className={styles.templateLabel}>{t.recipe.templates[tmpl.key]}</span>
                 </button>
               );
@@ -636,7 +642,10 @@ export default function RecipePage() {
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
                       {recipe.course && (
-                        <span className={styles.genreBadge}>{COURSE_EMOJI[recipe.course] || '🍽️'} {t.recipe.courseLabel[recipe.course] || recipe.course}</span>
+                        <span className={styles.genreBadge}>
+                          <UiIcon slug={COURSE_ICON_SLUGS[recipe.course] || 'other'} size={16} alt={recipe.course} />
+                          {' '}{t.recipe.courseLabel[recipe.course] || recipe.course}
+                        </span>
                       )}
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>

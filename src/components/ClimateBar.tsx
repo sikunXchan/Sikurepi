@@ -11,14 +11,15 @@ import {
 } from "@/lib/storage";
 import { CLIMATE_PRESETS, getAutoTimeOfDay, fetchRealWeather } from "@/lib/climate";
 import { RefreshCw, Power } from "lucide-react";
+import UiIcon from "@/components/UiIcon";
 import styles from "./ClimateBar.module.css";
 
-const CLIMATE_ICONS: Record<string, string> = {
-  "猛暑・晴れ": "☀️",
-  "雨・肌寒い": "🌧️",
-  "冬の寒波": "❄️",
-  "春・うららか": "🌸",
-  "秋・快晴": "🍁",
+const CLIMATE_ICON_SLUGS: Record<string, string> = {
+  "猛暑・晴れ": "heatwave",
+  "雨・肌寒い": "rain",
+  "冬の寒波": "winter",
+  "春・うららか": "spring",
+  "秋・快晴": "autumn",
 };
 
 export default function ClimateBar() {
@@ -77,17 +78,19 @@ export default function ClimateBar() {
     setLocalClimateState(next);
   };
 
-  const icon = climate.condition.includes("雨") ? "🌧️" :
-               climate.condition.includes("雪") ? "❄️" :
-               climate.condition.includes("暑") ? "☀️" :
-               climate.condition.includes("春") ? "🌸" :
-               climate.condition.includes("秋") ? "🍁" :
-               CLIMATE_ICONS[climate.condition] || "🌤️";
+  const iconSlug = climate.condition.includes("雨") ? "rain" :
+               climate.condition.includes("雪") ? "winter" :
+               climate.condition.includes("暑") ? "heatwave" :
+               climate.condition.includes("春") ? "spring" :
+               climate.condition.includes("秋") ? "autumn" :
+               CLIMATE_ICON_SLUGS[climate.condition] || "clear";
 
   return (
     <div className={`${styles.container} ${!enableClimate ? styles.disabledContainer : ''}`}>
       <div className={styles.left}>
-        <span className={styles.icon}>{enableClimate ? icon : '🚫'}</span>
+        <span className={styles.icon}>
+          <UiIcon slug={enableClimate ? iconSlug : 'no_entry'} size={30} alt={enableClimate ? climate.condition : ''} />
+        </span>
         <div className={styles.info}>
           <div className={styles.titleRow}>
             <span className={styles.conditionTitle}>

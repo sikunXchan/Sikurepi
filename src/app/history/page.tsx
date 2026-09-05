@@ -8,6 +8,7 @@ import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -286,7 +287,7 @@ export default function HistoryPage() {
                       )}
                     </div>
                     <div className={styles.savedDate}>
-                      📅 {formatDate(recipe.saved_at)}
+                      <UiIcon slug="calendar_date" size={15} alt="" /> {formatDate(recipe.saved_at)}
                     </div>
                   </div>
 

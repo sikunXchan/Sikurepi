@@ -7,6 +7,7 @@ import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import {
   getLocalIngredients,
@@ -22,19 +23,19 @@ import { matchIngredientSemantic } from "@/lib/embeddingMatch";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Home.module.css";
 
-const CATEGORY_ICONS: Record<string, string> = {
-  '野菜': '🥦',
-  '肉': '🥩',
-  '魚介類': '🐟',
-  '乳製品・卵': '🥚',
-  '穀物・パン': '🌾',
-  '調味料': '🧂',
-  'お菓子・スイーツ': '🍰',
-  '果物': '🍎',
-  '豆類': '🫘',
-  'ナッツ類': '🥜',
-  '飲み物': '🥤',
-  'その他': '🍽️',
+const CATEGORY_ICON_SLUGS: Record<string, string> = {
+  '野菜': 'vegetables',
+  '肉': 'meat',
+  '魚介類': 'seafood',
+  '乳製品・卵': 'dairy_egg',
+  '穀物・パン': 'grains_bread',
+  '調味料': 'seasoning',
+  'お菓子・スイーツ': 'sweets_category',
+  '果物': 'fruits',
+  '豆類': 'beans_nuts',
+  'ナッツ類': 'beans_nuts',
+  '飲み物': 'drinks',
+  'その他': 'other',
 };
 
 const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', 'ナッツ類', '果物', 'お菓子・スイーツ', '調味料', '飲み物', 'その他'];
@@ -371,7 +372,8 @@ export default function Home() {
             onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
           >
             {CATEGORY_ORDER.map(cat => (
-              <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {t.category[cat] || cat}</option>
+              // <option>内は画像を描画できないためテキストのみ表示
+              <option key={cat} value={cat}>{t.category[cat] || cat}</option>
             ))}
           </select>
           {!categoryTouched && newName.trim() && selectedCategory !== 'その他' && (
@@ -391,7 +393,7 @@ export default function Home() {
         <div className={styles.categoryGroups}>
           {Object.entries(grouped).map(([category, items]) => {
             const isCollapsed = collapsedCategories.has(category);
-            const icon = CATEGORY_ICONS[category] || '🍽️';
+            const iconSlug = CATEGORY_ICON_SLUGS[category] || 'other';
             return (
               <div key={category} className={styles.categoryGroup}>
                 <button
@@ -399,7 +401,7 @@ export default function Home() {
                   onClick={() => toggleCategory(category)}
                 >
                   <span className={styles.categoryTitle}>
-                    <span>{icon}</span>
+                    <UiIcon slug={iconSlug} size={22} alt={category} />
                     <span>{t.category[category] || category}</span>
                     <span className={styles.categoryCount}>{items.length}</span>
                   </span>
