@@ -280,7 +280,7 @@ const en: typeof ja = {
     'ジャマイカ・カリブ料理': 'Jamaican & Caribbean', 'ペルー料理': 'Peruvian', 'ブラジル料理': 'Brazilian',
     'シンガポール料理': 'Singaporean',
     'うす味・減塩': 'Light & low-sodium', 'しっかり濃いめ': 'Bold & rich', '高タンパク': 'High-protein',
-    '低糖質・ヘルシー': 'Low-carb & healthy', '辛さ控えめ': 'Mild spice', '子供が喜ぶ味付け': 'Kid-friendly',
+    '低糖質・ヘルシー': 'Low-carb & healthy', '辛さ控えめ': 'Mild spice', '酸味が苦手': 'Not a fan of sourness', '子供が喜ぶ味付け': 'Kid-friendly',
     'お酒のおつまみ風': 'Great with drinks',
     '15分以内の時短': 'Ready in 15 min', 'フライパン1つ（ワンパン）': 'One-pan',
     '電子レンジフル活用': 'Microwave-friendly', '節約・高コスパ': 'Budget-friendly',
