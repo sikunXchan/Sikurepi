@@ -25,6 +25,8 @@ import {
   getLocalLastRecipeGeneration,
   setLocalLastRecipeGeneration,
   DEFAULT_USER_PROFILE,
+  CATEGORY_ORDER,
+  CATEGORY_ICON_SLUGS,
   Ingredient,
   UserProfile,
   ClimateState,
@@ -300,6 +302,13 @@ export default function RecipePage() {
     showToast(t.recipe.pinnedToShoppingToast(ingredientName));
   };
 
+  // 食材選択チップを在庫画面と同じカテゴリ順にグルーピングし、目的の食材を探しやすくする
+  const groupedIngredients = CATEGORY_ORDER.reduce<Record<string, Ingredient[]>>((acc, cat) => {
+    const items = ingredients.filter(i => (i.category || 'その他') === cat);
+    if (items.length > 0) acc[cat] = items;
+    return acc;
+  }, {});
+
   return (
     <div className={styles.container}>
       {toastMessage && (
@@ -540,34 +549,44 @@ export default function RecipePage() {
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.recipe.selectIngredientsHint}</span>
             </div>
             {ingredients.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {ingredients.map(ing => {
-                  const isSelected = selectedIngredientIds.includes(ing.id);
-                  return (
-                    <button
-                      key={ing.id}
-                      type="button"
-                      onClick={() => toggleIngredientSelection(ing.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        background: isSelected ? 'var(--primary)' : 'var(--card-bg-solid)',
-                        color: isSelected ? '#ffffff' : 'var(--foreground)',
-                        border: '1px solid var(--border)',
-                        padding: '4px 10px 4px 6px',
-                        borderRadius: 20,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <IngredientIcon name={ing.name} size={20} />
-                      {ing.is_pinned && '📌 '}
-                      {ing.name}
-                    </button>
-                  );
-                })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(groupedIngredients).map(([category, items]) => (
+                  <div key={category}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={16} alt={category} />
+                      <span>{t.category[category] || category}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {items.map(ing => {
+                        const isSelected = selectedIngredientIds.includes(ing.id);
+                        return (
+                          <button
+                            key={ing.id}
+                            type="button"
+                            onClick={() => toggleIngredientSelection(ing.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              background: isSelected ? 'var(--primary)' : 'var(--card-bg-solid)',
+                              color: isSelected ? '#ffffff' : 'var(--foreground)',
+                              border: '1px solid var(--border)',
+                              padding: '4px 10px 4px 6px',
+                              borderRadius: 20,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <IngredientIcon name={ing.name} size={20} />
+                            {ing.is_pinned && '📌 '}
+                            {ing.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>

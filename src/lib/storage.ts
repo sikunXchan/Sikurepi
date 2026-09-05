@@ -99,8 +99,27 @@ export function isPantryStaple(ingredientName: string): boolean {
   return PANTRY_STAPLES.some(s => name.includes(s));
 }
 
+// 在庫画面(page.tsx)・レシピ生成画面(recipe/page.tsx)の食材選択UIなど、
+// カテゴリ別に食材をグルーピングして表示する画面で共通して使う表示順とアイコン。
+export const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', 'ナッツ類', '果物', 'お菓子・スイーツ', '調味料', '飲み物', 'その他'];
+
+export const CATEGORY_ICON_SLUGS: Record<string, string> = {
+  '野菜': 'vegetables',
+  '肉': 'meat',
+  '魚介類': 'seafood',
+  '乳製品・卵': 'dairy_egg',
+  '穀物・パン': 'grains_bread',
+  '調味料': 'seasoning',
+  'お菓子・スイーツ': 'sweets_category',
+  '果物': 'fruits',
+  '豆類': 'beans_nuts',
+  'ナッツ類': 'beans_nuts',
+  '飲み物': 'drinks',
+  'その他': 'other',
+};
+
 // --- 食材名からのカテゴリ自動判定 (在庫の手動追加時に使用) ---
-// src/app/page.tsx の CATEGORY_ORDER (在庫画面のカテゴリ) と対応させている。
+// 上のCATEGORY_ORDER(在庫画面のカテゴリ)と対応させている。
 // 各カテゴリの正規表現は上から順に評価し、最初に一致したものを採用する。
 // 「いちごジャム」のような加工品が素材名(いちご→果物)に引っ張られないよう、
 // 調味料・加工品の判定は生鮮カテゴリ(果物・野菜)より先に置いている。
