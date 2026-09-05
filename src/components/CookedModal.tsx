@@ -41,14 +41,20 @@ export default function CookedModal({
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  // 食材が四方八方に大きく飛び散るアニメーション用に、食材ごとの飛び方をランダムに1回だけ決めておく
-  const [scatter] = useState(() =>
-    rawIngredients.map(() => ({
-      dx: (Math.random() - 0.5) * 440,
-      dy: 220 + Math.random() * 200,
-      rotate: (Math.random() - 0.5) * 720,
-      delay: Math.random() * 0.25,
-    }))
+  // 食材が空から降ってくるアニメーション用に、食材ごとの落ち方(横位置・揺れ・回転・
+  // タイミング)をランダムに1回だけ決めておく。横位置は食材の数だけレーン分けした上で
+  // 少しランダムにずらし、まんべんなく画面上に降ってくるようにする。
+  const [fall] = useState(() =>
+    rawIngredients.map((_, i) => {
+      const lane = rawIngredients.length > 1 ? i / (rawIngredients.length - 1) : 0.5;
+      return {
+        leftPercent: 10 + lane * 80 + (Math.random() - 0.5) * 8,
+        sway: (Math.random() - 0.5) * 50,
+        rotate: (Math.random() - 0.5) * 360,
+        delay: Math.random() * 0.6,
+        duration: 1.6 + Math.random() * 0.7,
+      };
+    })
   );
 
   const toggleItem = (name: string) => {
@@ -73,11 +79,12 @@ export default function CookedModal({
       setDone(true);
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
+      // 降ってくるアニメーションの最大所要時間(delay+duration)を待ってから閉じる
       setTimeout(() => {
         if (onCompleted) onCompleted();
         if (onSuccess) onSuccess();
         onClose();
-      }, 2600);
+      }, 3400);
     } catch (e) {
       console.error(e);
       alert("エラーが発生しました");
@@ -101,18 +108,28 @@ export default function CookedModal({
               {rawIngredients.map((item, idx) => (
                 <motion.div
                   key={idx}
-                  style={{ position: "absolute", top: "30%", left: "50%", marginLeft: -22, pointerEvents: "none" }}
-                  initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 }}
-                  animate={{
-                    x: scatter[idx]?.dx ?? 0,
-                    y: scatter[idx]?.dy ?? 0,
-                    opacity: 0,
-                    rotate: scatter[idx]?.rotate ?? 0,
-                    scale: 0.7,
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: `${fall[idx]?.leftPercent ?? 50}%`,
+                    marginLeft: -34,
+                    pointerEvents: "none",
                   }}
-                  transition={{ duration: 1.3, delay: 0.3 + (scatter[idx]?.delay ?? 0), ease: "easeIn" }}
+                  initial={{ y: -160, x: 0, opacity: 0, rotate: 0 }}
+                  animate={{
+                    y: 420,
+                    x: [0, fall[idx]?.sway ?? 0, 0],
+                    opacity: [0, 1, 1, 0],
+                    rotate: fall[idx]?.rotate ?? 0,
+                  }}
+                  transition={{
+                    duration: fall[idx]?.duration ?? 2,
+                    delay: 0.2 + (fall[idx]?.delay ?? 0),
+                    ease: "easeIn",
+                    times: [0, 0.12, 0.8, 1],
+                  }}
                 >
-                  <IngredientIcon name={item.name} size={44} />
+                  <IngredientIcon name={item.name} size={68} />
                 </motion.div>
               ))}
               <motion.img
