@@ -61,7 +61,16 @@ export default function SyncManager() {
 
       if (cancelled) return;
 
-      const remoteData = !error ? data?.data : null;
+      if (error) {
+        // 取得失敗(通信エラー等)を「サーバーにまだデータが無い」と誤判定すると、
+        // 他端末が既に同期済みのデータをこの端末のローカルデータで上書き
+        // プッシュして消してしまう恐れがあるため、何もせず次回起動時に
+        // 再試行する(didInitialSyncRef を立てないことで再試行される)。
+        console.error("Failed to fetch remote user_data, skipping initial sync:", error);
+        return;
+      }
+
+      const remoteData = data?.data;
       const remoteHasData = remoteData && typeof remoteData === "object" && Object.keys(remoteData).length > 0;
 
       if (remoteHasData) {
