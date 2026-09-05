@@ -60,6 +60,14 @@
 
 .tabBtn {
   flex: 1;
+  /* min-width:0が無いと、4つのタブの合計幅が入りきらない狭い画面で
+     はみ出したタブ(保存/バックアップ)が右上固定の言語トグルボタンの
+     裏に隠れてタップ不能になっていたため、縮小を許可する */
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background: transparent;
   border: none;
   padding: 8px 6px;
@@ -70,6 +78,13 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+}
+
+.tabBtnLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .tabBtnActive {

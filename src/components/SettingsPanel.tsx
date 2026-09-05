@@ -224,32 +224,32 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           className={`${styles.tabBtn} ${activeTab === 'profile' ? styles.tabBtnActive : ''}`}
           onClick={() => setActiveTab('profile')}
         >
-          <User size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t.settings.tabProfile}
+          <User size={13} style={{ flexShrink: 0 }} />
+          <span className={styles.tabBtnLabel}>{t.settings.tabProfile}</span>
         </button>
         <button
           type="button"
           className={`${styles.tabBtn} ${activeTab === 'stats' ? styles.tabBtnActive : ''}`}
           onClick={() => setActiveTab('stats')}
         >
-          <Activity size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t.settings.tabStats}
+          <Activity size={13} style={{ flexShrink: 0 }} />
+          <span className={styles.tabBtnLabel}>{t.settings.tabStats}</span>
         </button>
         <button
           type="button"
           className={`${styles.tabBtn} ${activeTab === 'tips' ? styles.tabBtnActive : ''}`}
           onClick={() => setActiveTab('tips')}
         >
-          <Lightbulb size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t.settings.tabTips(tips.length)}
+          <Lightbulb size={13} style={{ flexShrink: 0 }} />
+          <span className={styles.tabBtnLabel}>{t.settings.tabTips(tips.length)}</span>
         </button>
         <button
           type="button"
           className={`${styles.tabBtn} ${activeTab === 'backup' ? styles.tabBtnActive : ''}`}
           onClick={() => setActiveTab('backup')}
         >
-          <Database size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t.settings.tabBackup}
+          <Database size={13} style={{ flexShrink: 0 }} />
+          <span className={styles.tabBtnLabel}>{t.settings.tabBackup}</span>
         </button>
       </div>
 
