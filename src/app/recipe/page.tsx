@@ -59,15 +59,13 @@ type CookingTip = {
   tip: string;
 };
 
-// quickだけ対応するイラストが無いため絵文字のまま(iconSlugはnull)
 const TEMPLATES = [
-  { emoji: '⏳', iconSlug: null, key: 'quick', query: '10分以内で手早く作れる時短おかず' },
-  { emoji: '🍱', iconSlug: 'bento', key: 'bento', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
-  { emoji: '💪', iconSlug: 'stamina', key: 'meaty', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
-  { emoji: '🥗', iconSlug: 'healthy', key: 'healthy', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
-  { emoji: '🍲', iconSlug: 'hotpot', key: 'soup', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
-  { emoji: '🍰', iconSlug: 'sweets_template', key: 'sweets', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
-  { emoji: '🧽', iconSlug: 'dishwashing', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
+  { iconSlug: 'bento', key: 'bento', query: '冷めても美味しく汁気の出にくいお弁当用おかず' },
+  { iconSlug: 'stamina', key: 'meaty', query: 'ご飯が進むボリューミーなスタミナ肉料理' },
+  { iconSlug: 'healthy', key: 'healthy', query: '野菜たっぷり高タンパク低カロリーなヘルシー料理' },
+  { iconSlug: 'hotpot', key: 'soup', query: '野菜や肉の旨味が溶け込んだ温まる鍋・スープ料理' },
+  { iconSlug: 'sweets_template', key: 'sweets', query: 'フライパンや電子レンジで作れる簡単デザート・おやつ' },
+  { iconSlug: 'dishwashing', key: 'easyClean', query: '使う鍋・フライパン・ボウル・皿の数が最小限になる、洗い物が少ないレシピ' },
 ] as const;
 
 // 定食モードで各品に付くコース名(主菜/副菜/汁物/ご飯・主食)のアイコン
@@ -475,11 +473,7 @@ export default function RecipePage() {
                   onClick={() => handleApplyTemplate(tmpl.query)}
                   className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
                 >
-                  {tmpl.iconSlug ? (
-                    <UiIcon slug={tmpl.iconSlug} size={28} alt={tmpl.key} className={styles.templateEmoji} />
-                  ) : (
-                    <span className={styles.templateEmoji}>{tmpl.emoji}</span>
-                  )}
+                  <UiIcon slug={tmpl.iconSlug} size={28} alt={tmpl.key} className={styles.templateEmoji} />
                   <span className={styles.templateLabel}>{t.recipe.templates[tmpl.key]}</span>
                 </button>
               );

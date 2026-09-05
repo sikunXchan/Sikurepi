@@ -265,36 +265,37 @@
 .categoryGroups {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.categoryGroup {
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-  background: var(--background-secondary);
-}
-
-.categoryHeader {
+/* カテゴリ一覧の各行。アコーディオン展開はせず、タップでカテゴリ詳細画面に遷移する */
+.categoryListRow {
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px;
-  background: none;
-  border: none;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
   cursor: pointer;
   color: var(--foreground);
   font-size: 16px;
   font-weight: 900;
-  transition: background 0.15s ease;
-  box-shadow: none;
+  transition: border-color 0.15s ease;
 }
 
-.categoryHeader:hover {
-  background: rgba(255, 111, 145, 0.06);
+.categoryListRow:hover {
+  border-color: var(--primary-light);
   transform: none;
-  box-shadow: none;
+}
+
+.categoryListRowRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
 }
 
 .categoryTitle {
@@ -312,19 +313,194 @@
   border-radius: 20px;
 }
 
-.categoryChevron {
-  font-size: 18px;
-  color: var(--text-secondary);
-  line-height: 1;
-}
-
 .list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 8px;
   padding: 0 10px 10px;
   overflow: hidden;
+}
+
+/* ===== カテゴリ詳細画面 ===== */
+.categoryDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.detailTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card-bg-solid);
+  color: var(--text-muted);
+}
+
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.sortSelect {
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.viewToggle {
+  display: flex;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.viewToggleBtn,
+.viewToggleBtnActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: var(--card-bg-solid);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.viewToggleBtnActive {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.gridCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 10px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+  text-align: center;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.gridCardName {
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.gridCardPinned {
+  background: #fffaf0;
+  border: 1px solid rgba(240, 165, 0, 0.45);
+  border-left: 5px solid var(--accent);
+  box-shadow: 0 8px 26px rgba(240, 165, 0, 0.2);
+}
+
+.gridCardPinned .gridCardName {
+  color: #9a5b00;
+  font-weight: 900;
+}
+
+.gridCardForgotten {
+  background: rgba(255, 111, 145, 0.06);
+  border: 1px solid rgba(255, 111, 145, 0.35);
+}
+
+.gridDeleteBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.gridDeleteBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
 }
 
 /* ===== page.tsx が参照していたのに未定義だったクラス =====

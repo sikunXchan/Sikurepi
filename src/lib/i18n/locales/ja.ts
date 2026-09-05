@@ -65,6 +65,16 @@ const ja = {
       "そろそろ出番をちょうだい！",
     ],
     forgottenSuffix: (ageDays: number) => `（在庫${ageDays}日目）`,
+    backButtonTitle: "戻る",
+    searchInCategoryPlaceholder: (category: string) => `${category}を検索`,
+    noSearchResults: "該当する食材が見つかりませんでした",
+    sortLabel: "並び替え",
+    sortDefault: "登録順",
+    sortNewest: "新しい順",
+    sortOldest: "古い順",
+    sortName: "名前順",
+    gridViewTitle: "グリッド表示",
+    listViewTitle: "リスト表示",
   },
   aiMatch: {
     consentTitle: "多言語食材名の自動判定",
@@ -93,7 +103,6 @@ const ja = {
     } as Record<string, string>,
     templatesLabel: "💡 おすすめテンプレート",
     templates: {
-      quick: "10分時短",
       bento: "お弁当",
       meaty: "ガッツリ肉",
       healthy: "ヘルシー",
@@ -288,7 +297,7 @@ const ja = {
     'シンガポール料理': 'シンガポール料理',
     // 味・栄養のこだわり
     'うす味・減塩': 'うす味・減塩', 'しっかり濃いめ': 'しっかり濃いめ', '高タンパク': '高タンパク',
-    '低糖質・ヘルシー': '低糖質・ヘルシー', '辛さ控えめ': '辛さ控えめ', '子供が喜ぶ味付け': '子供が喜ぶ味付け',
+    '低糖質・ヘルシー': '低糖質・ヘルシー', '辛さ控えめ': '辛さ控えめ', '酸味が苦手': '酸味が苦手', '子供が喜ぶ味付け': '子供が喜ぶ味付け',
     'お酒のおつまみ風': 'お酒のおつまみ風',
     // 調理スタイル
     '15分以内の時短': '15分以内の時短', 'フライパン1つ（ワンパン）': 'フライパン1つ（ワンパン）',
