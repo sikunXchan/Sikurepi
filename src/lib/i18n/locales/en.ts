@@ -51,6 +51,7 @@ const en: typeof ja = {
     addButton: "Add",
     categoryLabel: "Category:",
     autoCategoryHint: "Auto-detected",
+    aiJudgingText: "AI is figuring out the category…",
     alreadyInStock: "⚠️ That ingredient is already in your pantry.",
     addedToast: (name: string) => `✨ Added "${name}" to your pantry!`,
     deletedToast: (name: string) => `🗑️ Removed "${name}"`,

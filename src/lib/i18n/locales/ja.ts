@@ -52,6 +52,7 @@ const ja = {
     addButton: "追加",
     categoryLabel: "カテゴリ:",
     autoCategoryHint: "自動で判定したよ",
+    aiJudgingText: "AIがカテゴリを判定中…",
     alreadyInStock: "⚠️ その食材はすでに在庫にあります。",
     addedToast: (name: string) => `✨ 「${name}」を冷蔵庫に追加しました！`,
     deletedToast: (name: string) => `🗑️ 「${name}」を削除しました`,
