@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
 ${slotLines}
 
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
 【重要・厳守事項】
 1. 上記の日付・食事枠それぞれに必ず1品ずつ、過不足なくレシピを割り当ててください。
 2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。

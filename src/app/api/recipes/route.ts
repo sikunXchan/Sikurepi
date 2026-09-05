@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, Language } from '@/lib/ai';
+import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, Language } from '@/lib/ai';
 
 export async function POST(req: Request) {
   let language: Language = 'ja';
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${mealStyleSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${mealStyleSection}
 
 【重要・厳守事項】
 1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
