@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X } from "lucide-react";
+import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -29,6 +29,9 @@ import {
 import { isNativeApp, hasPremiumEntitlement, purchasePremium } from "@/lib/purchases";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
+// レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
+// バッジ・材料・手順・コツの表示はそちらのスタイルを直接使い回す
+import recipeStyles from "@/app/recipe/Recipe.module.css";
 
 const SLOTS: MealSlot[] = ['lunch', 'dinner'];
 
@@ -437,26 +440,33 @@ export default function MealPlanPage() {
                   const key = `${d.date}_${slot}`;
                   const isExpanded = expandedKey === key;
                   return (
-                    <div key={key} className={styles.slotCard}>
+                    <div key={key} className={recipeStyles.recipeCard} style={{ marginBottom: 10 }}>
                       {!entry ? (
                         <div style={{ padding: 14, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
                           {t.mealPlan.notGenerated(SLOT_LABEL[slot])}
                         </div>
                       ) : (
                         <>
-                          <div className={styles.slotHeader} onClick={() => setExpandedKey(isExpanded ? null : key)}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                                <span className={styles.slotBadge}>{SLOT_LABEL[slot]}</span>
-                                {entry.recipe.genre && <span className={styles.slotBadge}>{t.tagLabel[entry.recipe.genre] || entry.recipe.genre}</span>}
-                                {entry.recipe.dish_badge && <span className={styles.slotBadge}>{entry.recipe.dish_badge}</span>}
+                          <div className={recipeStyles.cardHeader} onClick={() => setExpandedKey(isExpanded ? null : key)}>
+                            <div className={recipeStyles.titleInfo}>
+                              <div className={recipeStyles.badgeRow}>
+                                <span className={recipeStyles.genreBadge}>{SLOT_LABEL[slot]}</span>
+                                {entry.recipe.genre && <span className={recipeStyles.genreBadge}>{t.tagLabel[entry.recipe.genre] || entry.recipe.genre}</span>}
+                                {entry.recipe.dish_badge && <span className={recipeStyles.climateBadge}>{entry.recipe.dish_badge}</span>}
                               </div>
-                              <div style={{ fontSize: 15, fontWeight: 700 }}>{entry.recipe.title}</div>
-                              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                              <h2 className={recipeStyles.recipeTitle}>{entry.recipe.title}</h2>
+                              <span className={recipeStyles.recipeTime}>
                                 ⏱ {entry.recipe.time}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
-                              </div>
+                              </span>
+                              {(entry.recipe.ingredients || []).length > 0 && (
+                                <div className={recipeStyles.ingredientIconRow}>
+                                  {entry.recipe.ingredients.map((item, i) => (
+                                    <IngredientIcon key={i} name={item.name} size={24} />
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <div className={recipeStyles.headerActions}>
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRegenerateSlot(d.date, slot); }}
@@ -486,62 +496,64 @@ export default function MealPlanPage() {
                                 exit={{ height: 0, opacity: 0 }}
                                 style={{ overflow: 'hidden' }}
                               >
-                                <div style={{ padding: '0 14px 14px' }}>
+                                <div className={recipeStyles.cardContent}>
                                   {entry.recipe.nutrition && (
-                                    <div style={{ marginBottom: 10 }}>
+                                    <div className={recipeStyles.nutritionSection}>
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>{t.mealPlan.ingredientsTitle}<span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.mealPlan.ingredientsHint}</span></div>
-                                  <ul style={{ fontSize: 14, marginBottom: 10, padding: 0, listStyle: 'none' }}>
-                                    {(entry.recipe.ingredients || []).map((it, i) => {
-                                      const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
-                                      const pinKey = `${key}-${it.name}`;
-                                      const isPinned = pinnedToShoppingSet.has(pinKey);
-                                      return (
-                                        <li
-                                          key={i}
-                                          style={{
-                                            display: 'flex', alignItems: 'center', gap: 8, minHeight: 44,
-                                            background: missing ? 'rgba(217, 43, 63, 0.06)' : 'transparent',
-                                            borderRadius: 12, padding: missing ? '2px 8px' : '2px 0',
-                                          }}
-                                        >
-                                          <IngredientIcon name={it.name} size={28} />
-                                          <span style={{ flex: 1, minWidth: 0, color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
-                                            {it.name} {it.amount}
-                                          </span>
-                                          {missing && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handlePinToShopping(key, it.name)}
-                                              disabled={isPinned}
-                                              style={{
-                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                                                minHeight: 44, padding: '10px 14px', borderRadius: 999,
-                                                fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', border: 'none',
-                                                boxShadow: 'none', flexShrink: 0,
-                                                background: isPinned ? 'var(--background-secondary)' : '#d92b3f',
-                                                color: isPinned ? 'var(--text-secondary)' : '#ffffff',
-                                                cursor: isPinned ? 'default' : 'pointer',
-                                              }}
-                                            >
-                                              {isPinned ? t.mealPlan.added : t.mealPlan.addShort}
-                                            </button>
-                                          )}
+                                  <div className={recipeStyles.section}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                      <h3>{t.mealPlan.ingredientsTitle}</h3>
+                                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.ingredientsHint}</span>
+                                    </div>
+                                    <ul className={recipeStyles.ingredientList}>
+                                      {(entry.recipe.ingredients || []).map((it, i) => {
+                                        const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
+                                        const pinKey = `${key}-${it.name}`;
+                                        const isPinned = pinnedToShoppingSet.has(pinKey);
+                                        return (
+                                          <li key={i} className={missing ? recipeStyles.ingredientMissing : undefined}>
+                                            <span className={recipeStyles.ingredientName}>
+                                              <IngredientIcon name={it.name} size={30} />
+                                              <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
+                                                {it.name}
+                                              </span>
+                                            </span>
+                                            <span className={recipeStyles.ingredientRight}>
+                                              <span className={recipeStyles.ingredientAmount}>{it.amount}</span>
+                                              {missing && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handlePinToShopping(key, it.name)}
+                                                  className={isPinned ? recipeStyles.addedBtn : recipeStyles.addToCartBtn}
+                                                  disabled={isPinned}
+                                                >
+                                                  {isPinned ? <Check size={15} /> : <Plus size={15} />}
+                                                  {isPinned ? t.mealPlan.added : t.mealPlan.addShort}
+                                                </button>
+                                              )}
+                                            </span>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  </div>
+                                  <div className={recipeStyles.section}>
+                                    <h3>{t.mealPlan.stepsTitle}</h3>
+                                    <ol className={recipeStyles.stepList}>
+                                      {(entry.recipe.steps || []).map((s, i) => (
+                                        <li key={i}>
+                                          <span className={recipeStyles.stepNumber}>{i + 1}</span>
+                                          <span className={recipeStyles.stepText}>{s}</span>
                                         </li>
-                                      );
-                                    })}
-                                  </ul>
-                                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{t.mealPlan.stepsTitle}</div>
-                                  <ol style={{ fontSize: 13, color: 'var(--foreground)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    {(entry.recipe.steps || []).map((s, i) => (
-                                      <li key={i}>{s}</li>
-                                    ))}
-                                  </ol>
+                                      ))}
+                                    </ol>
+                                  </div>
                                   {entry.recipe.tips && (
-                                    <div className={styles.slotTips}>
-                                      <UiIcon slug="tips_idea" size={16} alt="" /> {entry.recipe.tips}
+                                    <div className={recipeStyles.tipsBox} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                      <UiIcon slug="tips_idea" size={32} alt="" />
+                                      <span>{entry.recipe.tips}</span>
                                     </div>
                                   )}
                                 </div>
