@@ -14,7 +14,6 @@ import {
   addLocalIngredient,
   deleteLocalIngredient,
   toggleLocalIngredientPin,
-  updateLocalIngredientCategory,
   inferIngredientCategory,
   getForgottenIngredients,
   Ingredient
@@ -43,6 +42,9 @@ const CATEGORY_ORDER = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物
 const SWIPE_OPEN_X = -88;
 const SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
 const LONG_PRESS_MS = 550;
+
+// AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
+const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
 
 // 食品ロス防止: 長く放置され直近の料理で使われていない食材に、
 // アイコンの顔から吹き出しで呼びかけてもらう
@@ -166,30 +168,17 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
   const [forgottenIds, setForgottenIds] = useState<Set<number>>(new Set());
-  const categoryTouchedRef = useRef(categoryTouched);
-  const categoryMatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const categoryMatchToken = useRef(0);
-  // デバウンス待ち、またはAPIリクエストが完了していない間はtrue。
-  // この間にEnterで追加されると、結果の反映先をフォームではなく
-  // 追加済みの食材に付け替える(下のcategoryMatchTarget)
-  const categoryMatchPending = useRef(false);
-  const categoryMatchTarget = useRef<{ type: "form" } | { type: "item"; id: number }>({ type: "form" });
+  // 静的キーワードで判定できなかった食材名について、Enter押下後にAIへ判定を
+  // 依頼している間だけtrueにする(判定中はフォームを操作不可にしてキャラクターの
+  // ローディング画面を表示する)
+  const [isJudging, setIsJudging] = useState(false);
+  const [judgingPose, setJudgingPose] = useState(JUDGING_POSES[0]);
 
   useEffect(() => {
     loadIngredients();
     const handleUpdate = () => loadIngredients();
     window.addEventListener("storage-updated", handleUpdate);
     return () => window.removeEventListener("storage-updated", handleUpdate);
-  }, []);
-
-  useEffect(() => {
-    categoryTouchedRef.current = categoryTouched;
-  }, [categoryTouched]);
-
-  useEffect(() => {
-    return () => {
-      if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
-    };
   }, []);
 
   const loadIngredients = () => {
@@ -203,8 +192,9 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isJudging) return;
     const cleanName = newName.trim();
     if (!cleanName) return;
 
@@ -213,16 +203,25 @@ export default function Home() {
       return;
     }
 
-    const newItem = addLocalIngredient(cleanName, selectedCategory);
+    let finalCategory = selectedCategory;
 
-    // カテゴリの自動判定(意味マッチング)がまだ進行中(デバウンス待ち/API応答待ち)
-    // の場合、判定をキャンセルせず継続させ、結果が出た時点で今追加した
-    // この食材のカテゴリを後から更新できるようにする。以前はここで即座に
-    // キャンセルしていたため、判定が終わる前にEnterで送信すると「その他」の
-    // ままになってしまっていた。
-    if (categoryMatchPending.current) {
-      categoryMatchTarget.current = { type: "item", id: newItem.id };
+    // カテゴリを手動で選んでおらず、かつ静的キーワードでは「その他」にしか
+    // 判定できなかった食材名(英語表記など)だけ、Enterが押されたこのタイミングで
+    // 初めてAIに意味マッチングを依頼する。入力中の毎キー入力でAPIを叩かないよう、
+    // 判定は送信時の1回きりにし、応答が返るまでキャラクター付きのローディング
+    // 画面を表示してフォームを操作不可にする。
+    if (!categoryTouched && selectedCategory === "その他") {
+      setJudgingPose(JUDGING_POSES[Math.floor(Math.random() * JUDGING_POSES.length)]);
+      setIsJudging(true);
+      try {
+        const result = await matchIngredientSemantic(cleanName);
+        if (result?.category) finalCategory = result.category;
+      } finally {
+        setIsJudging(false);
+      }
     }
+
+    addLocalIngredient(cleanName, finalCategory);
     setNewName("");
     setSelectedCategory("その他");
     setCategoryTouched(false);
@@ -232,42 +231,10 @@ export default function Home() {
 
   const handleNameChange = (value: string) => {
     setNewName(value);
-    // カテゴリを手動で選んでいない間は、入力中の食材名から自動でカテゴリを判定する
+    // カテゴリを手動で選んでいない間は、入力中の食材名から静的キーワードのみで
+    // 即座にカテゴリのプレビューを更新する(AIへの問い合わせはEnter押下後のみ)
     if (!categoryTouched) {
-      const inferred = inferIngredientCategory(value);
-      setSelectedCategory(inferred);
-
-      if (categoryMatchTimer.current) clearTimeout(categoryMatchTimer.current);
-      // 静的キーワードでは「その他」にしかならなかった場合だけ、少し入力が
-      // 落ち着いてから(デバウンス)オフラインの意味マッチングで判定し直す。
-      // 英語などの食材名でも、日本語キーワード辞書に意味的に近いものが
-      // あればカテゴリを引き継げる。
-      if (inferred === "その他" && value.trim().length >= 2) {
-        const myToken = ++categoryMatchToken.current;
-        categoryMatchPending.current = true;
-        categoryMatchTarget.current = { type: "form" };
-        categoryMatchTimer.current = setTimeout(() => {
-          matchIngredientSemantic(value.trim())
-            .then((result) => {
-              // 入力がさらに変わった場合は結果を捨てる
-              if (categoryMatchToken.current !== myToken) return;
-              categoryMatchPending.current = false;
-              if (!result?.category) return;
-
-              const target = categoryMatchTarget.current;
-              if (target.type === "item") {
-                // 判定が終わる前にEnterで追加済みだった場合、その食材を後から更新する
-                updateLocalIngredientCategory(target.id, result.category);
-                loadIngredients();
-              } else if (!categoryTouchedRef.current) {
-                setSelectedCategory(result.category);
-              }
-            })
-            .catch(() => {
-              categoryMatchPending.current = false;
-            });
-        }, 500);
-      }
+      setSelectedCategory(inferIngredientCategory(value));
     }
   };
 
@@ -350,26 +317,28 @@ export default function Home() {
 
       <ChefProfileBadge />
 
-      {/* 食材追加フォーム */}
+      {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
       <form onSubmit={handleAdd} className={styles.addFormWrapper}>
-        <div className={styles.addForm}>
+        <div className={styles.addForm} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
           <input
             type="text"
             placeholder={t.home.addPlaceholder}
             value={newName}
             onChange={(e) => handleNameChange(e.target.value)}
+            disabled={isJudging}
           />
-          <button type="submit" disabled={!newName.trim()}>
+          <button type="submit" disabled={!newName.trim() || isJudging}>
             <Plus size={20} />
             {t.home.addButton}
           </button>
         </div>
-        <div className={styles.categorySelectRow}>
+        <div className={styles.categorySelectRow} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
           <label className={styles.categorySelectLabel}>{t.home.categoryLabel}</label>
           <select
             className={styles.categorySelect}
             value={selectedCategory}
             onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
+            disabled={isJudging}
           >
             {CATEGORY_ORDER.map(cat => (
               // <option>内は画像を描画できないためテキストのみ表示
@@ -381,6 +350,21 @@ export default function Home() {
           )}
         </div>
       </form>
+
+      {isJudging && (
+        <div className={styles.aiJudgingState}>
+          <motion.img
+            key={judgingPose}
+            src={`/mascot/${judgingPose}`}
+            alt=""
+            width={80}
+            height={80}
+            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <p>{t.home.aiJudgingText}</p>
+        </div>
+      )}
 
       {loading && (
         <div className="flex justify-center mt-4">

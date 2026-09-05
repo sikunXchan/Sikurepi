@@ -49,6 +49,21 @@
   flex-shrink: 0;
 }
 
+.aiJudgingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 4px;
+  color: var(--text-muted);
+}
+
+.aiJudgingState p {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
 .categorySelectLabel {
   font-size: 13px;
   font-weight: 700;
