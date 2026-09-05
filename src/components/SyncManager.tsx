@@ -35,11 +35,16 @@ export default function SyncManager() {
   const pushToRemote = useCallback(async (userId: string) => {
     if (!supabase) return;
     const payload = buildBackupPayload();
-    await supabase.from("user_data").upsert({
+    const { error } = await supabase.from("user_data").upsert({
       user_id: userId,
       data: payload,
       updated_at: new Date().toISOString(),
     });
+    if (error) {
+      // 戻り値のerrorを見ていなかったため、RLSポリシー違反等で書き込みが
+      // 一切成功していなくても気づけなかった。最低限コンソールには出す。
+      console.error("Failed to push user_data to Supabase:", error);
+    }
   }, []);
 
   const pullFromRemote = useCallback(async (userId: string) => {
