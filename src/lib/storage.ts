@@ -164,6 +164,37 @@ export function isIngredientMissing(
   });
 }
 
+// --- レシピ検索: 材料充足度 ---
+// 「材料が1個でも一致したから作れる」ではなく、レシピの必要材料それぞれが
+// 在庫にあるかどうかをisIngredientMissingと同じ基準(表記ゆれの部分一致・
+// 常備調味料の扱い)で判定し、その充足割合をパーセンテージとして算出する。
+// 常備調味料の扱いは、在庫画面・レシピ生成と同じユーザー設定
+// (assumeSeasoningsAvailable)にそのまま従わせ、アプリ全体で判定基準がぶれない
+// ようにする。
+export type IngredientFulfillment = {
+  percent: number; // 0〜100(材料が1つも無いレシピは0扱い)
+  matchedCount: number;
+  totalCount: number;
+  missingNames: string[];
+};
+
+export function computeIngredientFulfillment(
+  recipeIngredients: { name: string }[],
+  inventory: Ingredient[],
+  assumeSeasoningsAvailable: boolean = true
+): IngredientFulfillment {
+  const names = recipeIngredients.map(i => i.name).filter(n => n && n.trim());
+  if (names.length === 0) {
+    return { percent: 0, matchedCount: 0, totalCount: 0, missingNames: [] };
+  }
+
+  const missingNames = names.filter(name => isIngredientMissing(name, inventory, assumeSeasoningsAvailable));
+  const matchedCount = names.length - missingNames.length;
+  const percent = Math.round((matchedCount / names.length) * 100);
+
+  return { percent, matchedCount, totalCount: names.length, missingNames };
+}
+
 // --- 「食材が呼びかける」機能 (食品ロス防止) ---
 // 一定日数以上在庫にあり、かつ直近の「料理した！」記録のどのレシピにも
 // 使われていない食材を検出する。調味料・常備品は対象外にする。
