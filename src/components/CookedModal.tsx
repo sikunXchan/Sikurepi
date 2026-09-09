@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
 import { consumeLocalIngredients, recordLocalCookingDone, NutritionData } from "@/lib/storage";
@@ -41,6 +41,12 @@ export default function CookedModal({
   );
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
+  // 同じJSタスク内で完結してしまい、Reactの再レンダーを待たずに終わる。
+  // そのためstateのdisabled表示だけでは、素早い連打(ダブルタップ)で
+  // recordLocalCookingDoneが2回呼ばれ自炊記録が重複する恐れがある。
+  // refで同期的にガードし、実行中は問答無用で以降の呼び出しを無視する。
+  const submittedRef = useRef(false);
   // 食材が空から降ってくるアニメーション用に、食材ごとの落ち方(横位置・揺れ・回転・
   // タイミング)をランダムに1回だけ決めておく。横位置は食材の数だけレーン分けした上で
   // 少しランダムにずらし、まんべんなく画面上に降ってくるようにする。
@@ -67,6 +73,8 @@ export default function CookedModal({
   };
 
   const handleConfirm = (consume: boolean) => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setLoading(true);
     try {
       const toConsume = consume ? Array.from(selectedItems) : [];

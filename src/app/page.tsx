@@ -11,6 +11,8 @@ import {
   getLocalUserStats,
   getLocalSavedRecipes,
   getOrCreateDeviceId,
+  getCachedDailyPick,
+  setCachedDailyPick,
   ShoppingItem,
   UserStats,
   SavedRecipe,
@@ -66,9 +68,24 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    // サーバー側(Supabase)のキャッシュが無い/未設定の環境でも、同じ端末では
+    // 同じ日は同じ「今日のおすすめ」を見せるよう、まず端末側キャッシュを確認する。
+    // (キャッシュが無ければAPIを呼び、結果を端末側にも保存する)
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
+    if (cached) {
+      setDailyPick(cached);
+      setDailyPickLoading(false);
+      return;
+    }
+
     fetch("/api/daily-pick")
       .then(res => res.ok ? res.json() : null)
-      .then(data => setDailyPick(data?.recipe || null))
+      .then(data => {
+        const recipe = data?.recipe || null;
+        setDailyPick(recipe);
+        if (recipe) setCachedDailyPick(data?.date || todayDate, recipe);
+      })
       .catch(() => setDailyPick(null))
       .finally(() => setDailyPickLoading(false));
   }, []);
