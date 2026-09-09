@@ -274,6 +274,27 @@ function generateId(): number {
   return Date.now() * 1000 + idCounter;
 }
 
+// --- 端末ID (みんなのレシピのいいね重複防止用) ---
+
+const DEVICE_ID_KEY = 'lily_app_device_id';
+
+// ログイン不要の「いいね」機能で、同じ端末からの多重いいねをサーバー側の
+// unique制約で防ぐために使う匿名の端末識別子。ユーザーデータではないため
+// バックアップ/復元・アカウント同期の対象には含めない。
+export function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return '';
+  }
+}
+
 // --- 在庫 (Inventory) ---
 
 export function getLocalIngredients(): Ingredient[] {
@@ -334,17 +355,20 @@ export function consumeLocalIngredients(ingredientNames: string[]): number {
 
 export function getLocalShoppingItems(): ShoppingItem[] {
   return getStorage<ShoppingItem[]>(KEYS.SHOPPING, [
-    { id: 1, name: '牛乳', category: '卵・乳製品', is_completed: false, created_at: new Date().toISOString() },
-    { id: 2, name: '玉ねぎ', category: '野菜・果物', is_completed: false, created_at: new Date().toISOString() },
+    { id: 1, name: '牛乳', category: '乳製品・卵', is_completed: false, created_at: new Date().toISOString() },
+    { id: 2, name: '玉ねぎ', category: '野菜', is_completed: false, created_at: new Date().toISOString() },
   ]);
 }
 
-export function addLocalShoppingItem(name: string, category: string = 'その他'): ShoppingItem {
+// カテゴリを明示しなかった場合は、売り場独自の分類ではなく在庫タブと同じ
+// inferIngredientCategory()で自動判定する(在庫と買い物リストのカテゴリ体系を
+// 統一し、購入完了時に在庫へ移す際もカテゴリ変換が不要になるようにするため)。
+export function addLocalShoppingItem(name: string, category?: string): ShoppingItem {
   const list = getLocalShoppingItems();
   const newItem: ShoppingItem = {
     id: generateId(),
     name: name.trim(),
-    category,
+    category: category || inferIngredientCategory(name),
     is_completed: false,
     created_at: new Date().toISOString(),
   };
@@ -357,13 +381,15 @@ export function deleteLocalShoppingItem(id: number): void {
   setStorage(KEYS.SHOPPING, list.filter(i => i.id !== id));
 }
 
+// 買い物リストと在庫は同じカテゴリ体系(CATEGORY_ORDER)を使っているため、
+// 購入完了時のカテゴリ変換は不要にそのまま引き渡せる。
 export function toggleLocalShoppingItem(id: number): void {
   const list = getLocalShoppingItems();
   const target = list.find(i => i.id === id);
   if (!target) return;
 
   deleteLocalShoppingItem(id);
-  addLocalIngredient(target.name, target.category === '精肉' ? '肉' : target.category === '鮮魚' ? '魚介類' : target.category === '野菜・果物' ? '野菜' : 'その他');
+  addLocalIngredient(target.name, target.category || inferIngredientCategory(target.name));
 }
 
 // --- 保存レシピ (Saved Recipes) ---
@@ -501,6 +527,27 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
     total_fat: (stats.total_fat || 0) + addFat,
     total_carbs: (stats.total_carbs || 0) + addCarbs,
     cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 50),
+  };
+  setStorage(KEYS.STATS, updated);
+  return updated;
+}
+
+// 自炊記録(cooked_records)から誤って記録された1件を削除する(履歴の横スライド削除用)。
+// 累計値(total_cooked・連続記録日数・累計PFC等)はここでは補正しない。
+// - streak_days/last_cooked_dateは「記録の有無」から都度導出しているのではなく、
+//   記録した日付を比較するだけの単純なカウンタのため、後から特定の1件を除いても
+//   正しく巻き戻す方法がない(どの記録が連続日数に影響したかを遡れない)。
+// - saved_food_count(食品ロス削減数)は、その記録作成時に実際に消費した食材数
+//   (consumedCount)を保存していないため、正確に差し引けない。
+// そのため、ここでは「ログの一覧から消す」ことだけを行い、チェフレベル等の
+// ゲーミフィケーション要素には手を加えない(中途半端な補正で別の不整合を生むよりも、
+// 一覧に出さないことを優先する)。
+export function deleteLocalCookedRecord(index: number): UserStats {
+  const stats = getLocalUserStats();
+  const records = stats.cooked_records || [];
+  const updated: UserStats = {
+    ...stats,
+    cooked_records: records.filter((_, i) => i !== index),
   };
   setStorage(KEYS.STATS, updated);
   return updated;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, ChefHat, BookOpen, ShoppingCart, CalendarDays, UserRound } from "lucide-react";
+import { Home, Refrigerator, ChefHat, BookOpen, ShoppingCart, CalendarDays, UserRound } from "lucide-react";
 import { getForgottenIngredients } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { NAV_LOCK_EVENT } from "@/lib/navLock";
@@ -38,9 +38,11 @@ export default function BottomNav() {
 
   // primary: モックアップの中央FABに相当する主要アクション（レシピを作る）
   // レシピを中央（左右3つずつ）に置くため、タブ数は7つ。
+  // レシートは独立タブとして持たず、ホーム(クイックアクション)・在庫画面から
+  // 入れるようにしたため、その枠をホームタブに置き換えている。
   const navItems = [
-    { name: t.nav.inventory, path: "/", icon: Home, key: "inventory" },
-    { name: t.nav.receipt, path: "/receipt", icon: Receipt, key: "receipt" },
+    { name: t.nav.home, path: "/", icon: Home, key: "home" },
+    { name: t.nav.inventory, path: "/inventory", icon: Refrigerator, key: "inventory" },
     { name: t.nav.shopping, path: "/shopping", icon: ShoppingCart, key: "shopping" },
     { name: t.nav.recipe, path: "/recipe", icon: ChefHat, primary: true, key: "recipe" },
     { name: t.nav.mealPlan, path: "/meal-plan", icon: CalendarDays, key: "mealPlan" },

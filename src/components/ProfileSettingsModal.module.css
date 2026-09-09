@@ -293,3 +293,45 @@
 .saveBtn:active {
   transform: scale(0.98);
 }
+
+/* 自炊記録(cooked_records)の横スライド削除。誤タップだけでは削除されないよう、
+   在庫タブと同じ「スワイプで削除ボタンを出す→そのボタンを押して初めて削除」の
+   2段階にする(スワイプ自体は即削除しない)。 */
+.recordSwipeWrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.recordSwipeDeleteBg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.recordSwipeDeleteBtn {
+  width: 64px;
+  height: 100%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.recordRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+  font-size: 13px;
+  cursor: grab;
+  touch-action: pan-y;
+}

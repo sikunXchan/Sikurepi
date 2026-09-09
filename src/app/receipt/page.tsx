@@ -185,7 +185,7 @@ export default function ReceiptPage() {
             </p>
             <button
               className={styles.submitBtn}
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/inventory")}
               style={{ marginTop: "12px" }}
             >
               {t.receipt.checkInventoryButton}

@@ -1,0 +1,563 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 8px;
+  color: var(--primary-text);
+}
+
+.addFormWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addForm {
+  display: flex;
+  gap: 12px;
+}
+
+.addForm input {
+  flex: 1;
+}
+
+.addForm button {
+  white-space: nowrap;
+  border-radius: 14px;
+}
+
+.categorySelectRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.autoCategoryHint {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary-text);
+  background: rgba(255, 111, 145, 0.12);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.aiJudgingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 4px;
+  color: var(--text-muted);
+}
+
+.aiJudgingState p {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
+.categorySelectLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.categorySelect {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.swipeWrapper {
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  border-radius: var(--border-radius);
+}
+
+.swipeDeleteBg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.swipeDeleteBtn {
+  width: 88px;
+  height: 100%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform, opacity;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+@media (max-width: 768px) {
+  .listItem {
+    padding: 16px;
+  }
+
+  .swipeDeleteBtn {
+    min-width: 44px;
+  }
+}
+
+.listItem:hover {
+  border-color: var(--primary-light);
+}
+
+@media (hover: none) {
+  .listItem:hover {
+    border-color: var(--glass-border);
+  }
+}
+
+.listItem span {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.listItem.pinned {
+  /* ピン留めは黄色の座布団＋左の太いバーで、色覚に頼らず分かるようにする */
+  background: #fffaf0 !important;
+  border: 1px solid rgba(240, 165, 0, 0.45) !important;
+  border-left: 5px solid var(--accent) !important;
+  box-shadow: 0 8px 26px rgba(240, 165, 0, 0.2);
+  z-index: 10;
+}
+
+.listItem.pinned span {
+  color: #9a5b00; /* 黄色い座布団の上でも読める濃い琥珀 */
+  font-weight: 900;
+}
+
+/* 食品ロス防止: 長く放置され使われていない食材は、ピンとは別の色でそっと目立たせる */
+.listItem.forgotten {
+  background: rgba(255, 111, 145, 0.06);
+  border: 1px solid rgba(255, 111, 145, 0.35);
+}
+
+/* 呼びかけ中の食材アイコンが小刻みに震える(悲しんでいる/寒がっている様子) */
+@keyframes forgottenTremble {
+  0%, 100% { transform: rotate(0deg) translate(0, 0); }
+  20% { transform: rotate(-4deg) translate(-1px, 0); }
+  40% { transform: rotate(3deg) translate(1px, 0); }
+  60% { transform: rotate(-3deg) translate(-1px, 0); }
+  80% { transform: rotate(2deg) translate(1px, 0); }
+}
+
+.forgottenIconWrap {
+  display: inline-flex;
+  animation: forgottenTremble 0.6s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forgottenIconWrap {
+    animation: none;
+  }
+}
+
+.nameTextCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.forgottenCallout {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: var(--primary-text);
+  opacity: 0.9;
+}
+
+/* Category groups */
+.nameSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.itemCategoryRow {
+  margin-top: 3px;
+}
+
+.categoryBadge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.categoryBadge:hover {
+  background: rgba(255, 111, 145, 0.1);
+  color: var(--primary);
+  border-color: var(--primary-light);
+}
+
+.inlineCategory {
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--primary-light);
+  background: var(--glass-bg);
+  color: var(--foreground);
+  cursor: pointer;
+  appearance: auto;
+}
+
+.addingNote {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: -12px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 冷蔵庫の庫内を模したフレーム。中の食材(カテゴリ行)は棚に並ぶ白いパックとして
+   見えるよう、背景をひんやりした水色にして庫内感を出す。実際のデータ構造・
+   カテゴリ分けは変えず、見た目だけを「冷蔵庫」のコンセプトに合わせている。 */
+.fridgeFrame {
+  position: relative;
+  border-radius: 26px;
+  padding: 22px 12px 16px;
+  background: linear-gradient(180deg, #eef8fb 0%, #dbeef4 100%);
+  border: 1px solid rgba(23, 148, 141, 0.18);
+  box-shadow: inset 0 2px 12px rgba(255, 255, 255, 0.7), inset 0 -12px 24px -12px rgba(23, 148, 141, 0.12);
+}
+
+.fridgeFrame::before {
+  /* 冷蔵庫のドアの取っ手を模した装飾バー */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(23, 148, 141, 0.28);
+}
+
+.categoryGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* カテゴリ一覧の各行。アコーディオン展開はせず、タップでカテゴリ詳細画面に遷移する。
+   下端に薄い棚板の縁を付け、庫内で棚に乗っているように見せる。 */
+.categoryListRow {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow), 0 5px 0 -2px rgba(23, 148, 141, 0.14);
+  cursor: pointer;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 900;
+  transition: border-color 0.15s ease;
+}
+
+.categoryListRow:hover {
+  border-color: var(--primary-light);
+  transform: none;
+}
+
+.categoryListRowRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.categoryTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryCount {
+  font-size: 13px;
+  font-weight: 900;
+  background: var(--primary);
+  color: #ffffff;
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+  overflow: hidden;
+}
+
+/* ===== カテゴリ詳細画面 ===== */
+.categoryDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.detailTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card-bg-solid);
+  color: var(--text-muted);
+}
+
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.sortSelect {
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.viewToggle {
+  display: flex;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.viewToggleBtn,
+.viewToggleBtnActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: var(--card-bg-solid);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.viewToggleBtnActive {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.gridCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 10px;
+  background: var(--card-bg-solid);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--glass-shadow);
+  text-align: center;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.gridCardName {
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.gridCardPinned {
+  background: #fffaf0;
+  border: 1px solid rgba(240, 165, 0, 0.45);
+  border-left: 5px solid var(--accent);
+  box-shadow: 0 8px 26px rgba(240, 165, 0, 0.2);
+}
+
+.gridCardPinned .gridCardName {
+  color: #9a5b00;
+  font-weight: 900;
+}
+
+.gridCardForgotten {
+  background: rgba(255, 111, 145, 0.06);
+  border: 1px solid rgba(255, 111, 145, 0.35);
+}
+
+.gridDeleteBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.gridDeleteBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ===== page.tsx が参照していたのに未定義だったクラス =====
+   ヘッダーが未スタイルで、タイトルと設定ボタンが縦積みになっていたため追加 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header .title {
+  margin-bottom: 0;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.settingsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gradient-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

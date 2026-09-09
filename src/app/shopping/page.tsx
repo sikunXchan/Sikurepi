@@ -8,6 +8,9 @@ import {
   addLocalShoppingItem,
   deleteLocalShoppingItem,
   toggleLocalShoppingItem,
+  inferIngredientCategory,
+  CATEGORY_ORDER,
+  CATEGORY_ICON_SLUGS,
   ShoppingItem
 } from "@/lib/storage";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -16,29 +19,9 @@ import PageHeader from "@/components/PageHeader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Shopping.module.css";
 
-const AISLE_ORDER = ['野菜・果物', '精肉', '鮮魚', '卵・乳製品', '穀物・豆腐', '調味料', 'その他'];
-
-const AISLE_ICON_SLUGS: Record<string, string> = {
-  '野菜・果物': 'vegetables',
-  '精肉': 'meat',
-  '鮮魚': 'seafood',
-  '卵・乳製品': 'dairy_egg',
-  '穀物・豆腐': 'grains_bread',
-  '調味料': 'seasoning',
-  'その他': 'other',
-};
-
-// 食材名から売り場カテゴリを自動判定
-function inferCategory(name: string): string {
-  const n = name.toLowerCase();
-  if (/肉|豚|牛|鶏|ミンチ|ベーコン|ハム|ソーセージ|挽肉/.test(n)) return '精肉';
-  if (/魚|鮭|サーモン|マグロ|エビ|イカ|タコ|貝|サバ|タラ|あさり|しらす/.test(n)) return '鮮魚';
-  if (/卵|たまご|牛乳|チーズ|ヨーグルト|バター|生クリーム/.test(n)) return '卵・乳製品';
-  if (/トマト|キャベツ|レタス|玉ねぎ|たまねぎ|人参|にんじん|大根|きゅうり|ナス|ピーマン|ネギ|ブロッコリー|じゃがいも|芋|りんご|バナナ|果物|みかん|レモン|ほうれん草|きのこ|しめじ|えのき|舞茸/.test(n)) return '野菜・果物';
-  if (/米|パン|パスタ|うどん|そば|豆腐|納豆|油揚げ|大豆/.test(n)) return '穀物・豆腐';
-  if (/醤油|しょうゆ|味噌|みそ|塩|砂糖|酢|油|だし|つゆ|マヨネーズ|ケチャップ|ドレッシング|コショウ|胡椒|みりん|酒|コンソメ/.test(n)) return '調味料';
-  return 'その他';
-}
+// 売り場ごとの独自カテゴリは持たず、在庫タブと同じカテゴリ体系
+// (CATEGORY_ORDER / inferIngredientCategory)をそのまま流用する。
+// これにより購入完了時に在庫へ移す際もカテゴリ変換が不要になる。
 
 export default function ShoppingPage() {
   const { t } = useLanguage();
@@ -64,7 +47,7 @@ export default function ShoppingPage() {
     const clean = newName.trim();
     if (!clean) return;
 
-    const category = inferCategory(clean);
+    const category = inferIngredientCategory(clean);
     addLocalShoppingItem(clean, category);
     setNewName("");
     loadItems();
@@ -132,21 +115,21 @@ export default function ShoppingPage() {
     });
   };
 
-  // 売り場カテゴリ別にアイテムを自動グルーピング
-  const groupedItems = AISLE_ORDER.reduce<Record<string, ShoppingItem[]>>((acc, aisle) => {
+  // 在庫と同じカテゴリ別にアイテムを自動グルーピング
+  const groupedItems = CATEGORY_ORDER.reduce<Record<string, ShoppingItem[]>>((acc, category) => {
     const matched = items.filter(item => {
-      const cat = item.category || inferCategory(item.name);
-      return cat === aisle;
+      const cat = item.category || inferIngredientCategory(item.name);
+      return cat === category;
     });
-    if (matched.length > 0) acc[aisle] = matched;
+    if (matched.length > 0) acc[category] = matched;
     return acc;
   }, {});
 
-  // その他未分類
-  const knownAisles = new Set(AISLE_ORDER);
+  // 未知のカテゴリはその他に集約
+  const knownCategories = new Set(CATEGORY_ORDER);
   items.forEach(item => {
-    const cat = item.category || inferCategory(item.name);
-    if (!knownAisles.has(cat)) {
+    const cat = item.category || inferIngredientCategory(item.name);
+    if (!knownCategories.has(cat)) {
       if (!groupedItems['その他']) groupedItems['その他'] = [];
       groupedItems['その他'].push(item);
     }
@@ -183,21 +166,21 @@ export default function ShoppingPage() {
         <>
           {Object.keys(groupedItems).length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {AISLE_ORDER.map(aisle => {
-                const aisleItems = groupedItems[aisle];
-                if (!aisleItems || aisleItems.length === 0) return null;
+              {CATEGORY_ORDER.map(category => {
+                const categoryItems = groupedItems[category];
+                if (!categoryItems || categoryItems.length === 0) return null;
 
                 return (
-                  <div key={aisle} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
+                  <div key={category} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                      <UiIcon slug={AISLE_ICON_SLUGS[aisle] || 'other'} size={20} alt={aisle} />
-                      <span>{`${t.shopping.aisle[aisle] || aisle} ${t.shopping.aisleSuffix}`.trim()}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{t.shopping.itemCount(aisleItems.length)}</span>
+                      <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={20} alt={category} />
+                      <span>{t.category[category] || category}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{t.shopping.itemCount(categoryItems.length)}</span>
                     </div>
 
                     <ul className={styles.list}>
                       <AnimatePresence mode="popLayout">
-                        {aisleItems.map((item) => (
+                        {categoryItems.map((item) => (
                           <motion.li
                             key={item.id}
                             className={styles.listItem}
