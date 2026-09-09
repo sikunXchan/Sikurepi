@@ -109,6 +109,9 @@ export default function RecipePage() {
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
+  // 「使いたい食材を選択」は在庫が多いと縦に長くなり圧迫感があるため、
+  // デフォルトはたたんでおき、必要な時だけ開く
+  const [ingredientPickerExpanded, setIngredientPickerExpanded] = useState(false);
   // 生成前の成立可否判定(要件8・9)でNGと判定された場合、レシピの代わりに
   // 警告(理由・不足食材・次のアクション)を表示する
   const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
@@ -554,14 +557,41 @@ export default function RecipePage() {
           </div>
         </div>
 
-        {/* 在庫選択 (在庫モード時のみ) */}
+        {/* 在庫選択 (在庫モード時のみ)。在庫が多いと縦に長くなるため、
+            デフォルトはたたんでおき、タップで開閉する */}
         {creationMode === 'inventory' && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
-              {t.recipe.selectIngredientsLabel}
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.recipe.selectIngredientsHint}</span>
-            </div>
-            {ingredients.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setIngredientPickerExpanded(v => !v)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'none',
+                border: 'none',
+                boxShadow: 'none',
+                padding: 0,
+                marginBottom: 8,
+                cursor: 'pointer',
+                color: 'var(--foreground)',
+              }}
+            >
+              <span style={{ fontSize: 15, fontWeight: 900, textAlign: 'left' }}>
+                {t.recipe.selectIngredientsLabel}
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.recipe.selectIngredientsHint}</span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 8 }}>
+                {selectedIngredientIds.length > 0 && (
+                  <span style={{ color: 'var(--primary-text)', fontWeight: 800 }}>
+                    {t.recipe.selectIngredientsSelectedCount(selectedIngredientIds.length)}
+                  </span>
+                )}
+                {ingredientPickerExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </span>
+            </button>
+            {ingredientPickerExpanded && (ingredients.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Object.entries(groupedIngredients).map(([category, items]) => (
                   <div key={category}>
@@ -605,7 +635,7 @@ export default function RecipePage() {
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 {t.recipe.noIngredients}
               </p>
-            )}
+            ))}
           </div>
         )}
 
