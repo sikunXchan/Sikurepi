@@ -449,32 +449,29 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {/* カテゴリ一覧: タップでカテゴリ詳細画面に遷移する(常にコンパクトな一覧を保つ)。
-              「冷蔵庫」のコンセプトを反映し、庫内を模したフレームの中に棚として並べる。 */}
+          {/* カテゴリ一覧: タップでカテゴリ詳細画面に遷移する(常にコンパクトな一覧を保つ) */}
           {!loading && (
-            <div className={styles.fridgeFrame}>
-              <div className={styles.categoryGroups}>
-                {Object.entries(grouped).map(([category, items]) => {
-                  const iconSlug = CATEGORY_ICON_SLUGS[category] || 'other';
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      className={styles.categoryListRow}
-                      onClick={() => openCategory(category)}
-                    >
-                      <span className={styles.categoryTitle}>
-                        <UiIcon slug={iconSlug} size={22} alt={category} />
-                        <span>{t.category[category] || category}</span>
-                      </span>
-                      <span className={styles.categoryListRowRight}>
-                        <span className={styles.categoryCount}>{items.length}</span>
-                        <ChevronRight size={18} />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className={styles.categoryGroups}>
+              {Object.entries(grouped).map(([category, items]) => {
+                const iconSlug = CATEGORY_ICON_SLUGS[category] || 'other';
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    className={styles.categoryListRow}
+                    onClick={() => openCategory(category)}
+                  >
+                    <span className={styles.categoryTitle}>
+                      <UiIcon slug={iconSlug} size={22} alt={category} />
+                      <span>{t.category[category] || category}</span>
+                    </span>
+                    <span className={styles.categoryListRowRight}>
+                      <span className={styles.categoryCount}>{items.length}</span>
+                      <ChevronRight size={18} />
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -547,37 +544,33 @@ export default function InventoryPage() {
             <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
               <p>{t.inventory.noSearchResults}</p>
             </div>
-          ) : (
-            <div className={styles.fridgeFrame}>
-              {categoryViewMode === 'grid' ? (
-                <div className={styles.grid}>
-                  {sortedCategoryItems.map((item) => (
-                    <GridIngredientCard
-                      key={item.id}
-                      item={item}
-                      isForgotten={forgottenIds.has(item.id)}
-                      onDelete={handleDelete}
-                      onTogglePin={handleTogglePin}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <ul className={styles.list} style={{ padding: 0 }}>
-                  {sortedCategoryItems.map((item) => (
-                    <SwipeableIngredientRow
-                      key={item.id}
-                      item={item}
-                      isOpen={openSwipeId === item.id}
-                      isForgotten={forgottenIds.has(item.id)}
-                      ageDays={Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))}
-                      onOpenChange={setOpenSwipeId}
-                      onDelete={handleDelete}
-                      onTogglePin={handleTogglePin}
-                    />
-                  ))}
-                </ul>
-              )}
+          ) : categoryViewMode === 'grid' ? (
+            <div className={styles.grid}>
+              {sortedCategoryItems.map((item) => (
+                <GridIngredientCard
+                  key={item.id}
+                  item={item}
+                  isForgotten={forgottenIds.has(item.id)}
+                  onDelete={handleDelete}
+                  onTogglePin={handleTogglePin}
+                />
+              ))}
             </div>
+          ) : (
+            <ul className={styles.list} style={{ padding: 0 }}>
+              {sortedCategoryItems.map((item) => (
+                <SwipeableIngredientRow
+                  key={item.id}
+                  item={item}
+                  isOpen={openSwipeId === item.id}
+                  isForgotten={forgottenIds.has(item.id)}
+                  ageDays={Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+                  onOpenChange={setOpenSwipeId}
+                  onDelete={handleDelete}
+                  onTogglePin={handleTogglePin}
+                />
+              ))}
+            </ul>
           )}
         </div>
       )}
