@@ -241,7 +241,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   // --- 調味料・油 ---
   salt: ["塩", "しお"],
   sugar: ["砂糖", "さとう"],
-  vinegar: ["酢", "お酢", "ビネガー"],
+  vinegar: ["酢", "お酢", "ビネガー", "米酢", "穀物酢", "りんご酢", "黒酢"],
   soysauce: ["しょうゆ", "醤油", "ナンプラー"],
   soysauce2: ["濃口醤油", "薄口醤油"],
   miso: ["みそ", "味噌"],
@@ -251,7 +251,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   dashinomoto: ["だしの素", "顆粒だし", "和風だし"],
   consomme: ["コンソメ"],
   chickenstock: ["鶏がらスープ", "鶏ガラスープ", "鶏ガラ"],
-  saladaoil: ["サラダ油", "食用油"],
+  saladaoil: ["サラダ油", "食用油", "米油"],
   sesameoil: ["ごま油"],
   oliveoil: ["オリーブオイル"],
   ketchup: ["ケチャップ"],
@@ -381,6 +381,25 @@ const FLAT: { keyword: string; slug: string }[] = Object.entries(ICON_KEYWORDS)
   .flatMap(([slug, keywords]) => keywords.map((keyword) => ({ keyword, slug })))
   .sort((a, b) => b.keyword.length - a.keyword.length);
 
+// 1文字キーワードは「豚肉の未知の部位名」のような未列挙の複合語に対する
+// フォールバックとして意図的に広く一致させているが、そのせいで「米」が
+// 「米油」「米酢」のような別カテゴリの複合語まで拾ってしまう(＝素材名の
+// 一部が偶然別カテゴリの1文字キーワードと重なるケース)。
+// 個別の複合語を無数に列挙するのではなく、「この1文字キーワードは、この
+// 接尾辞が続く場合は別カテゴリの複合語なので一致させない」という除外規則を
+// 一般化して持たせる。除外された場合は他の(より長い/別の)キーワード判定に
+// フォールスルーし、最終的にどれにも一致しなければ呼び出し元がAI判定
+// (/api/classify-ingredient, embeddingMatch.ts)へ回す。
+const SINGLE_CHAR_EXCLUSIONS: Record<string, RegExp> = {
+  // 米油(食用油)・米酢(調味料)・米麹(発酵調味料)は「米」を含むが穀物ではない
+  "米": /米(油|酢|麹|こうじ)/,
+};
+
+function isExcludedMatch(name: string, keyword: string): boolean {
+  const exclusion = SINGLE_CHAR_EXCLUSIONS[keyword];
+  return exclusion ? exclusion.test(name) : false;
+}
+
 // 静的キーワードでは判定できなかった食材名(英語表記など)をAPI経由のAI判定
 // (/api/classify-ingredient)に回す際、既存のアイコンキーワード辞書をそのまま
 // 選択肢として再利用するための公開用エイリアス。
@@ -395,7 +414,7 @@ export function getIngredientIconSlug(ingredientName: string): string | null {
   const name = ingredientName.trim();
   if (!name) return null;
   for (const { keyword, slug } of FLAT) {
-    if (name.includes(keyword)) return slug;
+    if (name.includes(keyword) && !isExcludedMatch(name, keyword)) return slug;
   }
   return null;
 }
