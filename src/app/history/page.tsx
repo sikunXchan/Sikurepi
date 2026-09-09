@@ -18,6 +18,7 @@ import {
   getLocalIngredients,
   addLocalShoppingItem,
   isIngredientMissing,
+  computeIngredientFulfillment,
   getLocalUserProfile,
   SavedRecipe,
   Ingredient,
@@ -47,6 +48,8 @@ export default function HistoryPage() {
   const [searchText, setSearchText] = useState('');
   const [filterGenre, setFilterGenre] = useState('');
   const [filterTimeMax, setFilterTimeMax] = useState('');
+  // 「作れる可能性があるレシピ」を洗い出すための並び替え(材料充足度が高い順)
+  const [sortByFulfillment, setSortByFulfillment] = useState(false);
 
   useEffect(() => {
     loadRecipes();
@@ -91,6 +94,29 @@ export default function HistoryPage() {
     }
     return true;
   });
+
+  // 「現在の在庫から作れる可能性があるレシピ」を洗い出すための材料充足度。
+  // 「材料が1個でも一致したから作れる」という単純な判定ではなく、レシピの
+  // 必要材料それぞれを在庫と照合し、その充足割合を算出する(常備調味料の扱いは
+  // 在庫画面・レシピ生成と同じユーザー設定に揃える)。
+  const fulfillmentByRecipeId = new Map(
+    filteredRecipes.map(recipe => [
+      recipe.id,
+      computeIngredientFulfillment(
+        Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+        ingredients,
+        userProfile.assumeSeasoningsAvailable
+      ),
+    ])
+  );
+
+  const sortedRecipes = sortByFulfillment
+    ? [...filteredRecipes].sort((a, b) => {
+        const pa = fulfillmentByRecipeId.get(a.id)?.percent ?? 0;
+        const pb = fulfillmentByRecipeId.get(b.id)?.percent ?? 0;
+        return pb - pa;
+      })
+    : filteredRecipes;
 
   const hasFilters = searchText || filterGenre || filterTimeMax;
 
@@ -204,6 +230,15 @@ export default function HistoryPage() {
             ))}
           </select>
 
+          <button
+            type="button"
+            className={sortByFulfillment ? styles.sortByFulfillmentBtnActive : styles.sortByFulfillmentBtn}
+            onClick={() => setSortByFulfillment(v => !v)}
+            title={t.history.sortByFulfillmentHint}
+          >
+            🧺 {t.history.sortByFulfillment}
+          </button>
+
           {hasFilters && (
             <button className={styles.clearFiltersBtn} onClick={clearFilters}>
               <X size={13} /> {t.history.resetFilters}
@@ -260,8 +295,9 @@ export default function HistoryPage() {
 
       {!loading && (
         <>
-          {filteredRecipes.map((recipe) => {
+          {sortedRecipes.map((recipe) => {
             const isExpanded = expandedId === recipe.id;
+            const fulfillment = fulfillmentByRecipeId.get(recipe.id);
             return (
               <div key={recipe.id} className={styles.recipeCard}>
                 <div
@@ -284,6 +320,15 @@ export default function HistoryPage() {
                       )}
                       {recipe.dish_badge && (
                         <span className={styles.genreBadge}>{recipe.dish_badge}</span>
+                      )}
+                      {fulfillment && fulfillment.totalCount > 0 && (
+                        <span
+                          className={styles.fulfillmentBadge}
+                          data-level={fulfillment.percent >= 80 ? 'high' : fulfillment.percent >= 50 ? 'mid' : 'low'}
+                          title={t.history.fulfillmentTitle(fulfillment.matchedCount, fulfillment.totalCount)}
+                        >
+                          🧺 {t.history.fulfillmentLabel(fulfillment.percent)}
+                        </span>
                       )}
                     </div>
                     <div className={styles.savedDate}>

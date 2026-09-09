@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { motion, useMotionValue, useTransform, animate as animateValue, PanInfo } from "framer-motion";
 import {
   getLocalUserProfile,
   setLocalUserProfile,
@@ -11,9 +12,11 @@ import {
   getLocalUserStats,
   getLocalSavedTips,
   deleteLocalSavedTip,
+  deleteLocalCookedRecord,
   getForgottenIngredients,
   DEFAULT_USER_STATS,
   UserStats,
+  CookedRecord,
   SavedTip,
   Ingredient
 } from "@/lib/storage";
@@ -23,6 +26,67 @@ import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 import styles from "./ProfileSettingsModal.module.css";
+
+const RECORD_SWIPE_OPEN_X = -68;
+const RECORD_SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
+
+// 自炊記録1件分の横スライド削除行。在庫タブのSwipeableIngredientRowと同じ
+// ジェスチャー(左にドラッグで削除ボタンを出す→そのボタンを押して初めて削除)にし、
+// 「意図しないタップだけで削除される」ことがないようにする。
+function SwipeableRecordRow({
+  record,
+  isOpen,
+  onOpenChange,
+  onDelete,
+  deleteTitle,
+}: {
+  record: CookedRecord;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  deleteTitle: string;
+}) {
+  const x = useMotionValue(0);
+  const bgOpacity = useTransform(x, [RECORD_SWIPE_OPEN_X, RECORD_SWIPE_OPEN_X / 2, 0], [1, 1, 0]);
+
+  useEffect(() => {
+    if (!isOpen) animateValue(x, 0, RECORD_SWIPE_SPRING);
+  }, [isOpen, x]);
+
+  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+    const shouldOpen = info.offset.x < -32 || info.velocity.x < -300;
+    animateValue(x, shouldOpen ? RECORD_SWIPE_OPEN_X : 0, RECORD_SWIPE_SPRING);
+    onOpenChange(shouldOpen);
+  };
+
+  return (
+    <div className={styles.recordSwipeWrapper}>
+      <motion.div className={styles.recordSwipeDeleteBg} style={{ opacity: bgOpacity }}>
+        <button type="button" className={styles.recordSwipeDeleteBtn} onClick={onDelete} title={deleteTitle}>
+          <Trash2 size={16} />
+        </button>
+      </motion.div>
+      <motion.div
+        className={styles.recordRow}
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: RECORD_SWIPE_OPEN_X, right: 0 }}
+        dragElastic={0.05}
+        onDragEnd={handleDragEnd}
+        onTap={() => { if (isOpen) onOpenChange(false); }}
+      >
+        <div>
+          <div style={{ fontWeight: 700, color: '#111827' }}>{record.recipeTitle}</div>
+          <div style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(record.date).toLocaleDateString('ja-JP')}</div>
+        </div>
+        <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 700, textAlign: 'right' }}>
+          {record.calories ? `${record.calories}kcal` : ''}
+          {record.protein_g ? ` (P:${record.protein_g}g)` : ''}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 // 優先ジャンル選択の選択肢。ジャンル別サムネイルと同じ一覧を使い回して二重管理を防ぐ
 // (「その他」はジャンルとして選ぶ意味が薄いため除外)
@@ -88,6 +152,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const [excludedInput, setExcludedInput] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [openRecordSwipeIndex, setOpenRecordSwipeIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -464,20 +529,24 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           <div className={styles.section}>
             <label className={styles.sectionLabel}>{t.settings.recentHistoryLabel}</label>
             {(stats.cooked_records && stats.cooked_records.length > 0) ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
-                {stats.cooked_records.map((rec, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', padding: '8px 10px', borderRadius: 8, border: '1px solid #f3f4f6', fontSize: 13 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#111827' }}>{rec.recipeTitle}</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(rec.date).toLocaleDateString('ja-JP')}</div>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 700, textAlign: 'right' }}>
-                      {rec.calories ? `${rec.calories}kcal` : ''}
-                      {rec.protein_g ? ` (P:${rec.protein_g}g)` : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <>
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 6px' }}>{t.settings.historySwipeHint}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                  {stats.cooked_records.map((rec, i) => (
+                    <SwipeableRecordRow
+                      key={`${rec.date}-${i}`}
+                      record={rec}
+                      isOpen={openRecordSwipeIndex === i}
+                      onOpenChange={(open) => setOpenRecordSwipeIndex(open ? i : null)}
+                      onDelete={() => {
+                        setOpenRecordSwipeIndex(null);
+                        setStats(deleteLocalCookedRecord(i));
+                      }}
+                      deleteTitle={t.history.deleteButtonTitle}
+                    />
+                  ))}
+                </div>
+              </>
             ) : (
               <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>{t.settings.noHistory}</p>
             )}

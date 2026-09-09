@@ -556,6 +556,31 @@
   transform: none;
 }
 
+/* 「材料充足度が高い順」並び替えトグル */
+.sortByFulfillmentBtn,
+.sortByFulfillmentBtnActive {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--foreground);
+}
+
+.sortByFulfillmentBtnActive {
+  color: #ffffff;
+  background: var(--gradient-cool);
+  border-color: transparent;
+}
+
 .clearFiltersBtn2 {
   margin-top: 12px;
   padding: 10px 20px;
@@ -597,6 +622,31 @@
   border-radius: 20px;
   background: rgba(32, 178, 170, 0.12);
   color: #20b2aa;
+}
+
+/* 材料充足度バッジ: 高いほど「作れる可能性が高い」ことが一目で分かるよう
+   段階的に色を変える(高=作れそう/中=一部不足/低=かなり不足) */
+.fulfillmentBadge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.fulfillmentBadge[data-level="high"] {
+  background: rgba(34, 197, 94, 0.14);
+  color: #16a34a;
+}
+
+.fulfillmentBadge[data-level="mid"] {
+  background: rgba(240, 165, 0, 0.14);
+  color: #b45309;
+}
+
+.fulfillmentBadge[data-level="low"] {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
 }
 
 /* Nutrition section */

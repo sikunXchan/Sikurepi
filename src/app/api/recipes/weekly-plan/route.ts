@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
+import { validateRecipeShape, validateRecipeLogic, buildValidationRetryNote, ValidatedRecipe, FeasibilityContext } from '@/lib/recipeValidation';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
+const MAX_VALIDATION_ATTEMPTS = 3;
 
 // 厚生労働省「日本人の食事摂取基準」の目安（たんぱく質エネルギー比13〜20%中央値15%、脂質20〜30%中央値25%、
 // 炭水化物は残り約60%）を用いて、目標値未設定時のデフォルトPFCを算出する。
@@ -123,22 +125,74 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 }
 genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
-    const response = await generateWithRetry(ai, {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 6000 },
+    // 生成後の検証(要件10): JSON構造 + 食事制限・アレルギー違反の論理検証。
+    // 週間献立は「在庫だけで完成させる」ことを強制していないため(在庫は優先的に
+    // 使う程度の位置づけ)、在庫限定チェックとテンプレートのカテゴリチェックは
+    // ここでは適用しない(単発レシピ生成/api/recipesとの差)。
+    const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
+    const excludedIngredients: string[] = Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : [];
+    const feasibilityContext: FeasibilityContext = {
+      mode: 'free',
+      inventoryNames: [],
+      assumeSeasoningsAvailable: actualProfile?.assumeSeasoningsAvailable !== false,
+      dietaryRestrictions,
+      excludedIngredients,
+      templateKey: null,
+    };
+
+    let lastErrors: string[] = [];
+    for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
+      const attemptPrompt = attempt === 0 ? prompt : `${prompt}\n${buildValidationRetryNote(lastErrors)}`;
+
+      const response = await generateWithRetry(ai, {
+        contents: [{ role: 'user', parts: [{ text: attemptPrompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 6000 },
+        }
+      });
+
+      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
+      if (!text) throw new Error('AI output was empty');
+
+      const json = JSON.parse(text);
+      const planArray: unknown[] = Array.isArray(json.plan) ? json.plan : [];
+
+      const shapeErrors = planArray.length > 0
+        ? planArray.flatMap((item, i) => {
+            const errs = validateRecipeShape(item, `plan[${i}]`);
+            const entry = item as Record<string, unknown>;
+            if (typeof entry?.date !== 'string' || !entry.date) errs.push(`plan[${i}].date is missing`);
+            if (entry?.meal_slot !== 'lunch' && entry?.meal_slot !== 'dinner') {
+              errs.push(`plan[${i}].meal_slot must be "lunch" or "dinner"`);
+            }
+            return errs;
+          })
+        : ['plan must be a non-empty array'];
+
+      if (shapeErrors.length > 0) {
+        lastErrors = shapeErrors;
+        continue;
       }
-    });
 
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
-    if (!text) throw new Error('AI output was empty');
+      const logicErrors = (planArray as ValidatedRecipe[]).flatMap((item) => validateRecipeLogic(item, feasibilityContext));
+      if (logicErrors.length > 0) {
+        lastErrors = logicErrors;
+        continue;
+      }
 
-    const json = JSON.parse(text);
+      return NextResponse.json({
+        ...json,
+        weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
+      });
+    }
+
+    console.error('Weekly plan validation failed after retries:', lastErrors);
     return NextResponse.json({
-      ...json,
-      weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
-    });
+      error: language === 'en'
+        ? 'The AI could not produce a plan that satisfies your conditions after multiple attempts. Please try again.'
+        : '条件を満たす献立をAIが生成できませんでした。もう一度お試しください。',
+    }, { status: 422 });
 
   } catch (error: any) {
     console.error('Weekly Plan Gen Error:', error);

@@ -8,6 +8,7 @@ import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import CookedModal from "@/components/CookedModal";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -95,6 +96,9 @@ export default function MealPlanPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [weeklyTargets, setWeeklyTargets] = useState<{ calories: number; protein_g: number; fat_g: number; carbs_g: number } | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
+  // 献立から生成された料理も、レシピ生成画面(recipe/page.tsx)と同じ
+  // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
+  const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -556,6 +560,32 @@ export default function MealPlanPage() {
                                       <span>{entry.recipe.tips}</span>
                                     </div>
                                   )}
+
+                                  {/* 料理完了ボタン (在庫消費 & PFC累積) : レシピ生成画面と同じ導線・見た目にする */}
+                                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                                    <button
+                                      type="button"
+                                      style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: 12,
+                                        padding: '12px 14px',
+                                        fontSize: 14,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        boxShadow: '0 3px 10px rgba(255, 111, 145, 0.25)',
+                                      }}
+                                      onClick={(e) => { e.stopPropagation(); setCookedModalEntry(entry); }}
+                                    >
+                                      {t.recipe.cookedButton}
+                                    </button>
+                                  </div>
                                 </div>
                               </motion.div>
                             )}
@@ -570,6 +600,20 @@ export default function MealPlanPage() {
           })}
         </div>
       )}
+
+      {/* 調理完了モーダル: 在庫消費・自炊記録への連携をレシピ生成画面と共通化する */}
+      <AnimatePresence>
+        {cookedModalEntry && (
+          <CookedModal
+            recipe={cookedModalEntry.recipe}
+            onClose={() => setCookedModalEntry(null)}
+            onCompleted={() => {
+              loadData();
+              showToast(t.recipe.cookedCompletedToast);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showPaywall && (

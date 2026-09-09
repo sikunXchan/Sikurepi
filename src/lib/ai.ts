@@ -45,6 +45,28 @@ export const DIETARY_RESTRICTION_INSTRUCTIONS: Record<string, string> = {
   'アルコール不可': 'みりん・料理酒・ワイン・ビール等、調理用も含めアルコールを含む食材を一切使用しない',
 };
 
+// レシピ生成画面の「テンプレート」ボタンは、単なる参考キーワードではなく
+// AIが必ず遵守すべき絶対条件として扱う。特に「スイーツ」「鍋・スープ」は
+// 料理カテゴリそのものを固定する指定なので、他カテゴリの提案を明確に禁止する。
+// (この文言と対応する機械的な検証は src/lib/recipeValidation.ts の
+// TEMPLATE_CATEGORY_CHECKS を参照。両方を変更する際は一緒に見直すこと。)
+export const RECIPE_TEMPLATE_CONSTRAINTS: Record<string, string> = {
+  bento: "【絶対条件】お弁当に入れることを前提に、冷めても美味しく汁気の出にくいおかずだけを提案してください。汁気の多い煮物やスープ等、お弁当に不向きな料理は絶対に提案しないでください。",
+  meaty: "【絶対条件】ご飯が進むボリューミーな肉料理だけを提案してください。野菜が主役の料理や、肉を使わない料理は絶対に提案しないでください。",
+  healthy: "【絶対条件】野菜をたっぷり使った高タンパク・低カロリーなヘルシー料理だけを提案してください。揚げ物や過度に高カロリーな料理は絶対に提案しないでください。",
+  soup: "【絶対条件：料理カテゴリ】ユーザーは「鍋・スープ」を明示的に指定しました。生成するレシピは必ず鍋物、またはスープ・汁物として成立するものにしてください。炒め物・丼物・単純な焼き物・サラダなど、鍋・スープに該当しない料理を提案することは絶対に禁止です。",
+  sweets: "【絶対条件：料理カテゴリ】ユーザーは「スイーツ」を明示的に指定しました。生成するレシピは必ずデザート・お菓子として成立するものにしてください。主菜・副菜・鍋物・スープなど、スイーツに該当しない料理を提案することは絶対に禁止です。",
+  easyClean: "【絶対条件】使う鍋・フライパン・ボウル・皿の数が最小限になり、洗い物が少なく済む料理だけを提案してください。複数の調理器具や皿を要する手間のかかる料理は絶対に提案しないでください。",
+};
+
+// テンプレート指定は「参考にする」ものではなく「必ず守る生成条件」として、
+// 他のセクションより優先度の高い位置(冒頭の厳守事項)に差し込む。
+export function buildTemplateConstraintSection(templateKey: string | null | undefined): string {
+  const instruction = templateKey ? RECIPE_TEMPLATE_CONSTRAINTS[templateKey] : null;
+  if (!instruction) return "";
+  return `\n【テンプレート指定(必ず遵守してください。参考情報ではなく絶対条件です)】\n${instruction}\n`;
+}
+
 export type ClimateInfo = {
   condition?: string;
   temperature?: number;
