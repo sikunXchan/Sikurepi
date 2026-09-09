@@ -176,6 +176,10 @@ const ja = {
     saveFailedToast: "保存に失敗しました",
     pinnedToShoppingToast: (name: string) => `📌 「${name}」を買い物リストに追加しました！`,
     cookedCompletedToast: "🎉 自炊記録とお使いの在庫を更新しました！",
+    feasibilityTitle: "今の在庫では作るのが難しそうです",
+    feasibilitySwitchToFree: "✨ 在庫にこだわらず自由に作る",
+    feasibilityGoShopping: "🛒 不足食材を買い物リストへ",
+    feasibilityAddedToShoppingToast: (n: number) => `🛒 不足食材 ${n}件を買い物リストに追加しました！`,
   },
   myPage: {
     title: "マイページ",

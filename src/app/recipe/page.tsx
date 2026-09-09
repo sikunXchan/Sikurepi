@@ -109,6 +109,9 @@ export default function RecipePage() {
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
+  // 生成前の成立可否判定(要件8・9)でNGと判定された場合、レシピの代わりに
+  // 警告(理由・不足食材・次のアクション)を表示する
+  const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
 
   useEffect(() => {
     loadLocalData();
@@ -163,6 +166,7 @@ export default function RecipePage() {
     setRecipes([]);
     setCookingTips([]);
     setSavedSet(new Set());
+    setFeasibilityWarning(null);
 
     try {
       const selectedNames = creationMode === 'inventory'
@@ -177,9 +181,15 @@ export default function RecipePage() {
         .slice(0, 15)
         .map(r => ({ title: r.title, genre: r.genre }));
 
+      // 入力欄のテキストが選択中テンプレートの定型文と完全一致する場合だけ、
+      // そのテンプレートを「絶対条件」としてサーバーに伝える(要件7)。
+      // ユーザーが文章を書き換えた時点で一致しなくなり、自然に解除される。
+      const activeTemplate = TEMPLATES.find(tmpl => tmpl.query === instruction);
+
       const payload = {
         ingredients: selectedNames,
         instruction: instruction.trim() || undefined,
+        templateKey: activeTemplate?.key,
         servings: sessionServings,
         userProfile: {
           ...userProfile,
@@ -209,6 +219,15 @@ export default function RecipePage() {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || t.recipe.errorGenerateFailed);
+      }
+
+      // 生成前の成立可否判定でNGと出た場合は、エラーではなく専用の警告として扱う
+      if (data.feasibility && data.feasibility.feasible === false) {
+        setFeasibilityWarning({
+          reason: data.feasibility.reason || '',
+          missingKeyIngredients: data.feasibility.missingKeyIngredients || [],
+        });
+        return;
       }
 
       if (data.recipes && data.recipes.length > 0) {
@@ -629,6 +648,51 @@ export default function RecipePage() {
       {errorMsg && (
         <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
           {errorMsg}
+        </div>
+      )}
+
+      {/* 生成前の成立可否判定でNGだった場合の警告(要件8): エラーではなく、
+          理由・不足食材・次のアクション(自由作成に切り替える/買い物リストへ追加する)を示す */}
+      {feasibilityWarning && (
+        <div style={{ background: 'rgba(240, 165, 0, 0.1)', border: '1px solid rgba(240, 165, 0, 0.3)', borderRadius: 14, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <img src="/mascot/bear_sleeping.png" alt="" width={36} height={36} />
+            <strong style={{ fontSize: 14, color: '#92600a' }}>{t.recipe.feasibilityTitle}</strong>
+          </div>
+          {feasibilityWarning.reason && (
+            <p style={{ fontSize: 13, color: '#92600a', margin: '0 0 10px' }}>{feasibilityWarning.reason}</p>
+          )}
+          {feasibilityWarning.missingKeyIngredients.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {feasibilityWarning.missingKeyIngredients.map((name, i) => (
+                <span key={i} style={{ fontSize: 12, fontWeight: 700, color: '#92600a', background: 'rgba(240, 165, 0, 0.18)', padding: '3px 9px', borderRadius: 999 }}>
+                  🛒 {name}
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => { setCreationMode('free'); setFeasibilityWarning(null); }}
+              style={{ flex: 1, background: 'var(--card-bg-solid)', color: '#92600a', border: '1px solid rgba(240, 165, 0, 0.4)', borderRadius: 10, padding: '9px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              {t.recipe.feasibilitySwitchToFree}
+            </button>
+            {feasibilityWarning.missingKeyIngredients.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  feasibilityWarning.missingKeyIngredients.forEach(name => addLocalShoppingItem(name));
+                  showToast(t.recipe.feasibilityAddedToShoppingToast(feasibilityWarning.missingKeyIngredients.length));
+                  setFeasibilityWarning(null);
+                }}
+                style={{ flex: 1, background: 'var(--gradient-cool)', color: 'white', border: 'none', borderRadius: 10, padding: '9px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                {t.recipe.feasibilityGoShopping}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

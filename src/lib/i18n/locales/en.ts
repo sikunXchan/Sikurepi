@@ -175,6 +175,10 @@ const en: typeof ja = {
     saveFailedToast: "Failed to save",
     pinnedToShoppingToast: (name: string) => `📌 Added "${name}" to your shopping list!`,
     cookedCompletedToast: "🎉 Updated your cooking log and pantry!",
+    feasibilityTitle: "This looks hard to make with what's on hand",
+    feasibilitySwitchToFree: "✨ Create freely instead",
+    feasibilityGoShopping: "🛒 Add missing items to shopping list",
+    feasibilityAddedToShoppingToast: (n: number) => `🛒 Added ${n} missing item${n === 1 ? "" : "s"} to your shopping list!`,
   },
   myPage: {
     title: "My Page",
