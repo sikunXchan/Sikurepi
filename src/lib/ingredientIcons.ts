@@ -226,7 +226,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   // --- お菓子・スイーツ ---
   shortcake: ["ショートケーキ", "いちごのショートケーキ"],
   candy: ["あめ", "飴", "キャンディ", "ペロペロキャンディ", "駄菓子"],
-  cookie: ["クッキー", "チョコチップクッキー"],
+  cookie: ["クッキー", "チョコチップクッキー", "ビスケット"],
   potatochips: ["ポテトチップス", "ポテトチップ", "チップス"],
   icecream: ["アイスクリーム", "アイス"],
   pudding: ["プリン"],
@@ -240,7 +240,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
 
   // --- 調味料・油 ---
   salt: ["塩", "しお"],
-  sugar: ["砂糖", "さとう"],
+  sugar: ["砂糖", "さとう", "グラニュー糖", "上白糖", "三温糖", "きび砂糖", "粉砂糖"],
   vinegar: ["酢", "お酢", "ビネガー", "米酢", "穀物酢", "りんご酢", "黒酢"],
   soysauce: ["しょうゆ", "醤油", "ナンプラー"],
   soysauce2: ["濃口醤油", "薄口醤油"],
@@ -300,7 +300,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   water: ["ミネラルウォーター", "おみず", "水"],
   coffee: ["コーヒー"],
   sparklingwater: ["炭酸水"],
-  greentea: ["お茶", "紅茶", "緑茶", "麦茶"],
+  greentea: ["お茶", "紅茶", "緑茶", "麦茶", "抹茶"],
   wine: ["ワイン"],
   beer: ["ビール"],
   nihonshu: ["日本酒", "清酒"],
