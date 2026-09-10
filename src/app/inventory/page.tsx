@@ -18,6 +18,7 @@ import {
   inferIngredientCategory,
   getForgottenIngredients,
   CATEGORY_ORDER,
+  CATEGORY_ICON_SLUGS,
   Ingredient
 } from "@/lib/storage";
 import { matchIngredientSemantic } from "@/lib/embeddingMatch";
@@ -29,27 +30,6 @@ const DOUBLE_TAP_MS = 320;
 
 // AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
 const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
-
-type ShelfZoneKey = 'vegetable' | 'meatChilled' | 'seasoning';
-
-// 実際の12カテゴリを、冷蔵庫の棚メタファーで使う3ゾーンに割り振る。
-// 「冷凍室」ゾーンは実データに冷凍かどうかのフラグが無く、新規に追加すると
-// 在庫追加フォーム等への実装範囲が広がってしまうため今回は作らず、冷凍食品も
-// 含めて肉・チルドゾーンにまとめている(デザイン仕様書で「要事前確認」とされていた点)。
-const CATEGORY_TO_SHELF_ZONE: Record<string, ShelfZoneKey> = {
-  '野菜': 'vegetable',
-  '果物': 'vegetable',
-  '豆類': 'vegetable',
-  '肉': 'meatChilled',
-  '魚介類': 'meatChilled',
-  '乳製品・卵': 'meatChilled',
-  '穀物・パン': 'meatChilled',
-  '調味料': 'seasoning',
-  '飲み物': 'seasoning',
-  'ナッツ類': 'seasoning',
-  'お菓子・スイーツ': 'seasoning',
-  'その他': 'seasoning',
-};
 
 function computeAgeDays(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -288,18 +268,16 @@ export default function InventoryPage() {
   const hasIngredients = ingredients.length > 0;
   const forgottenIds = new Set(forgottenItems.map(i => i.id));
 
-  const zoneItems: Record<ShelfZoneKey, Ingredient[]> = { vegetable: [], meatChilled: [], seasoning: [] };
+  // 冷蔵庫の棚の1段 = カテゴリ1つ。以前は12カテゴリを3ゾーンへ圧縮して表示して
+  // いたが、ユーザーの要望でカテゴリ自体を7つへ圧縮し、以降は圧縮なしで
+  // カテゴリごとにそのまま棚を分ける(調味料だけドアポケット風の特別な見た目にする)。
+  const zoneItems: Record<string, Ingredient[]> = {};
+  for (const cat of CATEGORY_ORDER) zoneItems[cat] = [];
   for (const item of ingredients) {
-    const zone = CATEGORY_TO_SHELF_ZONE[item.category || 'その他'] || 'seasoning';
-    zoneItems[zone].push(item);
+    const cat = zoneItems[item.category] ? item.category : 'その他';
+    zoneItems[cat].push(item);
   }
-
-  const ZONE_CONFIG: { key: ShelfZoneKey; icon: string; label: string; note?: string; bandClass: string }[] = [
-    { key: 'vegetable', icon: 'vegetables', label: t.inventory.zoneVegetableLabel, bandClass: styles.zoneVegetable },
-    { key: 'meatChilled', icon: 'meat', label: t.inventory.zoneMeatChilledLabel, bandClass: styles.zoneMeatChilled },
-    { key: 'seasoning', icon: 'seasoning', label: t.inventory.zoneSeasoningLabel, note: t.inventory.zoneSeasoningNote, bandClass: styles.zoneSeasoning },
-  ];
-  const visibleZones = ZONE_CONFIG.filter(z => zoneItems[z.key].length > 0);
+  const visibleCategories = CATEGORY_ORDER.filter(cat => zoneItems[cat].length > 0);
 
   return (
     <div className={styles.container}>
@@ -399,18 +377,18 @@ export default function InventoryPage() {
       {!loading && hasIngredients && (
         <div className={styles.fridgeFrame}>
           <div className={styles.fridgeCard}>
-            {visibleZones.map(zone => {
-              const items = zoneItems[zone.key];
+            {visibleCategories.map(cat => {
+              const items = zoneItems[cat];
               const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
               const normalItems = items.filter(i => !forgottenIds.has(i.id));
-              const isSeasoning = zone.key === 'seasoning';
+              const isSeasoning = cat === '調味料';
               return (
-                <div key={zone.key} className={`${styles.zoneBand} ${zone.bandClass}`}>
+                <div key={cat} className={`${styles.zoneBand} ${isSeasoning ? styles.zoneSeasoning : ""}`}>
                   <div className={styles.zoneLabelRow}>
-                    <UiIcon slug={zone.icon} size={18} alt={zone.label} />
-                    <span>{zone.label}</span>
-                    {zone.note && <span className={styles.zoneNote}>{zone.note}</span>}
-                    {zone.key === 'vegetable' && <span className={styles.zoneCount}>{items.length}</span>}
+                    <UiIcon slug={CATEGORY_ICON_SLUGS[cat] || 'other'} size={18} alt={cat} />
+                    <span>{t.category[cat] || cat}</span>
+                    {isSeasoning && <span className={styles.zoneNote}>{t.inventory.zoneSeasoningNote}</span>}
+                    <span className={styles.zoneCount}>{items.length}</span>
                   </div>
                   {normalItems.length > 0 && (
                     <div className={styles.zoneChips}>

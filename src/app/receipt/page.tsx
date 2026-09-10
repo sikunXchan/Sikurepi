@@ -5,7 +5,7 @@ import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkle
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { addLocalIngredient } from "@/lib/storage";
+import { addLocalIngredient, CATEGORY_ORDER } from "@/lib/storage";
 import { setNavLocked } from "@/lib/navLock";
 import PageHeader from "@/components/PageHeader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -16,8 +16,6 @@ type ExtractedItem = {
   name: string;
   category: string;
 };
-
-const CATEGORIES = ['野菜', '肉', '魚介類', '乳製品・卵', '穀物・パン', '豆類', '果物', '調味料', 'その他'];
 
 // 解析中に毎回違う体勢を見せて飽きさせないためのポーズ一覧。
 // CookingCheerBearのBEAR_POSES・レシピ生成中のローディング画像とは
@@ -224,7 +222,7 @@ export default function ReceiptPage() {
                   onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
                   style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, background: 'white', color: '#4b5563' }}
                 >
-                  {CATEGORIES.map(cat => (
+                  {CATEGORY_ORDER.map(cat => (
                     <option key={cat} value={cat}>{t.category[cat] || cat}</option>
                   ))}
                 </select>
