@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Loader2, Pin, Settings } from "lucide-react";
+import { Plus, Loader2, Pin, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
@@ -25,6 +25,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Inventory.module.css";
 
 const LONG_PRESS_MS = 550;
+const DOUBLE_TAP_MS = 320;
 
 // AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
 const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
@@ -56,9 +57,10 @@ function computeAgeDays(createdAt: string): number {
 
 // 棚に並ぶ1食材ぶんのチップ。冷凍室で無くなった分、野菜/肉・チルドゾーンは丸型、
 // 調味料(ドアポケット)ゾーンは角丸四角と見た目を分ける。
-// 長押しでピン留めは既存のジェスチャーを踏襲し、削除は(横に長いリスト行前提だった
-// スワイプではなく)グリッドカードと同じ常時表示の小さな削除ボタンで行う
-// (このチップ自体が52px前後しかなく、横スワイプの動線を取りにくいため)。
+// 長押しでピン留めは既存のジェスチャーを踏襲。削除は常時表示の小さなボタンだと
+// 見た目が煩雑になる(=「冷蔵庫っぽさ」を損なう)ため廃止し、ダブルタップに変更した。
+// 長押しでピン留めが発火した分はタップとしてカウントしない(誤ってダブルタップ削除
+// にならないようにする)。
 function ShelfItemChip({
   item,
   variant,
@@ -70,8 +72,9 @@ function ShelfItemChip({
   onDelete: (id: number, name: string) => void;
   onTogglePin: (item: Ingredient) => void;
 }) {
-  const { t } = useLanguage();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+  const lastTapAtRef = useRef(0);
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
@@ -81,12 +84,27 @@ function ShelfItemChip({
   };
 
   const handlePointerDown = () => {
+    longPressFiredRef.current = false;
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
       longPressTimer.current = null;
+      longPressFiredRef.current = true;
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
       onTogglePin(item);
     }, LONG_PRESS_MS);
+  };
+
+  const handlePointerUp = () => {
+    clearLongPress();
+    if (longPressFiredRef.current) return;
+    const now = Date.now();
+    if (now - lastTapAtRef.current < DOUBLE_TAP_MS) {
+      lastTapAtRef.current = 0;
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
+      onDelete(item.id, item.name);
+    } else {
+      lastTapAtRef.current = now;
+    }
   };
 
   const isCircle = variant === 'circle';
@@ -95,18 +113,10 @@ function ShelfItemChip({
     <div
       className={`${styles.shelfChip} ${isCircle ? styles.shelfChipCircle : styles.shelfChipSquare} ${item.is_pinned ? styles.shelfChipPinned : ""}`}
       onPointerDown={handlePointerDown}
-      onPointerUp={clearLongPress}
+      onPointerUp={handlePointerUp}
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
     >
-      <button
-        type="button"
-        className={styles.shelfChipDeleteBtn}
-        onClick={() => onDelete(item.id, item.name)}
-        title={t.inventory.deleteButtonTitle}
-      >
-        <X size={isCircle ? 11 : 10} />
-      </button>
       <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
         <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
       </div>
@@ -376,44 +386,46 @@ export default function InventoryPage() {
       )}
 
       {!loading && hasIngredients && (
-        <div className={styles.fridgeCard}>
-          {visibleZones.map(zone => {
-            const items = zoneItems[zone.key];
-            const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
-            const normalItems = items.filter(i => !forgottenIds.has(i.id));
-            const isSeasoning = zone.key === 'seasoning';
-            return (
-              <div key={zone.key} className={`${styles.zoneBand} ${zone.bandClass}`}>
-                <div className={styles.zoneLabelRow}>
-                  <UiIcon slug={zone.icon} size={18} alt={zone.label} />
-                  <span>{zone.label}</span>
-                  {zone.note && <span className={styles.zoneNote}>{zone.note}</span>}
-                  {zone.key === 'vegetable' && <span className={styles.zoneCount}>{items.length}</span>}
-                </div>
-                {normalItems.length > 0 && (
-                  <div className={styles.zoneChips}>
-                    {normalItems.map(item => (
-                      <ShelfItemChip
-                        key={item.id}
-                        item={item}
-                        variant={isSeasoning ? 'square' : 'circle'}
-                        onDelete={handleDelete}
-                        onTogglePin={handleTogglePin}
-                      />
-                    ))}
+        <div className={styles.fridgeFrame}>
+          <div className={styles.fridgeCard}>
+            {visibleZones.map(zone => {
+              const items = zoneItems[zone.key];
+              const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
+              const normalItems = items.filter(i => !forgottenIds.has(i.id));
+              const isSeasoning = zone.key === 'seasoning';
+              return (
+                <div key={zone.key} className={`${styles.zoneBand} ${zone.bandClass}`}>
+                  <div className={styles.zoneLabelRow}>
+                    <UiIcon slug={zone.icon} size={18} alt={zone.label} />
+                    <span>{zone.label}</span>
+                    {zone.note && <span className={styles.zoneNote}>{zone.note}</span>}
+                    {zone.key === 'vegetable' && <span className={styles.zoneCount}>{items.length}</span>}
                   </div>
-                )}
-                {forgottenInZone.map(item => (
-                  <ForgottenShelfAlert key={item.id} item={item} onFindRecipe={handleFindRecipeForForgotten} />
-                ))}
-              </div>
-            );
-          })}
+                  {normalItems.length > 0 && (
+                    <div className={styles.zoneChips}>
+                      {normalItems.map(item => (
+                        <ShelfItemChip
+                          key={item.id}
+                          item={item}
+                          variant={isSeasoning ? 'square' : 'circle'}
+                          onDelete={handleDelete}
+                          onTogglePin={handleTogglePin}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {forgottenInZone.map(item => (
+                    <ForgottenShelfAlert key={item.id} item={item} onFindRecipe={handleFindRecipeForForgotten} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {!loading && !hasIngredients && (
-        <>
+        <div className={styles.fridgeFrame}>
           <div className={styles.fridgeCardSkeleton}>
             <div className={styles.fridgeSkeletonBand} />
             <div className={styles.fridgeSkeletonBand} />
@@ -427,7 +439,7 @@ export default function InventoryPage() {
               {t.inventory.emptyCta}
             </button>
           </div>
-        </>
+        </div>
       )}
 
       <ProfileSettingsModal
