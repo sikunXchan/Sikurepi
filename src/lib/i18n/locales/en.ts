@@ -78,7 +78,6 @@ const en: typeof ja = {
     todaysPickTitle: "Today's Pick",
     todaysPickTagline: "Made with what's in season!",
     todaysPickViewButton: "View recipe",
-    todaysPickCloseButton: "Close",
     todaysPickLoading: "Picking today's recommendation…",
     todaysPickEmpty: "No pick for today yet. Check back soon!",
     shoppingTitle: "Shopping",

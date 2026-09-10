@@ -272,6 +272,32 @@
   color: #9a5b00;
 }
 
+/* ゾーンにつき呼びかけアラートを1件だけに絞った際、残りの「放置されている」
+   食材は通常チップの見た目のまま、小さな赤丸とささやかな身震いだけで示す
+   (アラートカードを量産して縦にどこまでも並ばないようにするため)。 */
+.shelfChipForgottenIconWrap {
+  position: relative;
+  display: inline-flex;
+  animation: shelfTremble 0.6s ease-in-out infinite;
+}
+
+.shelfChipForgottenDot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid var(--card-bg-solid);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelfChipForgottenIconWrap {
+    animation: none;
+  }
+}
+
 /* --- 呼びかけアラート(食品ロス防止) --- */
 
 @keyframes shelfTremble {

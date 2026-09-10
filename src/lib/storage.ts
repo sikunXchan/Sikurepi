@@ -383,6 +383,44 @@ export function setCachedDailyPick<T>(todayDate: string, recipe: T): void {
   }
 }
 
+// 「今日のおすすめ」をタップした時、レシピタブの通常のレシピカードと全く同じ見た目・
+// 機能(材料の不足表示・クッキングモード・保存・料理完了ボタン等)で開けるようにする
+// ための1回きりの受け渡し。ホームタブ側で言語に応じて文言を確定させてから
+// ここへ入れ、レシピタブのマウント時に読み出して消費する(タブ間ナビゲーションを
+// 挟むだけの一時データなので、バックアップ対象のlocalStorageではなくsessionStorageを使う)。
+const DAILY_PICK_HANDOFF_KEY = 'lily_app_daily_pick_handoff';
+
+export type DailyPickHandoffRecipe = {
+  title: string;
+  time: string;
+  genre?: string;
+  dish_badge?: string;
+  ingredients: { name: string; amount: string }[];
+  steps: string[];
+  tips: string;
+};
+
+export function setPendingDailyPickHandoff(recipe: DailyPickHandoffRecipe): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(DAILY_PICK_HANDOFF_KEY, JSON.stringify(recipe));
+  } catch {
+    // 保存に失敗しても致命的ではない(レシピタブが通常の空の状態で開くだけ)ので無視する
+  }
+}
+
+export function consumePendingDailyPickHandoff(): DailyPickHandoffRecipe | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(DAILY_PICK_HANDOFF_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(DAILY_PICK_HANDOFF_KEY);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // --- 在庫 (Inventory) ---
 
 export function getLocalIngredients(): Ingredient[] {

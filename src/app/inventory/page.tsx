@@ -43,16 +43,22 @@ function computeAgeDays(createdAt: string): number {
 // にならないようにする)。ダブルタップ自体も誤操作の入り口になり得るため、実際の
 // 削除は呼び出し元(親)が確認ダイアログを挟んでから行う(onRequestDeleteは
 // 「削除を確認したい」というリクエストであり、即削除ではない)。
+// 単発タップ(ダブルタップが完成しなかった場合)は、名前が省略表示されて判別
+// できない問題の対策として、フルネームをトーストで見せる(onTap)。
 function ShelfItemChip({
   item,
   variant,
+  isForgotten,
   onRequestDelete,
   onTogglePin,
+  onTap,
 }: {
   item: Ingredient;
   variant: 'circle' | 'square';
+  isForgotten?: boolean;
   onRequestDelete: (item: Ingredient) => void;
   onTogglePin: (item: Ingredient) => void;
+  onTap: (item: Ingredient) => void;
 }) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef(false);
@@ -86,6 +92,7 @@ function ShelfItemChip({
       onRequestDelete(item);
     } else {
       lastTapAtRef.current = now;
+      onTap(item);
     }
   };
 
@@ -99,9 +106,12 @@ function ShelfItemChip({
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
     >
-      <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
-        <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
-      </div>
+      <span className={isForgotten ? styles.shelfChipForgottenIconWrap : undefined}>
+        <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
+          <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
+        </div>
+        {isForgotten && <span className={styles.shelfChipForgottenDot} />}
+      </span>
       <span className={styles.shelfChipName}>
         {item.is_pinned && (
           <Pin size={isCircle ? 10 : 9} fill="#FFD700" color="#FFD700" style={{ marginRight: 2, verticalAlign: -1 }} />
@@ -379,8 +389,15 @@ export default function InventoryPage() {
           <div className={styles.fridgeCard}>
             {visibleCategories.map(cat => {
               const items = zoneItems[cat];
-              const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
-              const normalItems = items.filter(i => !forgottenIds.has(i.id));
+              const forgottenInZone = items
+                .filter(i => forgottenIds.has(i.id))
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              // ゾーンにつき呼びかけアラートは最も古い1件だけ表示する(要望対応: 該当が
+              // 多いとアラートカードが縦にどこまでも並んでしまいUXが悪化していたため)。
+              // 2件目以降は通常チップへ戻し、控えめな印(ドット+振動)だけ残す。
+              const spotlightForgotten = forgottenInZone[0];
+              const extraForgottenIds = new Set(forgottenInZone.slice(1).map(i => i.id));
+              const normalItems = items.filter(i => i.id !== spotlightForgotten?.id);
               const isSeasoning = cat === '調味料';
               return (
                 <div key={cat} className={`${styles.zoneBand} ${isSeasoning ? styles.zoneSeasoning : ""}`}>
@@ -397,15 +414,17 @@ export default function InventoryPage() {
                           key={item.id}
                           item={item}
                           variant={isSeasoning ? 'square' : 'circle'}
+                          isForgotten={extraForgottenIds.has(item.id)}
                           onRequestDelete={setConfirmDeleteItem}
                           onTogglePin={handleTogglePin}
+                          onTap={(i) => showToast(i.name)}
                         />
                       ))}
                     </div>
                   )}
-                  {forgottenInZone.map(item => (
-                    <ForgottenShelfAlert key={item.id} item={item} onFindRecipe={handleFindRecipeForForgotten} />
-                  ))}
+                  {spotlightForgotten && (
+                    <ForgottenShelfAlert item={spotlightForgotten} onFindRecipe={handleFindRecipeForForgotten} />
+                  )}
                 </div>
               );
             })}
