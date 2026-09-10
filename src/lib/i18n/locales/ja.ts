@@ -79,7 +79,6 @@ const ja = {
     todaysPickTitle: "今日のおすすめ",
     todaysPickTagline: "旬の食材でおいしく！",
     todaysPickViewButton: "レシピを見る",
-    todaysPickCloseButton: "閉じる",
     todaysPickLoading: "今日のおすすめを考え中…",
     todaysPickEmpty: "今日のおすすめはまだありません。少ししたらまた見に来てね",
     shoppingTitle: "買い物",
