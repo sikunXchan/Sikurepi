@@ -144,8 +144,6 @@ export default function RecipePage() {
     const list = getLocalIngredients();
     setIngredients(list);
     setUserProfile(getLocalUserProfile());
-    const pinned = list.filter(i => i.is_pinned).map(i => i.id);
-    setSelectedIngredientIds(prev => prev.length === 0 ? pinned : prev);
   };
 
   const showToast = (msg: string) => {

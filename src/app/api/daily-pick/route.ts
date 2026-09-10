@@ -6,8 +6,10 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 // 全ユーザー共通で1日1件のレシピを見せたいので、ユーザーごとの在庫には
 // 縛られない一般的な家庭料理をAIに考案させ、Supabase(daily_picksテーブル)に
 // 日付をキーにキャッシュする。同日2回目以降のアクセスは生成せずキャッシュを返す。
-// (Supabase未設定のローカルのみの利用環境では、キャッシュせずその場で生成するだけ
-// になる = 呼び出すたびに違う提案になる)
+// Supabase未設定の環境でも、同一サーバーインスタンスがwarmな間はメモリキャッシュで
+// 同じ日付なら同じ内容を返す(下のmemoryCache参照)。さらに生成自体もその日の日付を
+// seedにしているため、何らかの理由でキャッシュを飛ばして複数回生成が走っても
+// 内容が大きくは変わらないようにしている。
 
 type BilingualText = { ja: string; en: string };
 
@@ -26,7 +28,23 @@ function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function generateDailyPickRecipe(): Promise<DailyPickRecipe> {
+// サーバーレス環境では複数のインスタンス/呼び出しでモジュールスコープが
+// 共有されないことがあるため、これだけで「1日1件」を保証できるわけではない
+// (本命の保証はSupabaseのdaily_picksテーブル)。ただし同一インスタンスが
+// warmなまま複数リクエストを捌く場合や、Supabase未設定のローカル/簡易環境では
+// これだけでも「タブ切り替えのたびに内容が変わる」体感を大きく減らせるため、
+// 軽量な追加の安全策として保持しておく。
+const memoryCache = new Map<string, DailyPickRecipe>();
+
+// Gemini呼び出しに日付由来のseedを渡すことで、キャッシュが何らかの理由で
+// (端末のlocalStorage書き込み失敗、Supabase未設定など)効かず複数回生成が
+// 走ってしまった場合でも、同じ日には可能な限り同じ内容が返るようにする
+// (seedは「ほぼ決定的」であり100%の保証ではない点に注意)。
+function seedFromDate(date: string): number {
+  return Number(date.replace(/-/g, ''));
+}
+
+async function generateDailyPickRecipe(date: string): Promise<DailyPickRecipe> {
   const prompt = `あなたはプロの管理栄養士兼シェフです。特定のユーザーの在庫には縛られず、アプリの「今日のおすすめ」として誰にでもおすすめできる、季節感があり作りやすい家庭料理を1品だけ考案してください。
 
 JSON形式のみで、日本語(ja)と英語(en)の両方の文言を必ず含めて返してください（他のテキストは一切含めないでください）:
@@ -48,7 +66,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
 
   const response = await generateWithRetry(ai, {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json' },
+    config: { responseMimeType: 'application/json', seed: seedFromDate(date) },
   });
   const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
   if (!text) throw new Error('AI output was empty');
@@ -57,6 +75,10 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
 
 export async function GET() {
   const date = todayDateString();
+  // 日付が変わったら前日以前のエントリは不要なので捨てる(無限にメモリを食わないように)
+  for (const key of memoryCache.keys()) {
+    if (key !== date) memoryCache.delete(key);
+  }
 
   try {
     if (isSupabaseConfigured && supabase) {
@@ -66,10 +88,11 @@ export async function GET() {
         .eq('pick_date', date)
         .maybeSingle();
       if (existing?.recipe) {
+        memoryCache.set(date, existing.recipe);
         return NextResponse.json({ date, recipe: existing.recipe });
       }
 
-      const recipe = await generateDailyPickRecipe();
+      const recipe = memoryCache.get(date) || await generateDailyPickRecipe(date);
       // 同時アクセスで既に他クライアントが挿入していた場合はpick_dateのunique制約で
       // 競合するが、ここではエラーを無視して常に最終的な行を読み直す
       // (先に挿入できた方の内容に全員揃えるため、この端末の生成結果を捨てることがある)。
@@ -79,11 +102,18 @@ export async function GET() {
         .select('recipe')
         .eq('pick_date', date)
         .maybeSingle();
-      return NextResponse.json({ date, recipe: finalRow?.recipe || recipe });
+      const finalRecipe = finalRow?.recipe || recipe;
+      memoryCache.set(date, finalRecipe);
+      return NextResponse.json({ date, recipe: finalRecipe });
     }
 
-    // Supabase未設定: キャッシュせずその場で生成するだけ
-    const recipe = await generateDailyPickRecipe();
+    // Supabase未設定: このサーバーインスタンスがwarmな間だけ、日付キーでメモリキャッシュする
+    const cached = memoryCache.get(date);
+    if (cached) {
+      return NextResponse.json({ date, recipe: cached });
+    }
+    const recipe = await generateDailyPickRecipe(date);
+    memoryCache.set(date, recipe);
     return NextResponse.json({ date, recipe });
   } catch (error: any) {
     console.error('Daily Pick Error:', error);
