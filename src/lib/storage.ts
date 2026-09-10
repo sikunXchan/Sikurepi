@@ -1,5 +1,7 @@
 // LocalStorage Unified Storage Service with JSON Backup & Restore
 
+import { toHiragana } from './kana';
+
 export type Ingredient = {
   id: number;
   name: string;
@@ -126,8 +128,11 @@ export const CATEGORY_ICON_SLUGS: Record<string, string> = {
 export const CATEGORY_RULES: { category: string; pattern: RegExp }[] = [
   { category: '肉', pattern: /肉|豚|牛|鶏|ミンチ|ひき肉|挽肉|ベーコン|ハム|ソーセージ|ウインナー|つくね|つみれ|サラダチキン|マトン|七面鳥|ターキー|プラントベースミート|ささみ|コンビーフ|ハラミ|ジャーキー|サラミ|パストラミ|チョリソー|プルドポーク|スペアリブ|レバー|砂肝|ホルモン|パンチェッタ|プロシュート/ },
   // 「ちくわぶ」は小麦粉が原料で魚介類ではないため、「ちくわ」には後ろに「ぶ」が
-  // 続かない場合のみマッチするようにし、穀物・パン側のちくわぶ判定に譲る
-  { category: '魚介類', pattern: /魚|鮭|サーモン|マグロ|ツナ|エビ|海老|イカ|タコ|蛸|貝|あさり|ハマグリ|はまぐり|蛤|しじみ|(?<!キャッ)サバ|鯖|さば|アジ|鯵|イワシ|鰯|アンチョビ|サンマ|秋刀魚|タラ|鱈|鯛|かに|蟹|カニカマ|タラバガニ|ズワイガニ|ほたて|帆立|かき|牡蠣|かまぼこ|さつま揚げ|ちくわ(?!ぶ)|竹輪|海苔|あおのり|あおさ|わかめ|もずく|めかぶ|昆布|ひじき|かつお|鰹|削り節|しらす|たらこ|明太子|はんぺん|するめ|ぶり|はまち|うなぎ|あなご|いくら|うに/ },
+  // 続かない場合のみマッチするようにし、穀物・パン側のちくわぶ判定に譲る。
+  // 「サバ/さば」も「キャッサバ」(野菜)の一部と誤って拾わないよう、カタカナ・
+  // ひらがな両方の表記に同じ否定先読みを付ける(判定時にひらがな正規化される
+  // ため、ここで両方書いておかないと片方の表記だけ誤爆する)。
+  { category: '魚介類', pattern: /魚|鮭|サーモン|マグロ|ツナ|エビ|海老|イカ|タコ|蛸|貝|あさり|ハマグリ|はまぐり|蛤|しじみ|(?<!キャッ)サバ|鯖|(?<!キャッ)さば|アジ|鯵|イワシ|鰯|アンチョビ|サンマ|秋刀魚|タラ|鱈|鯛|かに|蟹|カニカマ|タラバガニ|ズワイガニ|ほたて|帆立|かき|牡蠣|かまぼこ|さつま揚げ|ちくわ(?!ぶ)|竹輪|海苔|あおのり|あおさ|わかめ|もずく|めかぶ|昆布|ひじき|かつお|鰹|削り節|しらす|たらこ|明太子|はんぺん|するめ|ぶり|はまち|うなぎ|あなご|いくら|うに/ },
   { category: '乳製品・卵', pattern: /卵|たまご|玉子|牛乳|ヨーグルト|ケフィア|チーズ|パルメザン|チェダー|モッツァレラ|カマンベール|ゴルゴンゾーラ|マスカルポーネ|リコッタ|ブリー|ゴーダ|バター|ギー|生クリーム|サワークリーム|ホイップクリーム|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|オーツミルク|アーモンドミルク|ココナッツミルク|おから|湯葉/ },
   // 「米」は米油(調味料の油)・米酢(調味料の酢)・米麹(調味料の発酵麹)には一致させない
   // (後続の「調味料」カテゴリの判定に譲る)
@@ -143,10 +148,19 @@ export const CATEGORY_RULES: { category: string; pattern: RegExp }[] = [
   { category: '飲み物', pattern: /水(?!菜)|ミネラルウォーター|炭酸水|ジュース|コーヒー|紅茶|緑茶|お茶|麦茶|ビール|ワイン|日本酒|焼酎|ハイボール|サワー/ },
 ];
 
+// カタカナ/ひらがなの表記ゆれ(「トマト」⇔「とまと」等)を吸収するため、
+// 判定時は食材名・パターン双方をひらがなに正規化してから照合する
+// (パターン中の漢字・記号はひらがな化の対象外なのでそのまま残る)。
+const NORMALIZED_CATEGORY_RULES = CATEGORY_RULES.map(rule => ({
+  category: rule.category,
+  pattern: new RegExp(toHiragana(rule.pattern.source), rule.pattern.flags),
+}));
+
 export function inferIngredientCategory(ingredientName: string): string {
   const name = ingredientName.trim();
   if (!name) return 'その他';
-  const hit = CATEGORY_RULES.find(r => r.pattern.test(name));
+  const normalizedName = toHiragana(name);
+  const hit = NORMALIZED_CATEGORY_RULES.find(r => r.pattern.test(normalizedName));
   return hit ? hit.category : 'その他';
 }
 

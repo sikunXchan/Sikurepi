@@ -457,3 +457,76 @@
   border: none;
   cursor: pointer;
 }
+
+/* ===== 削除確認ダイアログ(ダブルタップ削除の誤操作防止) ===== */
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(58, 43, 43, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10000;
+}
+
+.confirmCard {
+  width: 100%;
+  max-width: 300px;
+  background: var(--card-bg-solid);
+  border-radius: var(--border-radius);
+  box-shadow: 0 20px 50px rgba(58, 43, 43, 0.25);
+  padding: 22px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.confirmIconCircle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff7f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(224, 70, 110, 0.12);
+}
+
+.confirmText {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--foreground);
+  line-height: 1.5;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.confirmCancelBtn,
+.confirmDeleteBtn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+}
+
+.confirmCancelBtn {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+}
+
+.confirmDeleteBtn {
+  background: #ef4444;
+  color: #ffffff;
+}
