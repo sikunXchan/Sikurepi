@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Plus, Loader2, Pin, Settings, ChevronLeft, ChevronRight, Search, LayoutGrid, List as ListIcon } from "lucide-react";
-import { motion, useMotionValue, useTransform, animate as animateValue, PanInfo } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { Plus, Loader2, Pin, Settings } from "lucide-react";
+import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
@@ -17,53 +18,65 @@ import {
   inferIngredientCategory,
   getForgottenIngredients,
   CATEGORY_ORDER,
-  CATEGORY_ICON_SLUGS,
   Ingredient
 } from "@/lib/storage";
 import { matchIngredientSemantic } from "@/lib/embeddingMatch";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Inventory.module.css";
 
-const SWIPE_OPEN_X = -88;
-const SWIPE_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
 const LONG_PRESS_MS = 550;
+const DOUBLE_TAP_MS = 320;
 
 // AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
 const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
 
-// 食品ロス防止: 長く放置され直近の料理で使われていない食材に、
-// アイコンの顔から吹き出しで呼びかけてもらう
-function getForgottenMessage(t: ReturnType<typeof useLanguage>["t"], id: number, ageDays: number): string {
-  const messages = t.inventory.forgottenMessages;
-  const msg = messages[id % messages.length];
-  return `${msg}${t.inventory.forgottenSuffix(ageDays)}`;
+type ShelfZoneKey = 'vegetable' | 'meatChilled' | 'seasoning';
+
+// 実際の12カテゴリを、冷蔵庫の棚メタファーで使う3ゾーンに割り振る。
+// 「冷凍室」ゾーンは実データに冷凍かどうかのフラグが無く、新規に追加すると
+// 在庫追加フォーム等への実装範囲が広がってしまうため今回は作らず、冷凍食品も
+// 含めて肉・チルドゾーンにまとめている(デザイン仕様書で「要事前確認」とされていた点)。
+const CATEGORY_TO_SHELF_ZONE: Record<string, ShelfZoneKey> = {
+  '野菜': 'vegetable',
+  '果物': 'vegetable',
+  '豆類': 'vegetable',
+  '肉': 'meatChilled',
+  '魚介類': 'meatChilled',
+  '乳製品・卵': 'meatChilled',
+  '穀物・パン': 'meatChilled',
+  '調味料': 'seasoning',
+  '飲み物': 'seasoning',
+  'ナッツ類': 'seasoning',
+  'お菓子・スイーツ': 'seasoning',
+  'その他': 'seasoning',
+};
+
+function computeAgeDays(createdAt: string): number {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function SwipeableIngredientRow({
+// 棚に並ぶ1食材ぶんのチップ。冷凍室で無くなった分、野菜/肉・チルドゾーンは丸型、
+// 調味料(ドアポケット)ゾーンは角丸四角と見た目を分ける。
+// 長押しでピン留めは既存のジェスチャーを踏襲。削除は常時表示の小さなボタンだと
+// 見た目が煩雑になる(=「冷蔵庫っぽさ」を損なう)ため廃止し、ダブルタップに変更した。
+// 長押しでピン留めが発火した分はタップとしてカウントしない(誤ってダブルタップ削除
+// にならないようにする)。ダブルタップ自体も誤操作の入り口になり得るため、実際の
+// 削除は呼び出し元(親)が確認ダイアログを挟んでから行う(onRequestDeleteは
+// 「削除を確認したい」というリクエストであり、即削除ではない)。
+function ShelfItemChip({
   item,
-  isOpen,
-  isForgotten,
-  ageDays,
-  onOpenChange,
-  onDelete,
+  variant,
+  onRequestDelete,
   onTogglePin,
 }: {
   item: Ingredient;
-  isOpen: boolean;
-  isForgotten: boolean;
-  ageDays: number;
-  onOpenChange: (id: number | null) => void;
-  onDelete: (id: number, name: string) => void;
+  variant: 'circle' | 'square';
+  onRequestDelete: (item: Ingredient) => void;
   onTogglePin: (item: Ingredient) => void;
 }) {
-  const { t } = useLanguage();
-  const x = useMotionValue(0);
-  const bgOpacity = useTransform(x, [SWIPE_OPEN_X, SWIPE_OPEN_X / 2, 0], [1, 1, 0]);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) animateValue(x, 0, SWIPE_SPRING);
-  }, [isOpen, x]);
+  const longPressFiredRef = useRef(false);
+  const lastTapAtRef = useRef(0);
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
@@ -73,140 +86,92 @@ function SwipeableIngredientRow({
   };
 
   const handlePointerDown = () => {
-    if (isOpen) return;
+    longPressFiredRef.current = false;
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
       longPressTimer.current = null;
+      longPressFiredRef.current = true;
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
       onTogglePin(item);
     }, LONG_PRESS_MS);
   };
 
-  const handleDragEnd = (_e: unknown, info: PanInfo) => {
-    const shouldOpen = info.offset.x < -40 || info.velocity.x < -300;
-    animateValue(x, shouldOpen ? SWIPE_OPEN_X : 0, SWIPE_SPRING);
-    onOpenChange(shouldOpen ? item.id : null);
-  };
-
-  return (
-    <li className={styles.swipeWrapper}>
-      <motion.div className={styles.swipeDeleteBg} style={{ opacity: bgOpacity }}>
-        <button
-          type="button"
-          className={styles.swipeDeleteBtn}
-          onClick={() => {
-            onOpenChange(null);
-            onDelete(item.id, item.name);
-          }}
-          title={t.inventory.deleteButtonTitle}
-        >
-          <Trash2 size={20} />
-        </button>
-      </motion.div>
-      <motion.div
-        className={`${styles.listItem} ${item.is_pinned ? styles.pinned : ""} ${isForgotten ? styles.forgotten : ""}`}
-        style={{ x, y: item.is_pinned ? -4 : 0 }}
-        drag="x"
-        dragConstraints={{ left: SWIPE_OPEN_X, right: 0 }}
-        dragElastic={0.05}
-        onDragStart={clearLongPress}
-        onDragEnd={handleDragEnd}
-        onPointerDown={handlePointerDown}
-        onPointerUp={clearLongPress}
-        onPointerCancel={clearLongPress}
-        onTap={() => {
-          if (isOpen) onOpenChange(null);
-        }}
-      >
-        <div className={styles.nameSection}>
-          <span
-            className={isForgotten ? styles.forgottenIconWrap : undefined}
-            style={isForgotten ? { animationDelay: `${(item.id % 5) * 0.12}s` } : undefined}
-          >
-            <IngredientIcon name={item.name} size={36} />
-          </span>
-          <div className={styles.nameTextCol}>
-            <span>
-              {item.is_pinned && <Pin size={14} fill="#FFD700" color="#FFD700" style={{ marginRight: 6, verticalAlign: -2 }} />}
-              {item.name}
-            </span>
-            {isForgotten && (
-              <span className={styles.forgottenCallout}>💬 {getForgottenMessage(t, item.id, ageDays)}</span>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </li>
-  );
-}
-
-// カテゴリ詳細画面のグリッド表示用カード。スワイプ動線が取りにくい2列グリッドでは、
-// 長押しでピン留め(リストと同じジェスチャー)、削除は常時表示の小さなボタンで行う。
-function GridIngredientCard({
-  item,
-  isForgotten,
-  onDelete,
-  onTogglePin,
-}: {
-  item: Ingredient;
-  isForgotten: boolean;
-  onDelete: (id: number, name: string) => void;
-  onTogglePin: (item: Ingredient) => void;
-}) {
-  const { t } = useLanguage();
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressedRef = useRef(false);
-
-  const clearLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const handlePointerUp = () => {
+    clearLongPress();
+    if (longPressFiredRef.current) return;
+    const now = Date.now();
+    if (now - lastTapAtRef.current < DOUBLE_TAP_MS) {
+      lastTapAtRef.current = 0;
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
+      onRequestDelete(item);
+    } else {
+      lastTapAtRef.current = now;
     }
   };
 
-  const handlePointerDown = () => {
-    longPressedRef.current = false;
-    clearLongPress();
-    longPressTimer.current = setTimeout(() => {
-      longPressTimer.current = null;
-      longPressedRef.current = true;
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
-      onTogglePin(item);
-    }, LONG_PRESS_MS);
-  };
+  const isCircle = variant === 'circle';
 
   return (
     <div
-      className={`${styles.gridCard} ${item.is_pinned ? styles.gridCardPinned : ""} ${isForgotten ? styles.gridCardForgotten : ""}`}
+      className={`${styles.shelfChip} ${isCircle ? styles.shelfChipCircle : styles.shelfChipSquare} ${item.is_pinned ? styles.shelfChipPinned : ""}`}
       onPointerDown={handlePointerDown}
-      onPointerUp={clearLongPress}
+      onPointerUp={handlePointerUp}
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
     >
-      <button
-        type="button"
-        className={styles.gridDeleteBtn}
-        onClick={() => onDelete(item.id, item.name)}
-        title={t.inventory.deleteButtonTitle}
-      >
-        <Trash2 size={13} />
-      </button>
-      <span
-        className={isForgotten ? styles.forgottenIconWrap : undefined}
-        style={isForgotten ? { animationDelay: `${(item.id % 5) * 0.12}s` } : undefined}
-      >
-        <IngredientIcon name={item.name} size={40} />
-      </span>
-      <span className={styles.gridCardName}>
-        {item.is_pinned && <Pin size={12} fill="#FFD700" color="#FFD700" style={{ marginRight: 4, verticalAlign: -1 }} />}
+      <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
+        <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
+      </div>
+      <span className={styles.shelfChipName}>
+        {item.is_pinned && (
+          <Pin size={isCircle ? 10 : 9} fill="#FFD700" color="#FFD700" style={{ marginRight: 2, verticalAlign: -1 }} />
+        )}
         {item.name}
       </span>
     </div>
   );
 }
 
+// 食品ロス防止の「呼びかけ」を、5日以上放置された食材ごとに強めのアラートカードで
+// 出す。該当ゾーンの通常チップからは除外し(二重表示にならないよう)、このアラートの
+// 中だけに出す。CTAから/recipeへ遷移し、その食材を選択状態にして引き渡す。
+function ForgottenShelfAlert({
+  item,
+  onFindRecipe,
+}: {
+  item: Ingredient;
+  onFindRecipe: (item: Ingredient) => void;
+}) {
+  const { t } = useLanguage();
+  const ageDays = computeAgeDays(item.created_at);
+  const messages = t.inventory.forgottenAlertMessages;
+  const message = messages[item.id % messages.length](item.name, ageDays);
+
+  return (
+    <div className={styles.forgottenBlock}>
+      <div className={styles.forgottenAlert}>
+        <div className={styles.forgottenAlertIconWrap}>
+          <div className={styles.forgottenAlertPulseRing} />
+          <div className={styles.forgottenAlertIconCircle}>
+            <IngredientIcon name={item.name} size={30} />
+          </div>
+          <span className={styles.forgottenAlertBadge}>{t.inventory.forgottenBadge(ageDays)}</span>
+        </div>
+        <div className={styles.forgottenAlertTextSide}>
+          <img className={styles.forgottenAlertMascot} src="/mascot/bear_sleeping.png" alt="" width={30} height={30} />
+          <span className={styles.forgottenAlertText}>{message}</span>
+        </div>
+      </div>
+      <button type="button" className={styles.forgottenAlertCta} onClick={() => onFindRecipe(item)}>
+        {t.inventory.forgottenRecipeCta(item.name)}
+      </button>
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [newName, setNewName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("その他");
@@ -215,19 +180,15 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
-  const [forgottenIds, setForgottenIds] = useState<Set<number>>(new Set());
+  const [forgottenItems, setForgottenItems] = useState<Ingredient[]>([]);
   // 静的キーワードで判定できなかった食材名について、Enter押下後にAIへ判定を
   // 依頼している間だけtrueにする(判定中はフォームを操作不可にしてキャラクターの
   // ローディング画面を表示する)
   const [isJudging, setIsJudging] = useState(false);
   const [judgingPose, setJudgingPose] = useState(JUDGING_POSES[0]);
-  // カテゴリ一覧はタップでカテゴリ詳細画面に遷移する方式にし、
-  // アコーディオン展開はしない(常にコンパクトな一覧を保つ)
-  const [viewingCategory, setViewingCategory] = useState<string | null>(null);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [categorySort, setCategorySort] = useState<"default" | "newest" | "oldest" | "name">("default");
-  const [categoryViewMode, setCategoryViewMode] = useState<"grid" | "list">("list");
+  // ダブルタップ削除は誤操作が怖いという要望を受け、即削除ではなく
+  // ここに削除対象を入れて確認ダイアログを挟む
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<Ingredient | null>(null);
 
   useEffect(() => {
     loadIngredients();
@@ -238,7 +199,7 @@ export default function InventoryPage() {
 
   const loadIngredients = () => {
     setIngredients(getLocalIngredients());
-    setForgottenIds(new Set(getForgottenIngredients().map(i => i.id)));
+    setForgottenItems(getForgottenIngredients());
     setLoading(false);
   };
 
@@ -299,6 +260,12 @@ export default function InventoryPage() {
     if (name) showToast(t.inventory.deletedToast(name));
   };
 
+  const handleConfirmDelete = () => {
+    if (!confirmDeleteItem) return;
+    handleDelete(confirmDeleteItem.id, confirmDeleteItem.name);
+    setConfirmDeleteItem(null);
+  };
+
   const handleTogglePin = (item: Ingredient) => {
     const pinState = !item.is_pinned;
     if (pinState) {
@@ -314,42 +281,25 @@ export default function InventoryPage() {
     loadIngredients();
   };
 
-  const openCategory = (category: string) => {
-    setViewingCategory(category);
-    setCategorySearch("");
-    setCategorySort("default");
+  const handleFindRecipeForForgotten = (item: Ingredient) => {
+    router.push(`/recipe?ingredient=${item.id}`);
   };
 
-  const grouped = CATEGORY_ORDER.reduce<Record<string, Ingredient[]>>((acc, cat) => {
-    const items = ingredients.filter(i => (i.category || 'その他') === cat);
-    if (items.length > 0) acc[cat] = items;
-    return acc;
-  }, {});
-
   const hasIngredients = ingredients.length > 0;
+  const forgottenIds = new Set(forgottenItems.map(i => i.id));
 
-  // 表示中のカテゴリが空になった場合(最後の1件を削除した等)、
-  // 空のカテゴリ詳細画面が残り続けないよう一覧画面に戻す
-  useEffect(() => {
-    if (viewingCategory && !grouped[viewingCategory]) {
-      setViewingCategory(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingredients, viewingCategory]);
+  const zoneItems: Record<ShelfZoneKey, Ingredient[]> = { vegetable: [], meatChilled: [], seasoning: [] };
+  for (const item of ingredients) {
+    const zone = CATEGORY_TO_SHELF_ZONE[item.category || 'その他'] || 'seasoning';
+    zoneItems[zone].push(item);
+  }
 
-  // カテゴリ詳細画面: 検索語で絞り込み、選択された並び順を適用する
-  const categoryItems = viewingCategory ? (grouped[viewingCategory] || []) : [];
-  const filteredCategoryItems = categorySearch.trim()
-    ? categoryItems.filter(i => i.name.toLowerCase().includes(categorySearch.trim().toLowerCase()))
-    : categoryItems;
-  const sortedCategoryItems = [...filteredCategoryItems].sort((a, b) => {
-    switch (categorySort) {
-      case "newest": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      case "oldest": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      case "name": return a.name.localeCompare(b.name, "ja");
-      default: return 0;
-    }
-  });
+  const ZONE_CONFIG: { key: ShelfZoneKey; icon: string; label: string; note?: string; bandClass: string }[] = [
+    { key: 'vegetable', icon: 'vegetables', label: t.inventory.zoneVegetableLabel, bandClass: styles.zoneVegetable },
+    { key: 'meatChilled', icon: 'meat', label: t.inventory.zoneMeatChilledLabel, bandClass: styles.zoneMeatChilled },
+    { key: 'seasoning', icon: 'seasoning', label: t.inventory.zoneSeasoningLabel, note: t.inventory.zoneSeasoningNote, bandClass: styles.zoneSeasoning },
+  ];
+  const visibleZones = ZONE_CONFIG.filter(z => zoneItems[z.key].length > 0);
 
   return (
     <div className={styles.container}>
@@ -373,205 +323,152 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {viewingCategory === null ? (
-        <>
-          {/* ヘッダーエリア */}
-          <PageHeader
-            title={t.inventory.title}
-            subtitle={t.inventory.subtitle}
-            mascot="bear_basket"
-            actions={
-              <button
-                type="button"
-                className={styles.settingsBtn}
-                onClick={() => setIsSettingsOpen(true)}
-                title={t.inventory.settingsButtonTitle}
-              >
-                <Settings size={18} />
-              </button>
-            }
+      <PageHeader
+        title={t.inventory.title}
+        subtitle={t.inventory.subtitle}
+        mascot="bear_basket"
+        actions={
+          <button
+            type="button"
+            className={styles.settingsBtn}
+            onClick={() => setIsSettingsOpen(true)}
+            title={t.inventory.settingsButtonTitle}
+          >
+            <Settings size={18} />
+          </button>
+        }
+      />
+
+      <ChefProfileBadge />
+
+      {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
+      <form onSubmit={handleAdd} className={styles.addFormWrapper}>
+        <div className={styles.addForm} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
+          <input
+            type="text"
+            placeholder={t.inventory.addPlaceholder}
+            value={newName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            disabled={isJudging}
           />
-
-          <ChefProfileBadge />
-
-          {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
-          <form onSubmit={handleAdd} className={styles.addFormWrapper}>
-            <div className={styles.addForm} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
-              <input
-                type="text"
-                placeholder={t.inventory.addPlaceholder}
-                value={newName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                disabled={isJudging}
-              />
-              <button type="submit" disabled={!newName.trim() || isJudging}>
-                <Plus size={20} />
-                {t.inventory.addButton}
-              </button>
-            </div>
-            <div className={styles.categorySelectRow} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
-              <label className={styles.categorySelectLabel}>{t.inventory.categoryLabel}</label>
-              <select
-                className={styles.categorySelect}
-                value={selectedCategory}
-                onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
-                disabled={isJudging}
-              >
-                {CATEGORY_ORDER.map(cat => (
-                  // <option>内は画像を描画できないためテキストのみ表示
-                  <option key={cat} value={cat}>{t.category[cat] || cat}</option>
-                ))}
-              </select>
-              {!categoryTouched && newName.trim() && selectedCategory !== 'その他' && (
-                <span className={styles.autoCategoryHint}>{t.inventory.autoCategoryHint}</span>
-              )}
-            </div>
-          </form>
-
-          {isJudging && (
-            <div className={styles.aiJudgingState}>
-              <motion.img
-                key={judgingPose}
-                src={`/mascot/${judgingPose}`}
-                alt=""
-                width={80}
-                height={80}
-                animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
-                transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <p>{t.inventory.aiJudgingText}</p>
-            </div>
+          <button type="submit" disabled={!newName.trim() || isJudging}>
+            <Plus size={20} />
+            {t.inventory.addButton}
+          </button>
+        </div>
+        <div className={styles.categorySelectRow} style={{ opacity: isJudging ? 0.5 : 1, pointerEvents: isJudging ? 'none' : undefined, transition: 'opacity 0.2s' }} aria-disabled={isJudging}>
+          <label className={styles.categorySelectLabel}>{t.inventory.categoryLabel}</label>
+          <select
+            className={styles.categorySelect}
+            value={selectedCategory}
+            onChange={(e) => { setSelectedCategory(e.target.value); setCategoryTouched(true); }}
+            disabled={isJudging}
+          >
+            {CATEGORY_ORDER.map(cat => (
+              // <option>内は画像を描画できないためテキストのみ表示
+              <option key={cat} value={cat}>{t.category[cat] || cat}</option>
+            ))}
+          </select>
+          {!categoryTouched && newName.trim() && selectedCategory !== 'その他' && (
+            <span className={styles.autoCategoryHint}>{t.inventory.autoCategoryHint}</span>
           )}
+        </div>
+      </form>
 
-          {loading && (
-            <div className="flex justify-center mt-4">
-              <Loader2 className="spinner" size={32} color="var(--primary)" />
-            </div>
-          )}
+      {isJudging && (
+        <div className={styles.aiJudgingState}>
+          <motion.img
+            key={judgingPose}
+            src={`/mascot/${judgingPose}`}
+            alt=""
+            width={80}
+            height={80}
+            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <p>{t.inventory.aiJudgingText}</p>
+        </div>
+      )}
 
-          {/* カテゴリ一覧: タップでカテゴリ詳細画面に遷移する(常にコンパクトな一覧を保つ) */}
-          {!loading && (
-            <div className={styles.categoryGroups}>
-              {Object.entries(grouped).map(([category, items]) => {
-                const iconSlug = CATEGORY_ICON_SLUGS[category] || 'other';
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    className={styles.categoryListRow}
-                    onClick={() => openCategory(category)}
-                  >
-                    <span className={styles.categoryTitle}>
-                      <UiIcon slug={iconSlug} size={22} alt={category} />
-                      <span>{t.category[category] || category}</span>
-                    </span>
-                    <span className={styles.categoryListRowRight}>
-                      <span className={styles.categoryCount}>{items.length}</span>
-                      <ChevronRight size={18} />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+      {loading && (
+        <div className="flex justify-center mt-4">
+          <Loader2 className="spinner" size={32} color="var(--primary)" />
+        </div>
+      )}
 
-          {!loading && !hasIngredients && (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-              <img src="/mascot/bear_sleeping.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
-              <p>{t.inventory.emptyState}</p>
-            </div>
-          )}
-        </>
-      ) : (
-        /* カテゴリ詳細画面: 検索・並び替え・グリッド/リスト切替を備えた単一カテゴリの一覧 */
-        <div className={styles.categoryDetail}>
-          <div className={styles.detailHeader}>
-            <button
-              type="button"
-              className={styles.backBtn}
-              onClick={() => setViewingCategory(null)}
-              title={t.inventory.backButtonTitle}
-            >
-              <ChevronLeft size={22} />
+      {!loading && hasIngredients && (
+        <div className={styles.fridgeFrame}>
+          <div className={styles.fridgeCard}>
+            {visibleZones.map(zone => {
+              const items = zoneItems[zone.key];
+              const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
+              const normalItems = items.filter(i => !forgottenIds.has(i.id));
+              const isSeasoning = zone.key === 'seasoning';
+              return (
+                <div key={zone.key} className={`${styles.zoneBand} ${zone.bandClass}`}>
+                  <div className={styles.zoneLabelRow}>
+                    <UiIcon slug={zone.icon} size={18} alt={zone.label} />
+                    <span>{zone.label}</span>
+                    {zone.note && <span className={styles.zoneNote}>{zone.note}</span>}
+                    {zone.key === 'vegetable' && <span className={styles.zoneCount}>{items.length}</span>}
+                  </div>
+                  {normalItems.length > 0 && (
+                    <div className={styles.zoneChips}>
+                      {normalItems.map(item => (
+                        <ShelfItemChip
+                          key={item.id}
+                          item={item}
+                          variant={isSeasoning ? 'square' : 'circle'}
+                          onRequestDelete={setConfirmDeleteItem}
+                          onTogglePin={handleTogglePin}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {forgottenInZone.map(item => (
+                    <ForgottenShelfAlert key={item.id} item={item} onFindRecipe={handleFindRecipeForForgotten} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && !hasIngredients && (
+        <div className={styles.fridgeFrame}>
+          <div className={styles.fridgeCardSkeleton}>
+            <div className={styles.fridgeSkeletonBand} />
+            <div className={styles.fridgeSkeletonBand} />
+            <div className={styles.fridgeSkeletonBandLast} />
+          </div>
+          <div className={styles.emptyStateCard}>
+            <img src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
+            <p className={styles.emptyStateTitle}>{t.inventory.emptyTitle}</p>
+            <p className={styles.emptyStateBody}>{t.inventory.emptyBody}</p>
+            <button type="button" className={styles.emptyStateCta} onClick={() => router.push('/receipt')}>
+              {t.inventory.emptyCta}
             </button>
-            <UiIcon slug={CATEGORY_ICON_SLUGS[viewingCategory] || 'other'} size={22} alt={viewingCategory} />
-            <span className={styles.detailTitle}>{t.category[viewingCategory] || viewingCategory}</span>
-            <span className={styles.categoryCount}>{categoryItems.length}</span>
           </div>
+        </div>
+      )}
 
-          <div className={styles.detailControls}>
-            <div className={styles.searchBox}>
-              <Search size={16} />
-              <input
-                type="text"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder={t.inventory.searchInCategoryPlaceholder(t.category[viewingCategory] || viewingCategory)}
-              />
+      {confirmDeleteItem && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmDeleteItem(null)}>
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmIconCircle}>
+              <IngredientIcon name={confirmDeleteItem.name} size={32} />
             </div>
-            <select
-              className={styles.sortSelect}
-              value={categorySort}
-              onChange={(e) => setCategorySort(e.target.value as typeof categorySort)}
-              title={t.inventory.sortLabel}
-            >
-              <option value="default">{t.inventory.sortDefault}</option>
-              <option value="newest">{t.inventory.sortNewest}</option>
-              <option value="oldest">{t.inventory.sortOldest}</option>
-              <option value="name">{t.inventory.sortName}</option>
-            </select>
-            <div className={styles.viewToggle}>
-              <button
-                type="button"
-                className={categoryViewMode === 'grid' ? styles.viewToggleBtnActive : styles.viewToggleBtn}
-                onClick={() => setCategoryViewMode('grid')}
-                title={t.inventory.gridViewTitle}
-              >
-                <LayoutGrid size={16} />
+            <p className={styles.confirmText}>{t.inventory.deleteConfirmTitle(confirmDeleteItem.name)}</p>
+            <div className={styles.confirmActions}>
+              <button type="button" className={styles.confirmCancelBtn} onClick={() => setConfirmDeleteItem(null)}>
+                {t.inventory.deleteConfirmCancel}
               </button>
-              <button
-                type="button"
-                className={categoryViewMode === 'list' ? styles.viewToggleBtnActive : styles.viewToggleBtn}
-                onClick={() => setCategoryViewMode('list')}
-                title={t.inventory.listViewTitle}
-              >
-                <ListIcon size={16} />
+              <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmDelete}>
+                {t.inventory.deleteConfirmOk}
               </button>
             </div>
           </div>
-
-          {sortedCategoryItems.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-              <p>{t.inventory.noSearchResults}</p>
-            </div>
-          ) : categoryViewMode === 'grid' ? (
-            <div className={styles.grid}>
-              {sortedCategoryItems.map((item) => (
-                <GridIngredientCard
-                  key={item.id}
-                  item={item}
-                  isForgotten={forgottenIds.has(item.id)}
-                  onDelete={handleDelete}
-                  onTogglePin={handleTogglePin}
-                />
-              ))}
-            </div>
-          ) : (
-            <ul className={styles.list} style={{ padding: 0 }}>
-              {sortedCategoryItems.map((item) => (
-                <SwipeableIngredientRow
-                  key={item.id}
-                  item={item}
-                  isOpen={openSwipeId === item.id}
-                  isForgotten={forgottenIds.has(item.id)}
-                  ageDays={Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))}
-                  onOpenChange={setOpenSwipeId}
-                  onDelete={handleDelete}
-                  onTogglePin={handleTogglePin}
-                />
-              ))}
-            </ul>
-          )}
         </div>
       )}
 
@@ -583,4 +480,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-

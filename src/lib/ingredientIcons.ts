@@ -2,6 +2,8 @@
 // レシピ・在庫・買い物リストに実際に出てくる表記ゆれ（「豚バラ肉」「豚こま切れ肉」等）を
 // できるだけ吸収できるよう、キーワードは複数登録している。
 
+import { toHiragana } from './kana';
+
 const ICON_KEYWORDS: Record<string, string[]> = {
   // --- 野菜 ---
   onion: ["たまねぎ", "玉ねぎ", "玉葱", "エシャロット", "エシャレット", "シャロット"],
@@ -226,7 +228,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   // --- お菓子・スイーツ ---
   shortcake: ["ショートケーキ", "いちごのショートケーキ"],
   candy: ["あめ", "飴", "キャンディ", "ペロペロキャンディ", "駄菓子"],
-  cookie: ["クッキー", "チョコチップクッキー"],
+  cookie: ["クッキー", "チョコチップクッキー", "ビスケット"],
   potatochips: ["ポテトチップス", "ポテトチップ", "チップス"],
   icecream: ["アイスクリーム", "アイス"],
   pudding: ["プリン"],
@@ -240,7 +242,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
 
   // --- 調味料・油 ---
   salt: ["塩", "しお"],
-  sugar: ["砂糖", "さとう"],
+  sugar: ["砂糖", "さとう", "グラニュー糖", "上白糖", "三温糖", "きび砂糖", "粉砂糖"],
   vinegar: ["酢", "お酢", "ビネガー", "米酢", "穀物酢", "りんご酢", "黒酢"],
   soysauce: ["しょうゆ", "醤油", "ナンプラー"],
   soysauce2: ["濃口醤油", "薄口醤油"],
@@ -300,7 +302,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   water: ["ミネラルウォーター", "おみず", "水"],
   coffee: ["コーヒー"],
   sparklingwater: ["炭酸水"],
-  greentea: ["お茶", "紅茶", "緑茶", "麦茶"],
+  greentea: ["お茶", "紅茶", "緑茶", "麦茶", "抹茶"],
   wine: ["ワイン"],
   beer: ["ビール"],
   nihonshu: ["日本酒", "清酒"],
@@ -381,6 +383,10 @@ const FLAT: { keyword: string; slug: string }[] = Object.entries(ICON_KEYWORDS)
   .flatMap(([slug, keywords]) => keywords.map((keyword) => ({ keyword, slug })))
   .sort((a, b) => b.keyword.length - a.keyword.length);
 
+// カタカナ/ひらがなの表記ゆれ(「トマト」⇔「とまと」等)を吸収するため、
+// 判定時はひらがなに正規化した形で比較する(FLATと同じ並び順で対応させる)。
+const NORMALIZED_FLAT_KEYWORDS: string[] = FLAT.map(({ keyword }) => toHiragana(keyword));
+
 // 1文字キーワードは「豚肉の未知の部位名」のような未列挙の複合語に対する
 // フォールバックとして意図的に広く一致させているが、そのせいで「米」が
 // 「米油」「米酢」のような別カテゴリの複合語まで拾ってしまう(＝素材名の
@@ -413,8 +419,10 @@ export const ICON_BASE_PATH = "/ingredients/";
 export function getIngredientIconSlug(ingredientName: string): string | null {
   const name = ingredientName.trim();
   if (!name) return null;
-  for (const { keyword, slug } of FLAT) {
-    if (name.includes(keyword) && !isExcludedMatch(name, keyword)) return slug;
+  const normalizedName = toHiragana(name);
+  for (let i = 0; i < FLAT.length; i++) {
+    const { keyword, slug } = FLAT[i];
+    if (normalizedName.includes(NORMALIZED_FLAT_KEYWORDS[i]) && !isExcludedMatch(name, keyword)) return slug;
   }
   return null;
 }
