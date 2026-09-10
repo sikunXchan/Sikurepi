@@ -60,16 +60,18 @@ function computeAgeDays(createdAt: string): number {
 // 長押しでピン留めは既存のジェスチャーを踏襲。削除は常時表示の小さなボタンだと
 // 見た目が煩雑になる(=「冷蔵庫っぽさ」を損なう)ため廃止し、ダブルタップに変更した。
 // 長押しでピン留めが発火した分はタップとしてカウントしない(誤ってダブルタップ削除
-// にならないようにする)。
+// にならないようにする)。ダブルタップ自体も誤操作の入り口になり得るため、実際の
+// 削除は呼び出し元(親)が確認ダイアログを挟んでから行う(onRequestDeleteは
+// 「削除を確認したい」というリクエストであり、即削除ではない)。
 function ShelfItemChip({
   item,
   variant,
-  onDelete,
+  onRequestDelete,
   onTogglePin,
 }: {
   item: Ingredient;
   variant: 'circle' | 'square';
-  onDelete: (id: number, name: string) => void;
+  onRequestDelete: (item: Ingredient) => void;
   onTogglePin: (item: Ingredient) => void;
 }) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +103,7 @@ function ShelfItemChip({
     if (now - lastTapAtRef.current < DOUBLE_TAP_MS) {
       lastTapAtRef.current = 0;
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
-      onDelete(item.id, item.name);
+      onRequestDelete(item);
     } else {
       lastTapAtRef.current = now;
     }
@@ -184,6 +186,9 @@ export default function InventoryPage() {
   // ローディング画面を表示する)
   const [isJudging, setIsJudging] = useState(false);
   const [judgingPose, setJudgingPose] = useState(JUDGING_POSES[0]);
+  // ダブルタップ削除は誤操作が怖いという要望を受け、即削除ではなく
+  // ここに削除対象を入れて確認ダイアログを挟む
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<Ingredient | null>(null);
 
   useEffect(() => {
     loadIngredients();
@@ -253,6 +258,12 @@ export default function InventoryPage() {
     deleteLocalIngredient(id);
     loadIngredients();
     if (name) showToast(t.inventory.deletedToast(name));
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmDeleteItem) return;
+    handleDelete(confirmDeleteItem.id, confirmDeleteItem.name);
+    setConfirmDeleteItem(null);
   };
 
   const handleTogglePin = (item: Ingredient) => {
@@ -408,7 +419,7 @@ export default function InventoryPage() {
                           key={item.id}
                           item={item}
                           variant={isSeasoning ? 'square' : 'circle'}
-                          onDelete={handleDelete}
+                          onRequestDelete={setConfirmDeleteItem}
                           onTogglePin={handleTogglePin}
                         />
                       ))}
@@ -438,6 +449,25 @@ export default function InventoryPage() {
             <button type="button" className={styles.emptyStateCta} onClick={() => router.push('/receipt')}>
               {t.inventory.emptyCta}
             </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteItem && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmDeleteItem(null)}>
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmIconCircle}>
+              <IngredientIcon name={confirmDeleteItem.name} size={32} />
+            </div>
+            <p className={styles.confirmText}>{t.inventory.deleteConfirmTitle(confirmDeleteItem.name)}</p>
+            <div className={styles.confirmActions}>
+              <button type="button" className={styles.confirmCancelBtn} onClick={() => setConfirmDeleteItem(null)}>
+                {t.inventory.deleteConfirmCancel}
+              </button>
+              <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmDelete}>
+                {t.inventory.deleteConfirmOk}
+              </button>
+            </div>
           </div>
         </div>
       )}

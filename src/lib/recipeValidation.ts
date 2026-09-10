@@ -5,6 +5,7 @@
 // 検出し、採用前に再生成・修正させる。
 
 import { isPantryStaple } from "@/lib/storage";
+import { toHiragana } from "@/lib/kana";
 
 export type ValidatedIngredient = { name: string; amount: string };
 
@@ -90,10 +91,6 @@ export function validateRecipeShape(value: unknown, pathPrefix = "recipe"): stri
 // カタカナをひらがなに正規化してから比較する(「エビ」除外指定 vs 「えび」と
 // AIが表記したケースのような、かな表記ゆれでアレルギー等の除外チェックが
 // すり抜けないようにするため)
-function toHiragana(s: string): string {
-  return s.replace(/[ァ-ヶ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60));
-}
-
 const normalize = (s: string) => toHiragana(s.trim().toLowerCase());
 
 // storage.tsのisIngredientMissingと同じ「部分一致で表記ゆれを許容する」判定を、
