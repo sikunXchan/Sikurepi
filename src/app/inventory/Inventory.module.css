@@ -84,425 +84,6 @@
   appearance: auto;
 }
 
-.swipeWrapper {
-  position: relative;
-  overflow: hidden;
-  margin-top: 8px;
-  border-radius: var(--border-radius);
-}
-
-.swipeDeleteBg {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-end;
-}
-
-.swipeDeleteBtn {
-  width: 88px;
-  height: 100%;
-  background: #ef4444;
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.listItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: var(--card-bg-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--glass-shadow);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  will-change: transform, opacity;
-  cursor: grab;
-  touch-action: pan-y;
-}
-
-@media (max-width: 768px) {
-  .listItem {
-    padding: 16px;
-  }
-
-  .swipeDeleteBtn {
-    min-width: 44px;
-  }
-}
-
-.listItem:hover {
-  border-color: var(--primary-light);
-}
-
-@media (hover: none) {
-  .listItem:hover {
-    border-color: var(--glass-border);
-  }
-}
-
-.listItem span {
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.listItem.pinned {
-  /* ピン留めは黄色の座布団＋左の太いバーで、色覚に頼らず分かるようにする */
-  background: #fffaf0 !important;
-  border: 1px solid rgba(240, 165, 0, 0.45) !important;
-  border-left: 5px solid var(--accent) !important;
-  box-shadow: 0 8px 26px rgba(240, 165, 0, 0.2);
-  z-index: 10;
-}
-
-.listItem.pinned span {
-  color: #9a5b00; /* 黄色い座布団の上でも読める濃い琥珀 */
-  font-weight: 900;
-}
-
-/* 食品ロス防止: 長く放置され使われていない食材は、ピンとは別の色でそっと目立たせる */
-.listItem.forgotten {
-  background: rgba(255, 111, 145, 0.06);
-  border: 1px solid rgba(255, 111, 145, 0.35);
-}
-
-/* 呼びかけ中の食材アイコンが小刻みに震える(悲しんでいる/寒がっている様子) */
-@keyframes forgottenTremble {
-  0%, 100% { transform: rotate(0deg) translate(0, 0); }
-  20% { transform: rotate(-4deg) translate(-1px, 0); }
-  40% { transform: rotate(3deg) translate(1px, 0); }
-  60% { transform: rotate(-3deg) translate(-1px, 0); }
-  80% { transform: rotate(2deg) translate(1px, 0); }
-}
-
-.forgottenIconWrap {
-  display: inline-flex;
-  animation: forgottenTremble 0.6s ease-in-out infinite;
-  transform-origin: 50% 85%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .forgottenIconWrap {
-    animation: none;
-  }
-}
-
-.nameTextCol {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 2px;
-}
-
-.forgottenCallout {
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  color: var(--primary-text);
-  opacity: 0.9;
-}
-
-/* Category groups */
-.nameSection {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.itemCategoryRow {
-  margin-top: 3px;
-}
-
-.categoryBadge {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  padding: 2px 7px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.categoryBadge:hover {
-  background: rgba(255, 111, 145, 0.1);
-  color: var(--primary);
-  border-color: var(--primary-light);
-}
-
-.inlineCategory {
-  font-size: 13px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  border: 1px solid var(--primary-light);
-  background: var(--glass-bg);
-  color: var(--foreground);
-  cursor: pointer;
-  appearance: auto;
-}
-
-.addingNote {
-  text-align: center;
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: -12px;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.categoryGroups {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* カテゴリ一覧の各行。アコーディオン展開はせず、タップでカテゴリ詳細画面に遷移する */
-.categoryListRow {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: var(--card-bg-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--glass-shadow);
-  cursor: pointer;
-  color: var(--foreground);
-  font-size: 16px;
-  font-weight: 900;
-  transition: border-color 0.15s ease;
-}
-
-.categoryListRow:hover {
-  border-color: var(--primary-light);
-  transform: none;
-}
-
-.categoryListRowRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-secondary);
-}
-
-.categoryTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.categoryCount {
-  font-size: 13px;
-  font-weight: 900;
-  background: var(--primary);
-  color: #ffffff;
-  padding: 2px 9px;
-  border-radius: 20px;
-}
-
-.list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 10px 10px;
-  overflow: hidden;
-}
-
-/* ===== カテゴリ詳細画面 ===== */
-.categoryDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.detailHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--card-bg-solid);
-  color: var(--foreground);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.detailTitle {
-  flex: 1;
-  min-width: 0;
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--foreground);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detailControls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.searchBox {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 12px;
-  border-radius: 14px;
-  border: 2px solid var(--border);
-  background: var(--card-bg-solid);
-  color: var(--text-muted);
-}
-
-.searchBox input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: none;
-  outline: none;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--foreground);
-}
-
-.sortSelect {
-  padding: 9px 10px;
-  border-radius: 14px;
-  border: 2px solid var(--border);
-  background: var(--card-bg-solid);
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.viewToggle {
-  display: flex;
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.viewToggleBtn,
-.viewToggleBtnActive {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  cursor: pointer;
-  background: var(--card-bg-solid);
-  color: var(--text-muted);
-  box-shadow: none;
-}
-
-.viewToggleBtnActive {
-  background: var(--primary);
-  color: #ffffff;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.gridCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 16px 10px;
-  background: var(--card-bg-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--glass-shadow);
-  text-align: center;
-  user-select: none;
-  touch-action: manipulation;
-}
-
-.gridCardName {
-  font-size: 14px;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.gridCardPinned {
-  background: #fffaf0;
-  border: 1px solid rgba(240, 165, 0, 0.45);
-  border-left: 5px solid var(--accent);
-  box-shadow: 0 8px 26px rgba(240, 165, 0, 0.2);
-}
-
-.gridCardPinned .gridCardName {
-  color: #9a5b00;
-  font-weight: 900;
-}
-
-.gridCardForgotten {
-  background: rgba(255, 111, 145, 0.06);
-  border: 1px solid rgba(255, 111, 145, 0.35);
-}
-
-.gridDeleteBtn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 999px;
-  border: none;
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--text-muted);
-  cursor: pointer;
-  box-shadow: none;
-}
-
-.gridDeleteBtn:hover {
-  background: #ef4444;
-  color: #ffffff;
-}
-
 /* ===== page.tsx が参照していたのに未定義だったクラス =====
    ヘッダーが未スタイルで、タイトルと設定ボタンが縦積みになっていたため追加 */
 .header {
@@ -522,15 +103,353 @@
 .settingsBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ===== 冷蔵庫の棚 (フリッジカード) ===== */
+
+.fridgeCard {
+  background: var(--card-bg-solid);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(255, 111, 145, 0.18);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.zoneBand {
+  padding: 12px 14px;
+  border-bottom: 2px solid rgba(58, 43, 43, 0.08);
+}
+
+.zoneBand:last-child {
+  border-bottom: none;
+}
+
+.zoneVegetable {
+  background: var(--card-bg-solid);
+}
+
+.zoneMeatChilled {
+  background: rgba(255, 111, 145, 0.04);
+}
+
+.zoneSeasoning {
+  background: rgba(240, 165, 0, 0.06);
+  border-top: 3px dashed rgba(240, 165, 0, 0.4);
+  padding: 14px 14px 16px;
+}
+
+.zoneLabelRow {
+  display: flex;
+  align-items: center;
   gap: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--foreground);
+  margin-bottom: 10px;
+}
+
+.zoneSeasoning .zoneLabelRow {
+  color: #8a5a00;
+}
+
+.zoneNote {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a97b1f;
+}
+
+.zoneCount {
+  margin-left: auto;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.zoneChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.zoneSeasoning .zoneChips {
+  gap: 8px;
+}
+
+/* --- 食材チップ --- */
+
+.shelfChip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 52px;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.shelfChipSquare {
+  width: 48px;
+}
+
+.shelfChipIconCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(224, 70, 110, 0.10);
+}
+
+.zoneVegetable .shelfChipIconCircle {
+  background: #fff7f5;
+}
+
+.shelfChipIconSquare {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(240, 165, 0, 0.18);
+}
+
+.shelfChipName {
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+.shelfChipSquare .shelfChipName {
+  font-size: 9.5px;
+}
+
+.shelfChipPinned .shelfChipIconCircle,
+.shelfChipPinned .shelfChipIconSquare {
+  background: #fffaf0;
+  box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(240, 165, 0, 0.3);
+}
+
+.shelfChipPinned .shelfChipName {
+  color: #9a5b00;
+}
+
+.shelfChipDeleteBtn {
+  position: absolute;
+  top: -4px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+  z-index: 1;
+}
+
+.shelfChipDeleteBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* --- 呼びかけアラート(食品ロス防止) --- */
+
+@keyframes shelfTremble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes urgentPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+}
+
+.forgottenBlock {
+  margin-top: 12px;
+}
+
+.forgottenAlert {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(255, 111, 145, 0.16) 0%, rgba(255, 111, 145, 0.06) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.45);
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+.forgottenAlertIconWrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.forgottenAlertPulseRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: urgentPulse 1.4s ease-in-out infinite;
+}
+
+.forgottenAlertIconCircle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  animation: shelfTremble 0.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forgottenAlertPulseRing,
+  .forgottenAlertIconCircle {
+    animation: none;
+  }
+}
+
+.forgottenAlertBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  white-space: nowrap;
+}
+
+.forgottenAlertTextSide {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forgottenAlertMascot {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.forgottenAlertText {
+  font-size: 12px;
+  font-weight: 800;
+  color: #c0304a;
+  line-height: 1.4;
+}
+
+.forgottenAlertCta {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: #ffffff;
+  border: 1.5px solid rgba(255, 111, 145, 0.4);
+  color: var(--primary-text);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px;
+  border-radius: 12px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+/* ===== 空状態 ===== */
+
+.fridgeCardSkeleton {
+  background: var(--card-bg-solid);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(255, 111, 145, 0.18);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+  opacity: 0.55;
+}
+
+.fridgeSkeletonBand {
+  padding: 16px 14px;
+  border-bottom: 2px solid rgba(58, 43, 43, 0.06);
+  height: 16px;
+}
+
+.fridgeSkeletonBandLast {
+  padding: 16px 14px;
+  height: 16px;
+}
+
+.emptyStateCard {
+  background: var(--card-bg-solid);
+  border: 1px solid rgba(255, 111, 145, 0.14);
+  border-radius: var(--border-radius);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  box-shadow: var(--glass-shadow);
+  margin-top: -96px;
+}
+
+.emptyStateTitle {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--foreground);
+}
+
+.emptyStateBody {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.emptyStateCta {
+  width: 100%;
+  text-align: center;
   background: var(--gradient-primary);
   color: #ffffff;
-  border: none;
-  border-radius: 999px;
-  padding: 9px 16px;
   font-size: 14px;
   font-weight: 800;
+  padding: 13px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(224, 70, 110, 0.28);
+  margin-top: 6px;
+  border: none;
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
 }

@@ -140,6 +140,21 @@ export default function RecipePage() {
     }
   }, []);
 
+  // 在庫タブの「呼びかけ」食材カードから「このXでレシピを探す」で遷移してきた場合、
+  // ?ingredient=<id> にその食材IDが入っている。復元したキャッシュより優先して
+  // その食材だけを選択状態にし、ピッカーを開いて選択済みであることが見えるようにする。
+  // (useSearchParamsだとSuspense境界が必要になるため、location.searchを直接読む)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const idParam = new URLSearchParams(window.location.search).get("ingredient");
+    if (!idParam) return;
+    const id = Number(idParam);
+    if (!Number.isFinite(id)) return;
+    setCreationMode('inventory');
+    setSelectedIngredientIds([id]);
+    setIngredientPickerExpanded(true);
+  }, []);
+
   const loadLocalData = () => {
     const list = getLocalIngredients();
     setIngredients(list);
