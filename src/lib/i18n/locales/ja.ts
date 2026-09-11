@@ -272,6 +272,9 @@ const ja = {
     title: "食材スキャン",
     subtitle: "レシートを撮るだけで登録できるよ",
     description: "レシートや冷蔵庫・食材の写真をアップロードすると、AIが食材を自動検出します（複数枚同時OK）。",
+    flowSelect: "写真を選ぶ",
+    flowReview: "結果を確認",
+    flowStore: "在庫へ追加",
     errorReadFailed: "読み取りに失敗しました",
     errorNoIngredientsDetected: "画像から食材が検出されませんでした。別の写真でお試しください。",
     successTitle: "登録完了！",
@@ -289,6 +292,7 @@ const ja = {
     selectPhotoHint: "レシート・冷蔵庫の中・食材",
     analyzeButton: (n: number) => `${n}枚の画像を解析する`,
     analyzingText: "AIが画像を解析して食材を抽出中...",
+    manualEntryButton: "手入力で登録する",
   },
   // ブリガード・ド・キュイジーヌ(伝統的なフランス料理の厨房組織)にちなんだ
   // レベルランク名。言語切替に関わらずフランス語表記で統一する(バッジ画像にも
@@ -352,6 +356,18 @@ const ja = {
     pause: "一時停止",
     startTimer: "タイマー開始",
     tapHint: "画面タップ：右で次へ / 左で戻る",
+    cookedDefaultTitle: "料理",
+    cookedTitle: (title: string) => `「${title}」を調理しました！`,
+    cookedDescription: "使い切った食材にチェックを入れてください。在庫にある食材だけが初めから選択されています。",
+    cookedDoneTitle: "調理完了！お疲れさまでした！",
+    cookedDoneMessage: (n: number) => n > 0
+      ? `自炊記録を保存し、在庫を${n}件更新しました`
+      : "自炊記録を保存しました",
+    cookedCompleteButton: (n: number) => n > 0
+      ? `${n}件を在庫から減らして完了`
+      : "調理を記録して完了",
+    cookedRecordOnly: "在庫を減らさずに記録のみ",
+    cookedError: "記録中にエラーが発生しました",
   },
   settings: {
     tabProfile: "マイ設定",

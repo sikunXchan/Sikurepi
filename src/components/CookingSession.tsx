@@ -41,14 +41,24 @@ type StepMeta = {
 };
 
 function parseStepMeta(step: string): StepMeta {
-  const timeMatch = step.match(/(\d+)\s*(時間|分|秒)/);
   let seconds: number | null = null;
-  if (timeMatch) {
-    const n = parseInt(timeMatch[1], 10);
-    const unit = timeMatch[2];
-    seconds = unit === "時間" ? n * 3600 : unit === "分" ? n * 60 : n;
+  const timePattern = /(\d+(?:\.\d+)?)(?:\s*[-–〜~]\s*\d+(?:\.\d+)?)?\s*(時間|分|秒|hours?|hrs?|hr|minutes?|mins?|min|seconds?|secs?|sec)/gi;
+  const matches = Array.from(step.matchAll(timePattern));
+  if (matches.length > 0) {
+    seconds = matches.reduce((total, match) => {
+      const value = Number(match[1]);
+      const unit = match[2].toLowerCase();
+      if (unit === "時間" || unit.startsWith("hour") || unit === "hr" || unit === "hrs") {
+        return total + value * 3600;
+      }
+      if (unit === "分" || unit.startsWith("min")) {
+        return total + value * 60;
+      }
+      return total + value;
+    }, 0);
+    seconds = Math.round(seconds);
   }
-  const heatMatch = step.match(/強火|中火|弱火|予熱|沸騰|余熱/);
+  const heatMatch = step.match(/強火|中火|弱火|予熱|沸騰|余熱|medium[-\s]?high heat|high heat|medium heat|low heat|preheat(?:ed)?|boil(?:ing)?|simmer(?:ing)?/i);
   return { seconds, heat: heatMatch ? heatMatch[0] : null };
 }
 
