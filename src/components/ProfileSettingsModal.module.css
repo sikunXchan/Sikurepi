@@ -51,7 +51,7 @@
 
 .tabRow {
   display: flex;
-  background: #f3f4f6;
+  background: #f5ede4;
   padding: 4px;
   border-radius: 12px;
   margin: 12px 20px 0;
@@ -131,6 +131,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(112, 79, 58, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .sectionLabel {
@@ -170,7 +174,7 @@
   padding: 8px 6px 6px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
-  background: #fffaf8;
+  background: #fffdf9;
   color: #4b5563;
   font-size: 12px;
   font-weight: 800;

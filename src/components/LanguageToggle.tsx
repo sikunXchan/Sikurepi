@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import UiIcon from "./UiIcon";
 import styles from "./LanguageToggle.module.css";
 
 export default function LanguageToggle() {
@@ -13,8 +14,8 @@ export default function LanguageToggle() {
       onClick={toggleLanguage}
       title={t.language.toggleLabel}
     >
-      {/* 国旗は現在の言語ではなく、タップした時に切り替わる先の言語(=隣のラベルと同じ対象)を示す */}
-      <span className={styles.flag}>{language === "ja" ? "🇬🇧" : "🇯🇵"}</span>
+      <UiIcon slug="language_globe" collection="core" size={17} alt="" />
+      <span className={styles.languageCode}>{language === "ja" ? "EN" : "JA"}</span>
       <span>{t.language.toggleLabel}</span>
     </button>
   );

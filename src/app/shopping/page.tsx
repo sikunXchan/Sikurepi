@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Check } from "lucide-react";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   getLocalShoppingItems,
@@ -16,6 +16,7 @@ import {
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Shopping.module.css";
 
@@ -30,17 +31,20 @@ export default function ShoppingPage() {
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadItems();
-    const handleUpdate = () => loadItems();
-    window.addEventListener("storage-updated", handleUpdate);
-    return () => window.removeEventListener("storage-updated", handleUpdate);
-  }, []);
-
-  const loadItems = () => {
+  function loadItems() {
     setItems(getLocalShoppingItems());
     setLoading(false);
-  };
+  }
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(loadItems, 0);
+    const handleUpdate = () => loadItems();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener("storage-updated", handleUpdate);
+    };
+  }, []);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +83,7 @@ export default function ShoppingPage() {
   };
 
   const createFlyingEffect = (name: string, startX: number, startY: number, endX: number, endY: number) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const el = document.createElement("div");
     el.innerText = name;
     el.style.position = "fixed";
@@ -157,9 +162,7 @@ export default function ShoppingPage() {
       </form>
 
       {loading && (
-        <div className="flex justify-center mt-4">
-          <Loader2 className="spinner" size={32} color="var(--primary)" />
-        </div>
+        <KitchenLoader compact text={t.shopping.subtitle} />
       )}
 
       {!loading && (
@@ -217,7 +220,8 @@ export default function ShoppingPage() {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <img src="/mascot/bear_basket.png" alt="" width={96} height={96} style={{ marginBottom: 8 }} />
+              <span className={styles.emptyShelf} aria-hidden="true" />
+              <img src="/mascot/bear_basket.png" alt="" width={112} height={112} />
               <p>{t.shopping.emptyState}</p>
             </div>
           )}

@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pin, Settings } from "lucide-react";
-import { motion } from "framer-motion";
+import { Plus, Pin, Settings } from "lucide-react";
 import confetti from "canvas-confetti";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import KitchenLoader from "@/components/KitchenLoader";
 import {
   getLocalIngredients,
   addLocalIngredient,
@@ -27,9 +27,6 @@ import styles from "./Inventory.module.css";
 
 const LONG_PRESS_MS = 550;
 const DOUBLE_TAP_MS = 320;
-
-// AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
-const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
 
 function computeAgeDays(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -175,7 +172,6 @@ export default function InventoryPage() {
   // 依頼している間だけtrueにする(判定中はフォームを操作不可にしてキャラクターの
   // ローディング画面を表示する)
   const [isJudging, setIsJudging] = useState(false);
-  const [judgingPose, setJudgingPose] = useState(JUDGING_POSES[0]);
   // ダブルタップ削除は誤操作が怖いという要望を受け、即削除ではなく
   // ここに削除対象を入れて確認ダイアログを挟む
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<Ingredient | null>(null);
@@ -217,7 +213,6 @@ export default function InventoryPage() {
     // 判定は送信時の1回きりにし、応答が返るまでキャラクター付きのローディング
     // 画面を表示してフォームを操作不可にする。
     if (!categoryTouched && selectedCategory === "その他") {
-      setJudgingPose(JUDGING_POSES[Math.floor(Math.random() * JUDGING_POSES.length)]);
       setIsJudging(true);
       try {
         const result = await matchIngredientSemantic(cleanName);
@@ -364,24 +359,11 @@ export default function InventoryPage() {
       </form>
 
       {isJudging && (
-        <div className={styles.aiJudgingState}>
-          <motion.img
-            key={judgingPose}
-            src={`/mascot/${judgingPose}`}
-            alt=""
-            width={80}
-            height={80}
-            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
-            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <p>{t.inventory.aiJudgingText}</p>
-        </div>
+        <KitchenLoader compact text={t.inventory.aiJudgingText} />
       )}
 
       {loading && (
-        <div className="flex justify-center mt-4">
-          <Loader2 className="spinner" size={32} color="var(--primary)" />
-        </div>
+        <KitchenLoader compact text={t.inventory.subtitle} />
       )}
 
       {!loading && hasIngredients && (

@@ -36,9 +36,9 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <LanguageToggle />
-            <div className="container">
+            <main className="container app-content">
               {children}
-            </div>
+            </main>
             <BottomNav />
             <CookingCheerBear />
             <SyncManager />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, Sparkles, Settings } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -9,6 +9,7 @@ import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
@@ -31,7 +32,6 @@ import {
   CATEGORY_ICON_SLUGS,
   Ingredient,
   UserProfile,
-  ClimateState,
   NutritionData
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -409,111 +409,43 @@ export default function RecipePage() {
           変わってしまう混乱を防ぐ(ボタン自体は押せるが見た目にも分かるよう薄くする) */}
       <div style={{ pointerEvents: loading ? 'none' : undefined, opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }} aria-disabled={loading}>
       {/* AI作成モード切り替え (在庫から作成 ⇄ 自由作成) */}
-      <div style={{
-        display: 'flex',
-        background: 'var(--card-bg-solid)',
-        border: '1px solid var(--glass-border)',
-        borderRadius: 16,
-        padding: 4,
-        gap: 4,
-        marginBottom: 12,
-      }}>
+      <div className={styles.modeTabs}>
         <button
           type="button"
           onClick={() => setCreationMode('inventory')}
-          style={{
-            flex: 1,
-            background: creationMode === 'inventory' ? 'var(--gradient-primary)' : 'transparent',
-            color: creationMode === 'inventory' ? 'white' : 'var(--text-secondary)',
-            border: 'none',
-            boxShadow: 'none',
-            borderRadius: 12,
-            padding: '10px 8px',
-            fontSize: 14,
-            fontWeight: 800,
-            cursor: 'pointer',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}
+          className={`${styles.modeTab} ${creationMode === 'inventory' ? styles.modeTabPrimary : ''}`}
         >
           {t.recipe.modeInventory}
         </button>
         <button
           type="button"
           onClick={() => setCreationMode('free')}
-          style={{
-            flex: 1,
-            background: creationMode === 'free' ? 'var(--gradient-primary)' : 'transparent',
-            color: creationMode === 'free' ? 'white' : 'var(--text-secondary)',
-            border: 'none',
-            boxShadow: 'none',
-            borderRadius: 12,
-            padding: '10px 8px',
-            fontSize: 14,
-            fontWeight: 800,
-            cursor: 'pointer',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}
+          className={`${styles.modeTab} ${creationMode === 'free' ? styles.modeTabPrimary : ''}`}
         >
           {t.recipe.modeFree}
         </button>
       </div>
 
       {/* 単品の候補を複数出す ⇄ 主菜・副菜・汁物からなる定食セットを1組出す */}
-      <div style={{
-        display: 'flex',
-        background: 'var(--card-bg-solid)',
-        border: '1px solid var(--glass-border)',
-        borderRadius: 16,
-        padding: 4,
-        gap: 4,
-        marginBottom: 12,
-      }}>
+      <div className={`${styles.modeTabs} ${styles.mealTabs}`}>
         <button
           type="button"
           onClick={() => setMealStyle('single')}
-          style={{
-            flex: 1,
-            background: mealStyle === 'single' ? 'var(--gradient-cool)' : 'transparent',
-            color: mealStyle === 'single' ? 'white' : 'var(--text-secondary)',
-            border: 'none',
-            boxShadow: 'none',
-            borderRadius: 12,
-            padding: '10px 8px',
-            fontSize: 14,
-            fontWeight: 800,
-            cursor: 'pointer',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}
+          className={`${styles.modeTab} ${mealStyle === 'single' ? styles.mealTabActive : ''}`}
         >
           {t.recipe.mealStyleSingle}
         </button>
         <button
           type="button"
           onClick={() => setMealStyle('set')}
-          style={{
-            flex: 1,
-            background: mealStyle === 'set' ? 'var(--gradient-cool)' : 'transparent',
-            color: mealStyle === 'set' ? 'white' : 'var(--text-secondary)',
-            border: 'none',
-            boxShadow: 'none',
-            borderRadius: 12,
-            padding: '10px 8px',
-            fontSize: 14,
-            fontWeight: 800,
-            cursor: 'pointer',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}
+          className={`${styles.modeTab} ${mealStyle === 'set' ? styles.mealTabActive : ''}`}
         >
           {t.recipe.mealStyleSet}
         </button>
       </div>
 
       {/* 設定・リクエストフォーム */}
-      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div className={`card ${styles.requestCard}`}>
         {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
@@ -688,7 +620,7 @@ export default function RecipePage() {
             </>
           ) : (
             <>
-              <Sparkles size={18} />
+              <UiIcon slug="cooking_pot" size={24} alt="" />
               {t.recipe.generateButton}
             </>
           )}
@@ -697,17 +629,7 @@ export default function RecipePage() {
       </div>
 
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
-          <motion.img
-            src="/mascot/bear_delivering.png"
-            alt={t.recipe.loadingAlt}
-            width={96}
-            height={96}
-            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
-            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.recipe.loadingText}</p>
-        </div>
+        <KitchenLoader text={t.recipe.loadingText} />
       )}
 
       {errorMsg && (
@@ -822,7 +744,7 @@ export default function RecipePage() {
                     </span>
                     {recipe.ingredients.length > 0 && (
                       <div className={styles.ingredientIconRow}>
-                        {recipe.ingredients.map((item, i) => (
+                        {recipe.ingredients.slice(0, 9).map((item, i) => (
                           <IngredientIcon key={i} name={item.name} size={24} />
                         ))}
                       </div>
