@@ -821,43 +821,44 @@ export default function RecipePage() {
                   size={184}
                   className={styles.recipeDetailDishIcon}
                 />
-                <div className={styles.recipeDetailHeroInfo}>
-                  <div className={styles.badgeRow}>
-                    {detailRecipe.course && (
-                      <span className={styles.genreBadge}>
-                        <UiIcon slug={COURSE_ICON_SLUGS[detailRecipe.course] || 'other'} size={16} alt={detailRecipe.course} />
-                        {' '}{t.recipe.courseLabel[detailRecipe.course] || detailRecipe.course}
-                      </span>
-                    )}
-                    {detailRecipe.genre && (
-                      <span className={styles.genreBadge}>{t.tagLabel[detailRecipe.genre] || detailRecipe.genre}</span>
-                    )}
-                    {detailRecipe.climate_badge && (
-                      <span className={styles.climateBadge}>
-                        <UiIcon slug="clear" size={15} alt="" />
-                        {stripLeadingEmoji(detailRecipe.climate_badge)}
-                      </span>
-                    )}
-                    {detailRecipe.dish_badge && (
-                      <span className={styles.climateBadge}>
-                        <UiIcon slug="dishwashing" size={15} alt="" />
-                        {stripLeadingEmoji(detailRecipe.dish_badge)}
-                      </span>
-                    )}
-                  </div>
-                  <h2 className={styles.recipeTitle}>{detailRecipe.title}</h2>
-                  <span className={styles.recipeTime}>
-                    <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
-                    {detailRecipe.time}
-                  </span>
-                  {detailRecipe.ingredients.length > 0 && (
-                    <div className={styles.ingredientIconRow}>
-                      {detailRecipe.ingredients.slice(0, 9).map((item, i) => (
-                        <IngredientIcon key={i} name={item.name} size={25} />
-                      ))}
-                    </div>
+              </div>
+
+              <div className={styles.recipeDetailSummary}>
+                <div className={styles.badgeRow}>
+                  {detailRecipe.course && (
+                    <span className={styles.genreBadge}>
+                      <UiIcon slug={COURSE_ICON_SLUGS[detailRecipe.course] || 'other'} size={16} alt={detailRecipe.course} />
+                      {' '}{t.recipe.courseLabel[detailRecipe.course] || detailRecipe.course}
+                    </span>
+                  )}
+                  {detailRecipe.genre && (
+                    <span className={styles.genreBadge}>{t.tagLabel[detailRecipe.genre] || detailRecipe.genre}</span>
+                  )}
+                  {detailRecipe.climate_badge && (
+                    <span className={styles.climateBadge}>
+                      <UiIcon slug="clear" size={15} alt="" />
+                      {stripLeadingEmoji(detailRecipe.climate_badge)}
+                    </span>
+                  )}
+                  {detailRecipe.dish_badge && (
+                    <span className={styles.climateBadge}>
+                      <UiIcon slug="dishwashing" size={15} alt="" />
+                      {stripLeadingEmoji(detailRecipe.dish_badge)}
+                    </span>
                   )}
                 </div>
+                <h2 className={styles.recipeTitle}>{detailRecipe.title}</h2>
+                <span className={styles.recipeTime}>
+                  <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
+                  {detailRecipe.time}
+                </span>
+                {detailRecipe.ingredients.length > 0 && (
+                  <div className={styles.ingredientIconRow}>
+                    {detailRecipe.ingredients.slice(0, 9).map((item, i) => (
+                      <IngredientIcon key={i} name={item.name} size={25} />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className={styles.recipeDetailContent}>
