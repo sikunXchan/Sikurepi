@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
 import { validateRecipeShape, validateRecipeLogic, buildValidationRetryNote, ValidatedRecipe, FeasibilityContext } from '@/lib/recipeValidation';
+import { parseAiJson } from '@/lib/aiJson';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -155,7 +156,15 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
 
-      const json = JSON.parse(text);
+      let json: Record<string, unknown>;
+      try {
+        json = parseAiJson<Record<string, unknown>>(text);
+      } catch (parseError) {
+        lastErrors = [
+          `response was not valid JSON: ${parseError instanceof Error ? parseError.message : 'unknown parse error'}`,
+        ];
+        continue;
+      }
       const planArray: unknown[] = Array.isArray(json.plan) ? json.plan : [];
 
       const shapeErrors = planArray.length > 0

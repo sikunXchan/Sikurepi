@@ -495,4 +495,3 @@
 @media (prefers-reduced-motion: reduce) {
   .greetingMascot { animation: none; }
 }
-  box-shadow: 0 8px 18px rgba(63, 108, 93, 0.12);

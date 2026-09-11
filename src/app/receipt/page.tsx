@@ -309,7 +309,7 @@ export default function ReceiptPage() {
       )}
 
       {loading && (
-        <KitchenLoader text={t.receipt.analyzingText} />
+        <KitchenLoader variant="delivering" text={t.receipt.analyzingText} />
       )}
     </div>
   );
