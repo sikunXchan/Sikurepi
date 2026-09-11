@@ -75,8 +75,10 @@ export default function HomePage() {
     const todayDate = new Date().toISOString().slice(0, 10);
     const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
     if (cached) {
-      setDailyPick(cached);
-      setDailyPickLoading(false);
+      queueMicrotask(() => {
+        setDailyPick(cached);
+        setDailyPickLoading(false);
+      });
       return;
     }
 
@@ -162,6 +164,8 @@ export default function HomePage() {
         </button>
       </header>
 
+      <ChefProfileBadge />
+
       <div className={styles.quickActions}>
         <Link href="/receipt" className={styles.quickActionBtn}>
           <span className={`${styles.quickIcon} ${styles.quickIconWarm}`}><UiIcon slug="receipt" collection="core" size={28} alt="" /></span>
@@ -173,15 +177,13 @@ export default function HomePage() {
         </Link>
       </div>
 
-      <ChefProfileBadge />
-
       <div className={`${styles.card} ${styles.cardPick}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}><UiIcon slug="cooking_pot" size={25} alt="" />{t.home.todaysPickTitle}</span>
           <span className={styles.todayBadge}>TODAY</span>
         </div>
         {dailyPickLoading ? (
-          <KitchenLoader compact variant="reading" text={t.home.todaysPickLoading} />
+          <KitchenLoader compact variant="cooking" text={t.home.todaysPickLoading} />
         ) : !dailyPick ? (
           <div className={styles.emptyKitchen}>
             <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
@@ -201,24 +203,6 @@ export default function HomePage() {
               {t.home.todaysPickViewButton}
             </button>
           </div>
-        )}
-      </div>
-
-      <div className={`${styles.card} ${styles.cardShopping}`}>
-        <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}><UiIcon slug="shopping_cart" collection="core" size={24} alt="" />{t.home.shoppingTitle}</span>
-          <Link href="/shopping" className={styles.cardSeeAll}>{t.home.shoppingSeeAll}<ChevronRight size={14} /></Link>
-        </div>
-        {shoppingItems.length === 0 ? (
-          <div className={styles.emptyRow}><UiIcon slug="shopping_cart" collection="core" size={34} alt="" /><p>{t.home.shoppingEmpty}</p></div>
-        ) : (
-          <ul className={styles.shoppingList}>
-            {shoppingItems.slice(0, 3).map(item => (
-              <li key={item.id} className={styles.shoppingRow}>
-                <span className={styles.shoppingRowName}>{item.name}</span>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
 
@@ -243,32 +227,52 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className={`${styles.card} ${styles.cardCommunity}`}>
-        <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
-        </div>
-        {communityRecipes.length === 0 ? (
-          <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
-        ) : (
-          <div className={styles.communityList}>
-            {communityRecipes.map(row => (
-              <div key={row.id} className={styles.communityRow}>
-                <div className={styles.communityRowInfo}>
-                  <p className={styles.communityRowTitle}>{row.recipe.title}</p>
-                </div>
-                <button
-                  type="button"
-                  className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
-                  onClick={() => handleLike(row.id)}
-                  title={t.home.communityLikeTitle}
-                >
-                  <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
-                  {row.likes_count}
-                </button>
-              </div>
-            ))}
+      <div className={styles.supportGrid}>
+        <div className={`${styles.card} ${styles.cardShopping}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}><UiIcon slug="shopping_cart" collection="core" size={24} alt="" />{t.home.shoppingTitle}</span>
+            <Link href="/shopping" className={styles.cardSeeAll}>{t.home.shoppingSeeAll}<ChevronRight size={14} /></Link>
           </div>
-        )}
+          {shoppingItems.length === 0 ? (
+            <div className={styles.emptyRow}><UiIcon slug="shopping_cart" collection="core" size={34} alt="" /><p>{t.home.shoppingEmpty}</p></div>
+          ) : (
+            <ul className={styles.shoppingList}>
+              {shoppingItems.slice(0, 3).map(item => (
+                <li key={item.id} className={styles.shoppingRow}>
+                  <span className={styles.shoppingRowName}>{item.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className={`${styles.card} ${styles.cardCommunity}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
+          </div>
+          {communityRecipes.length === 0 ? (
+            <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
+          ) : (
+            <div className={styles.communityList}>
+              {communityRecipes.map(row => (
+                <div key={row.id} className={styles.communityRow}>
+                  <div className={styles.communityRowInfo}>
+                    <p className={styles.communityRowTitle}>{row.recipe.title}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
+                    onClick={() => handleLike(row.id)}
+                    title={t.home.communityLikeTitle}
+                  >
+                    <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
+                    {row.likes_count}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

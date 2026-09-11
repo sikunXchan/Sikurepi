@@ -189,6 +189,7 @@ const ja = {
     slotLunch: "昼",
     slotDinner: "夜",
     skipDay: "この日はいらない",
+    selectedMeals: (n: number) => `${n}食を選択中`,
     generateButton: "週間献立を自動生成",
     generateLoading: "AIシェフが週間献立を考案中...",
     freeRemaining: (n: number) => `無料プラン: 残り${n}回生成できます`,

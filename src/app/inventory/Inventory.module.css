@@ -439,38 +439,19 @@
 
 /* ===== 空状態 ===== */
 
-.fridgeCardSkeleton {
-  background: var(--card-bg-solid);
-  border-radius: var(--border-radius);
-  border: 1px solid rgba(255, 111, 145, 0.18);
-  box-shadow: var(--glass-shadow);
-  overflow: hidden;
-  opacity: 0.55;
-}
-
-.fridgeSkeletonBand {
-  padding: 16px 14px;
-  border-bottom: 2px solid rgba(58, 43, 43, 0.06);
-  height: 16px;
-}
-
-.fridgeSkeletonBandLast {
-  padding: 16px 14px;
-  height: 16px;
-}
-
 .emptyStateCard {
   background: var(--card-bg-solid);
   border: 1px solid rgba(255, 111, 145, 0.14);
   border-radius: var(--radius-md);
-  padding: 30px 20px;
+  min-height: 280px;
+  padding: 34px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
   gap: 10px;
   box-shadow: var(--glass-shadow);
-  margin-top: -96px;
 }
 
 .emptyStateTitle {

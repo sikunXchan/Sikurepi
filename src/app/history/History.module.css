@@ -37,18 +37,6 @@
 
 .emptyState img { position: relative; z-index: 2; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(91, 57, 39, 0.12)); }
 
-.emptyBook {
-  position: absolute;
-  right: 11%;
-  bottom: 42px;
-  left: 11%;
-  height: 58px;
-  border-radius: 12px 12px 24px 24px;
-  background: linear-gradient(90deg, #f0c889 49.4%, #b77a49 50%, #f0c889 50.6%);
-  opacity: 0.7;
-  transform: perspective(240px) rotateX(52deg);
-}
-
 .emptyIcon {
   display: grid;
   place-items: center;

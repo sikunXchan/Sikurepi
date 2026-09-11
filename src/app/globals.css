@@ -192,7 +192,10 @@ input::placeholder, textarea::placeholder {
 }
 
 .app-content > * {
-  animation: pageEnter 360ms var(--ease-out) both;
+  /* fill-mode: both leaves transform: translateY(0) permanently applied. A
+     transformed page becomes the containing block for fixed full-screen UI,
+     so opening cooking mode after scrolling shows only an empty slice. */
+  animation: pageEnter 360ms var(--ease-out);
 }
 
 /* 見出し共通: グラデ文字は背景のピンクに溶けて読めないので、必ずベタ塗り＋極太で出す */
