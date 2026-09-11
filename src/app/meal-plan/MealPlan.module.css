@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .header {
@@ -16,6 +16,264 @@
   font-weight: 800;
   color: var(--primary-text);
   margin: 0;
+}
+
+.description {
+  margin: -2px 2px 2px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.planner {
+  position: relative;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(133, 91, 58, 0.16);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.86), transparent 25%),
+    linear-gradient(145deg, #fff9ef 0%, #f4e4cf 100%);
+  box-shadow: var(--shadow-lifted);
+  transition: opacity var(--motion-base) ease;
+}
+
+.planner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 72px, rgba(135, 89, 51, 0.025) 72px 74px);
+}
+
+.plannerBusy { pointer-events: none; opacity: 0.55; }
+
+.plannerTopline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.plannerEyebrow {
+  color: var(--secondary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.plannerTitle {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.dayRail {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(142px, 1fr));
+  gap: 10px;
+  margin: 0 -18px;
+  padding: 4px 18px 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.dayRail::-webkit-scrollbar { display: none; }
+
+.dayCard {
+  scroll-snap-align: start;
+  min-height: 184px;
+  padding: 11px;
+  border: 1px solid rgba(115, 78, 51, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 7px 18px rgba(102, 65, 39, 0.08);
+  transition: opacity var(--motion-fast) ease, transform var(--motion-fast) var(--ease-out);
+}
+
+.dayCardActive { opacity: 1; }
+.dayCardOff { opacity: 0.62; filter: saturate(0.6); }
+
+.dayCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  margin-bottom: 8px;
+}
+
+.dayLabel {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.skipButton {
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(111, 78, 59, 0.07);
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+.skipButton:hover { transform: none; box-shadow: none; background: rgba(111, 78, 59, 0.12); }
+
+.mealSlots { display: grid; gap: 7px; }
+
+.mealSlot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 1fr 18px;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 7px;
+  border: 1px solid rgba(111, 78, 59, 0.1);
+  border-radius: 14px;
+  background: #fffdf9;
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.mealSlot:hover { transform: none; box-shadow: none; }
+.mealSlotActive { border-color: rgba(23, 148, 141, 0.24); background: var(--surface-mint); color: var(--ink); }
+
+.slotCheck {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(111, 78, 59, 0.14);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--secondary);
+  font-style: normal;
+}
+
+.mealSlotActive .slotCheck { border-color: rgba(23, 148, 141, 0.28); background: rgba(23, 148, 141, 0.1); }
+
+.moonMark {
+  width: 19px;
+  height: 19px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background: #7180b4;
+  box-shadow: 6px -3px 0 0 #fffdf9;
+}
+
+.mealSlotActive .moonMark { box-shadow: 6px -3px 0 0 var(--surface-mint); }
+
+.dayToggle {
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.dayToggle:hover { transform: none; box-shadow: none; }
+
+.generateButton {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 3px;
+  padding: 11px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #2b9d96, #72cfc5);
+  box-shadow: 0 9px 20px rgba(23, 148, 141, 0.22);
+  font-size: 14px;
+}
+
+.planRecipeCard {
+  overflow: hidden !important;
+  border: 1px solid var(--line-soft) !important;
+  border-radius: var(--radius-md) !important;
+  background: rgba(255,255,255,0.9) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.planRecipeHeader {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  padding: 13px !important;
+  border-radius: 0 !important;
+  background: linear-gradient(135deg, #fffaf2, #eef8f4) !important;
+  filter: none !important;
+}
+
+.planDish {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.82);
+}
+
+.planDish img { width: 70px !important; height: 70px !important; object-fit: contain !important; }
+
+.planTitleInfo {
+  position: static !important;
+  width: auto !important;
+  flex: 1 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.planHeaderActions {
+  position: static !important;
+  margin-left: auto;
+}
+
+.planCardContent {
+  margin: 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--line-soft) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 480px) {
+  .planDish { width: 58px; height: 58px; border-radius: 18px; }
+  .planDish img { width: 54px !important; height: 54px !important; }
+  .planHeaderActions { gap: 3px !important; }
+}
+
+@media (min-width: 820px) {
+  .dayRail { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .planner { padding: 15px; }
+  .dayRail { margin-inline: -15px; padding-inline: 15px; grid-template-columns: repeat(7, minmax(132px, 1fr)); }
 }
 
 /* スロットカードはレシピ生成ページと全く同じ見た目にするため、

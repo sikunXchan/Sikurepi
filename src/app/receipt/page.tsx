@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, ArrowRight, Sparkles, Image as ImageIcon } from "lucide-react";
+import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { addLocalIngredient, CATEGORY_ORDER } from "@/lib/storage";
 import { setNavLocked } from "@/lib/navLock";
 import PageHeader from "@/components/PageHeader";
+import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./Receipt.module.css";
 
@@ -16,15 +16,6 @@ type ExtractedItem = {
   name: string;
   category: string;
 };
-
-// 解析中に毎回違う体勢を見せて飽きさせないためのポーズ一覧。
-// CookingCheerBearのBEAR_POSES・レシピ生成中のローディング画像とは
-// 重複しない画像だけを使う。
-const LOADING_POSES = [
-  "bear_reading.png",
-  "bear_running.png",
-  "bear_sleeping.png",
-];
 
 export default function ReceiptPage() {
   const { t } = useLanguage();
@@ -36,7 +27,6 @@ export default function ReceiptPage() {
   const [extractedList, setExtractedList] = useState<ExtractedItem[]>([]);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [success, setSuccess] = useState(false);
-  const [loadingPose, setLoadingPose] = useState(LOADING_POSES[0]);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,7 +49,6 @@ export default function ReceiptPage() {
     if (files.length === 0) return;
 
     setLoading(true);
-    setLoadingPose(LOADING_POSES[Math.floor(Math.random() * LOADING_POSES.length)]);
     setErrorMsg("");
     setExtractedList([]);
     setSuccess(false);
@@ -320,18 +309,7 @@ export default function ReceiptPage() {
       )}
 
       {loading && (
-        <div className={styles.loadingState}>
-          <motion.img
-            key={loadingPose}
-            src={`/mascot/${loadingPose}`}
-            alt=""
-            width={96}
-            height={96}
-            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
-            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <p>{t.receipt.analyzingText}</p>
-        </div>
+        <KitchenLoader text={t.receipt.analyzingText} />
       )}
     </div>
   );

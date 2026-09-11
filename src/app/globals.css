@@ -31,6 +31,23 @@
   --gradient-warm: linear-gradient(135deg, #fff0d9 0%, #ffe4b5 50%, #ffc971 100%);
   --gradient-cool: linear-gradient(135deg, #17948d 0%, #35b3ab 50%, #7fd8d1 100%);
   --gradient-hero: linear-gradient(180deg, #fffaf8 0%, #fff4f2 40%, #ffeaf0 100%);
+  --canvas: #fffaf4;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-warm: #fff7eb;
+  --surface-mint: #eaf7f3;
+  --ink: #40302c;
+  --ink-soft: #785f58;
+  --wood: #c78e58;
+  --wood-dark: #8d5d36;
+  --line-soft: rgba(111, 78, 59, 0.12);
+  --shadow-soft: 0 12px 32px rgba(98, 62, 46, 0.09);
+  --shadow-lifted: 0 18px 48px rgba(98, 62, 46, 0.14);
+  --radius-sm: 14px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --motion-fast: 160ms;
+  --motion-base: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* スマホ側のシステムテーマ(ダークモード)に連動して配色が変わると
@@ -51,7 +68,10 @@ html {
 }
 
 body {
-  background: var(--gradient-hero);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 224, 190, 0.38), transparent 27rem),
+    radial-gradient(circle at 95% 12%, rgba(176, 226, 214, 0.24), transparent 24rem),
+    linear-gradient(180deg, #fffdf9 0%, var(--canvas) 48%, #fff3f4 100%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: 'M PLUS Rounded 1c', -apple-system, BlinkMacSystemFont, "Hiragino Maru Gothic ProN",
@@ -90,7 +110,7 @@ button {
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), background-color var(--motion-fast) ease, color var(--motion-fast) ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -154,20 +174,25 @@ input::placeholder, textarea::placeholder {
 
 .container {
   flex: 1;
-  max-width: 600px;
+  max-width: 720px;
   width: 100%;
   margin: 0 auto;
-  padding: 20px;
-  padding-bottom: 100px;
+  padding: 22px clamp(16px, 4vw, 28px);
+  padding-bottom: 116px;
 }
 
 .card {
-  background: var(--card-bg-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
   padding: 18px;
   margin-bottom: 16px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+.app-content > * {
+  animation: pageEnter 360ms var(--ease-out) both;
 }
 
 /* 見出し共通: グラデ文字は背景のピンクに溶けて読めないので、必ずベタ塗り＋極太で出す */
@@ -241,5 +266,27 @@ input::placeholder, textarea::placeholder {
   button:active {
     transform: scale(0.96);
     transition: transform 0.08s ease;
+  }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-top: 14px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
