@@ -1004,6 +1004,17 @@
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
 }
 
+/* 単品はトレーの主役なので、定食セットの各皿より一段だけ大きく見せる。 */
+.recipeDishChoiceSingle { flex-basis: 204px; }
+.recipeDishChoiceSingle .recipeDishChoiceIcon { width: 184px !important; height: 184px !important; }
+.recipeDishChoiceSingle::after { top: 156px; width: 124px; }
+
+/* 生成結果が1品だけなら中央に据え、余白を料理の存在感へ振り分ける。 */
+.recipeDishGridSolo { justify-content: center; }
+.recipeDishChoiceSolo { flex-basis: 224px; }
+.recipeDishChoiceSolo .recipeDishChoiceIcon { width: 204px !important; height: 204px !important; }
+.recipeDishChoiceSolo::after { top: 174px; width: 136px; }
+
 .recipeDishChoiceName {
   position: relative;
   z-index: 2;
@@ -1177,6 +1188,14 @@
   .recipeDishChoiceIcon { width: 148px !important; height: 148px !important; }
   .recipeDishChoice::after { top: 124px; width: 96px; }
   .recipeDishChoiceName { max-width: 164px; font-size: 15px; }
+  .recipeDishGridSingle { padding-inline: calc(50% - 92px); scroll-padding-inline: calc(50% - 92px); }
+  .recipeDishChoiceSingle { flex-basis: 184px; }
+  .recipeDishChoiceSingle .recipeDishChoiceIcon { width: 166px !important; height: 166px !important; }
+  .recipeDishChoiceSingle::after { top: 141px; width: 108px; }
+  .recipeDishGridSolo { justify-content: center; padding-inline: 0; overflow-x: hidden; }
+  .recipeDishChoiceSolo { flex-basis: 204px; }
+  .recipeDishChoiceSolo .recipeDishChoiceIcon { width: 184px !important; height: 184px !important; }
+  .recipeDishChoiceSolo::after { top: 157px; width: 122px; }
 
   .recipeDetailTopbar { padding-inline: 10px; }
   .recipeDetailTopbar strong { font-size: 13px; }

@@ -698,19 +698,19 @@ export default function RecipePage() {
             className={styles.recipeTrayGallery}
             style={{ backgroundImage: `url("${selectedTray.asset}")` }}
           >
-            <div className={styles.recipeDishGrid}>
+            <div className={`${styles.recipeDishGrid} ${mealStyle === 'single' ? styles.recipeDishGridSingle : ''} ${recipes.length === 1 ? styles.recipeDishGridSolo : ''}`}>
               {recipes.map((recipe, index) => (
                 <button
                   key={index}
                   type="button"
-                  className={styles.recipeDishChoice}
+                  className={`${styles.recipeDishChoice} ${mealStyle === 'single' ? styles.recipeDishChoiceSingle : ''} ${recipes.length === 1 ? styles.recipeDishChoiceSolo : ''}`}
                   onClick={() => setExpandedIndex(index)}
                   aria-label={`${recipe.title} — ${language === 'ja' ? 'レシピを表示' : 'View recipe'}`}
                 >
                   <RecipeThumbnail
                     genre={recipe.genre}
                     fallbackIngredientName={recipe.title}
-                    size={168}
+                    size={mealStyle === 'single' ? (recipes.length === 1 ? 204 : 184) : 168}
                     className={styles.recipeDishChoiceIcon}
                   />
                   <span className={styles.recipeDishChoiceName}>{recipe.title}</span>
