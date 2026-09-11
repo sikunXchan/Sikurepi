@@ -53,7 +53,7 @@ JSON形式のみで、日本語(ja)と英語(en)の両方の文言を必ず含�
   "tagline": { "ja": "短いキャッチコピー（例：旬の食材でおいしく！）", "en": "short catchy blurb" },
   "time": "調理時間目安（例：20分）",
   "genre": "和食",
-  "dish_badge": "🍽️ 洗い物少なめ（2点）",
+  "dish_badge": "洗い物少なめ（2点）",
   "ingredients": [
     { "name": { "ja": "食材名", "en": "ingredient name" }, "amount": { "ja": "分量（例：200g）", "en": "amount (e.g. 200g)" } }
   ],

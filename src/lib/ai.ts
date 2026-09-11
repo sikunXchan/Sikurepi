@@ -14,7 +14,7 @@ export function buildSeasoningSection(assumeSeasoningsAvailable: boolean = true)
   return assumeSeasoningsAvailable ? SEASONING_ASSUMED_SECTION : SEASONING_NOT_ASSUMED_SECTION;
 }
 
-export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に短いタグで示してください（例：「🍽️ 洗い物少なめ（2点）」「🍽️ 洗い物やや多め（5点）」）。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
+export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に文字だけの短いタグで示してください（例：「洗い物少なめ（2点）」「洗い物やや多め（5点）」）。絵文字や装飾記号は含めないでください。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
 
 // ユーザーから「AIのレシピは味が薄い」という強い不満が寄せられたための、
 // 最優先厳守の味付け指示。「うす味・減塩」等をユーザー自身が明示的に

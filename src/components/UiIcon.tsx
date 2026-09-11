@@ -8,13 +8,14 @@ type Props = {
   size?: number;
   alt?: string;
   className?: string;
+  collection?: "ui" | "core";
 };
 
-export default function UiIcon({ slug, size = 20, alt = "", className }: Props) {
+export default function UiIcon({ slug, size = 20, alt = "", className, collection = "ui" }: Props) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/icons/ui/${slug}.png`}
+      src={`/icons/${collection}/${slug}.png`}
       alt={alt}
       width={size}
       height={size}

@@ -276,11 +276,18 @@
 }
 
 .recipeCard {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
+  position: relative;
+  background:
+    repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.055) 0 2px, transparent 2px 22px),
+    linear-gradient(145deg, #d69a62 0%, #c27c48 52%, #ad6339 100%);
+  border: 2px solid rgba(116, 62, 32, 0.3);
+  border-radius: 26px;
+  padding: 10px;
   overflow: hidden;
-  box-shadow: var(--glass-shadow);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -3px 0 rgba(101, 50, 25, 0.16),
+    0 12px 28px rgba(92, 48, 28, 0.15);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
   perspective: 1000px;
@@ -311,7 +318,10 @@
 }
 
 .recipeCard:hover {
-  box-shadow: 0 20px 60px rgba(255, 111, 145, 0.15);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -3px 0 rgba(101, 50, 25, 0.16),
+    0 18px 42px rgba(92, 48, 28, 0.22);
 }
 
 .recipeIcon {
@@ -366,6 +376,9 @@
   font-size: 13px;
   color: var(--text-muted);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .recipeActions {
@@ -692,7 +705,9 @@
 
 /* Genre badge */
 .genreBadge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
   font-weight: 700;
   padding: 2px 8px;
@@ -889,11 +904,56 @@
 
 .cardHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
+  padding: 14px;
   cursor: pointer;
+  background: rgba(255, 252, 247, 0.96);
+  border: 1px solid rgba(126, 75, 43, 0.14);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+.trayDishVisual {
+  position: relative;
+  flex: 0 0 126px;
+  width: 126px;
+  height: 126px;
+  display: grid;
+  place-items: center;
+}
+
+.trayDishVisual::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 5px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(78, 43, 27, 0.13);
+  filter: blur(5px);
+}
+
+.trayPlate {
+  position: relative;
+  z-index: 1;
+  width: 118px;
+  height: 118px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 45% 38%, #ffffff 0 44%, #fff7ec 45% 63%, #dfc5a9 64% 67%, #fffaf3 68% 100%);
+  border: 1px solid rgba(111, 67, 40, 0.14);
+  box-shadow: 0 5px 12px rgba(87, 47, 26, 0.13);
+}
+
+.trayDishIcon {
+  position: relative;
+  z-index: 2;
+  object-fit: contain !important;
 }
 
 .titleInfo {
@@ -911,6 +971,9 @@
 }
 
 .climateBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   font-weight: 800;
   background: var(--background-secondary);
@@ -949,10 +1012,45 @@
 }
 
 .cardContent {
-  padding: 0 16px 16px;
+  padding: 16px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: rgba(255, 252, 247, 0.97);
+  border: 1px solid rgba(126, 75, 43, 0.14);
+  border-radius: 18px;
+}
+
+@media (max-width: 560px) {
+  .cardHeader {
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .trayDishVisual {
+    width: 90px;
+    height: 90px;
+    flex-basis: 90px;
+  }
+
+  .trayPlate {
+    width: 88px;
+    height: 88px;
+  }
+
+  .trayDishIcon {
+    width: 82px !important;
+    height: 82px !important;
+  }
+
+  .headerActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
 }
 
 .sectionHeader {

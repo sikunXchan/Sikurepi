@@ -10,6 +10,7 @@ import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
+import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import {
@@ -82,6 +83,12 @@ const TIP_CATEGORY_COLORS: Record<string, string> = {
   '調理のコツ': '#ff6f91',
   '栄養豆知識': '#8b5cf6',
 };
+
+// Geminiの過去キャッシュにはバッジ先頭の絵文字が残っている場合がある。
+// 専用アイコンと二重表示にならないよう、表示時だけ装飾記号を除去する。
+const stripLeadingEmoji = (value: string) => value
+  .replace(/^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D\s]+/gu, '')
+  .trim();
 
 export default function RecipePage() {
   const { t, language } = useLanguage();
@@ -648,7 +655,7 @@ export default function RecipePage() {
                             }}
                           >
                             <IngredientIcon name={ing.name} size={20} />
-                            {ing.is_pinned && '📌 '}
+                            {ing.is_pinned && <UiIcon slug="pin" collection="core" size={14} alt="" />}
                             {ing.name}
                           </button>
                         );
@@ -722,7 +729,8 @@ export default function RecipePage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {feasibilityWarning.missingKeyIngredients.map((name, i) => (
                 <span key={i} style={{ fontSize: 12, fontWeight: 700, color: '#92600a', background: 'rgba(240, 165, 0, 0.18)', padding: '3px 9px', borderRadius: 999 }}>
-                  🛒 {name}
+                  <UiIcon slug="shopping_cart" collection="core" size={15} alt="" />
+                  {name}
                 </span>
               ))}
             </div>
@@ -772,6 +780,16 @@ export default function RecipePage() {
                   className={styles.cardHeader}
                   onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
                 >
+                  <div className={styles.trayDishVisual}>
+                    <div className={styles.trayPlate}>
+                      <RecipeThumbnail
+                        genre={recipe.genre}
+                        fallbackIngredientName={recipe.title}
+                        size={112}
+                        className={styles.trayDishIcon}
+                      />
+                    </div>
+                  </div>
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
                       {recipe.course && (
@@ -784,14 +802,23 @@ export default function RecipePage() {
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
                       {recipe.climate_badge && (
-                        <span className={styles.climateBadge}>🌤️ {recipe.climate_badge}</span>
+                        <span className={styles.climateBadge}>
+                          <UiIcon slug="clear" size={15} alt="" />
+                          {stripLeadingEmoji(recipe.climate_badge)}
+                        </span>
                       )}
                       {recipe.dish_badge && (
-                        <span className={styles.climateBadge}>{recipe.dish_badge}</span>
+                        <span className={styles.climateBadge}>
+                          <UiIcon slug="dishwashing" size={15} alt="" />
+                          {stripLeadingEmoji(recipe.dish_badge)}
+                        </span>
                       )}
                     </div>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
-                    <span className={styles.recipeTime}>⏱ {recipe.time}</span>
+                    <span className={styles.recipeTime}>
+                      <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
+                      {recipe.time}
+                    </span>
                     {recipe.ingredients.length > 0 && (
                       <div className={styles.ingredientIconRow}>
                         {recipe.ingredients.map((item, i) => (
