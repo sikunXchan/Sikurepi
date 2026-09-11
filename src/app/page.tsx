@@ -9,6 +9,7 @@ import ChefProfileBadge from "@/components/ChefProfileBadge";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
+import KitchenFlowBar from "@/components/KitchenFlowBar";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalShoppingItems,
@@ -165,6 +166,8 @@ export default function HomePage() {
       </header>
 
       <ChefProfileBadge />
+
+      <KitchenFlowBar />
 
       <div className={styles.quickActions}>
         <Link href="/receipt" className={styles.quickActionBtn}>

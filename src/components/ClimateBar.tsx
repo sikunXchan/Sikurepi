@@ -12,6 +12,7 @@ import {
 import { CLIMATE_PRESETS, getAutoTimeOfDay, fetchRealWeather } from "@/lib/climate";
 import { RefreshCw, Power } from "lucide-react";
 import UiIcon from "@/components/UiIcon";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./ClimateBar.module.css";
 
 const CLIMATE_ICON_SLUGS: Record<string, string> = {
@@ -23,15 +24,9 @@ const CLIMATE_ICON_SLUGS: Record<string, string> = {
 };
 
 export default function ClimateBar() {
+  const { t } = useLanguage();
   const [climate, setClimate] = useState<ClimateState>(DEFAULT_CLIMATE_STATE);
   const [enableClimate, setEnableClimate] = useState(true);
-
-  useEffect(() => {
-    loadState();
-    const handleUpdate = () => loadState();
-    window.addEventListener("storage-updated", handleUpdate);
-    return () => window.removeEventListener("storage-updated", handleUpdate);
-  }, []);
 
   const loadState = async () => {
     const profile = getLocalUserProfile();
@@ -56,6 +51,16 @@ export default function ClimateBar() {
       setClimate(current);
     }
   };
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void loadState(), 0);
+    const handleUpdate = () => void loadState();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener("storage-updated", handleUpdate);
+    };
+  }, []);
 
   const toggleClimateEnable = () => {
     const profile = getLocalUserProfile();
@@ -82,23 +87,29 @@ export default function ClimateBar() {
                climate.condition.includes("秋") ? "autumn" :
                CLIMATE_ICON_SLUGS[climate.condition] || "clear";
 
+  const translateTokens = (value: string, dictionary: Record<string, string>) =>
+    Object.entries(dictionary).reduce((result, [source, translated]) => result.replace(source, translated), value);
+  const displayCondition = translateTokens(climate.condition, t.climateBar.conditions);
+  const displayTimeOfDay = translateTokens(climate.timeOfDay, t.climateBar.times);
+  const displayAdvice = t.climateBar.advice[climate.advice] || climate.advice;
+
   return (
     <div className={`${styles.container} ${!enableClimate ? styles.disabledContainer : ''}`}>
       <div className={styles.left}>
         <span className={styles.icon}>
-          <UiIcon slug={enableClimate ? iconSlug : 'no_entry'} size={30} alt={enableClimate ? climate.condition : ''} />
+          <UiIcon slug={enableClimate ? iconSlug : 'no_entry'} size={30} alt={enableClimate ? displayCondition : ''} />
         </span>
         <div className={styles.info}>
           <div className={styles.titleRow}>
             <span className={styles.conditionTitle}>
-              {enableClimate ? `${climate.condition} (${climate.temperature}℃) · ${climate.timeOfDay}` : '気候連動 OFF (通常提案)'}
+              {enableClimate ? `${displayCondition} (${climate.temperature}℃) · ${displayTimeOfDay}` : t.climateBar.offTitle}
             </span>
             <span className={enableClimate ? styles.autoBadge : styles.offBadge}>
-              {enableClimate ? '気候連動中' : '無効'}
+              {enableClimate ? t.climateBar.activeBadge : t.climateBar.disabledBadge}
             </span>
           </div>
           <p className={styles.advice}>
-            {enableClimate ? climate.advice : '季節や気温を考慮せず、通常のバランスレシピを提案します'}
+            {enableClimate ? displayAdvice : t.climateBar.offAdvice}
           </p>
         </div>
       </div>
@@ -107,7 +118,7 @@ export default function ClimateBar() {
           type="button"
           className={`${styles.switchBtn} ${!enableClimate ? styles.btnInactive : ''}`}
           onClick={toggleClimateEnable}
-          title={enableClimate ? "気候連動をオフにする" : "気候連動をオンにする"}
+          title={enableClimate ? t.climateBar.disableTitle : t.climateBar.enableTitle}
         >
           <Power size={12} />
           <span>{enableClimate ? 'ON' : 'OFF'}</span>
@@ -117,10 +128,10 @@ export default function ClimateBar() {
             type="button"
             className={styles.switchBtn}
             onClick={cycleClimate}
-            title="気候を手動で切り替える"
+            title={t.climateBar.cycleTitle}
           >
             <RefreshCw size={12} />
-            <span>切替</span>
+            <span>{t.climateBar.cycleButton}</span>
           </button>
         )}
       </div>

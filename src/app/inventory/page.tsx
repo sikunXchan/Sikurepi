@@ -10,6 +10,7 @@ import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
+import KitchenFlowBar from "@/components/KitchenFlowBar";
 import {
   getLocalIngredients,
   addLocalIngredient,
@@ -365,6 +366,8 @@ export default function InventoryPage() {
       />
 
       <ChefProfileBadge />
+
+      <KitchenFlowBar active="inventory" />
 
       {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
       <form onSubmit={handleAdd} className={styles.addFormWrapper}>

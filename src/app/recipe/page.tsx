@@ -13,6 +13,7 @@ import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import KitchenFlowBar from "@/components/KitchenFlowBar";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -414,6 +415,8 @@ export default function RecipePage() {
         subtitle={t.recipe.subtitle}
         mascot="bear_hero"
       />
+
+      <KitchenFlowBar active="recipe" />
 
       <ClimateBar />
 
