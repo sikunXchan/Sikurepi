@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Settings, Heart, ChevronRight, Receipt as ReceiptIcon, Refrigerator, Flame } from "lucide-react";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
@@ -13,6 +14,7 @@ import {
   getOrCreateDeviceId,
   getCachedDailyPick,
   setCachedDailyPick,
+  setPendingDailyPickHandoff,
   ShoppingItem,
   UserStats,
   SavedRecipe,
@@ -44,6 +46,7 @@ function pickText(value: BilingualText | undefined, language: "ja" | "en"): stri
 
 export default function HomePage() {
   const { t, language } = useLanguage();
+  const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
@@ -51,7 +54,6 @@ export default function HomePage() {
 
   const [dailyPick, setDailyPick] = useState<DailyPickRecipe | null>(null);
   const [dailyPickLoading, setDailyPickLoading] = useState(true);
-  const [dailyPickExpanded, setDailyPickExpanded] = useState(false);
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -99,6 +101,27 @@ export default function HomePage() {
 
   const hour = new Date().getHours();
   const greeting = hour < 5 || hour >= 18 ? t.home.greetingEvening : hour < 11 ? t.home.greetingMorning : t.home.greetingAfternoon;
+
+  // 「今日のおすすめ」をタップしたら、専用の簡易表示ではなくレシピタブの通常の
+  // レシピカードと同じ見た目・機能(材料の不足表示・クッキングモード・保存・
+  // 料理完了ボタン等)で開けるようにする。言語に応じた文言をここで確定させてから
+  // レシピタブへ1回きりの受け渡しをし、遷移する。
+  const handleOpenDailyPick = () => {
+    if (!dailyPick) return;
+    setPendingDailyPickHandoff({
+      title: pickText(dailyPick.title, language),
+      time: dailyPick.time,
+      genre: dailyPick.genre,
+      dish_badge: dailyPick.dish_badge,
+      ingredients: dailyPick.ingredients.map(ing => ({
+        name: pickText(ing.name, language),
+        amount: pickText(ing.amount, language),
+      })),
+      steps: dailyPick.steps.map(step => pickText(step, language)),
+      tips: pickText(dailyPick.tips, language),
+    });
+    router.push("/recipe");
+  };
 
   const handleLike = async (id: string) => {
     if (likedIds.has(id)) return;
@@ -157,44 +180,19 @@ export default function HomePage() {
         ) : !dailyPick ? (
           <p className={styles.emptyLine}>{t.home.todaysPickEmpty}</p>
         ) : (
-          <>
-            <div className={styles.pickBody}>
-              <div className={styles.pickThumb}>
-                <RecipeThumbnail genre={dailyPick.genre} fallbackIngredientName={pickText(dailyPick.title, language)} size={64} />
-              </div>
-              <div className={styles.pickTextCol}>
-                <p className={styles.pickTagline}>{pickText(dailyPick.tagline, language)}</p>
-                <p className={styles.pickTitle}>{pickText(dailyPick.title, language)}</p>
-                <p className={styles.pickMeta}>⏱ {dailyPick.time}</p>
-              </div>
-              <button type="button" className={styles.pickViewBtn} onClick={() => setDailyPickExpanded(v => !v)}>
-                {dailyPickExpanded ? t.home.todaysPickCloseButton : t.home.todaysPickViewButton}
-              </button>
+          <div className={styles.pickBody}>
+            <div className={styles.pickThumb}>
+              <RecipeThumbnail genre={dailyPick.genre} fallbackIngredientName={pickText(dailyPick.title, language)} size={64} />
             </div>
-            {dailyPickExpanded && (
-              <div className={styles.pickDetail}>
-                <div>
-                  <p className={styles.pickDetailSectionTitle}>{t.recipe.ingredientsSectionTitle}</p>
-                  <ul className={styles.pickIngredientsList}>
-                    {dailyPick.ingredients.map((ing, i) => (
-                      <li key={i} className={styles.pickIngredientChip}>
-                        {pickText(ing.name, language)} {pickText(ing.amount, language)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className={styles.pickDetailSectionTitle}>{t.recipe.stepsSectionTitle}</p>
-                  <ol className={styles.pickStepsList}>
-                    {dailyPick.steps.map((step, i) => (
-                      <li key={i}>{pickText(step, language)}</li>
-                    ))}
-                  </ol>
-                </div>
-                <p className={styles.pickTips}>{t.recipe.tipsPrefix}{pickText(dailyPick.tips, language)}</p>
-              </div>
-            )}
-          </>
+            <div className={styles.pickTextCol}>
+              <p className={styles.pickTagline}>{pickText(dailyPick.tagline, language)}</p>
+              <p className={styles.pickTitle}>{pickText(dailyPick.title, language)}</p>
+              <p className={styles.pickMeta}>⏱ {dailyPick.time}</p>
+            </div>
+            <button type="button" className={styles.pickViewBtn} onClick={handleOpenDailyPick}>
+              {t.home.todaysPickViewButton}
+            </button>
+          </div>
         )}
       </div>
 
