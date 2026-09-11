@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 100,
+  "count": 125,
   "canvas": {
     "width": 512,
     "height": 512,
@@ -2331,6 +2331,587 @@
               46,
               440,
               466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "world_cuisines_01",
+      "count": 25,
+      "icons": [
+        {
+          "key": "ramen",
+          "file": "icons/ramen.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              47,
+              80,
+              466,
+              431
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pho",
+          "file": "icons/pho.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              75,
+              466,
+              436
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "udon",
+          "file": "icons/udon.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              47,
+              63,
+              466,
+              449
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "soba",
+          "file": "icons/soba.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              91,
+              466,
+              421
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "bibimbap",
+          "file": "icons/bibimbap.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              92,
+              466,
+              420
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "poke_bowl",
+          "file": "icons/poke_bowl.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              48,
+              466,
+              463
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pad_thai",
+          "file": "icons/pad_thai.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              65,
+              466,
+              447
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "tom_yum",
+          "file": "icons/tom_yum.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              58,
+              466,
+              453
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "butter_chicken",
+          "file": "icons/butter_chicken.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              70,
+              466,
+              442
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "masala_dosa",
+          "file": "icons/masala_dosa.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              57,
+              466,
+              455
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "falafel_plate",
+          "file": "icons/falafel_plate.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              79,
+              466,
+              433
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "shawarma",
+          "file": "icons/shawarma.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              65,
+              466,
+              447
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "moussaka",
+          "file": "icons/moussaka.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              78,
+              466,
+              434
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "shakshuka",
+          "file": "icons/shakshuka.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              110,
+              466,
+              401
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "ratatouille",
+          "file": "icons/ratatouille.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              94,
+              466,
+              419
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fish_and_chips",
+          "file": "icons/fish_and_chips.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              88,
+              466,
+              423
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "ceviche",
+          "file": "icons/ceviche.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              72,
+              466,
+              440
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "feijoada",
+          "file": "icons/feijoada.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              75,
+              466,
+              437
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "jollof_rice",
+          "file": "icons/jollof_rice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              82,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "arepa",
+          "file": "icons/arepa.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              89,
+              466,
+              422
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pierogi",
+          "file": "icons/pierogi.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              47,
+              87,
+              466,
+              425
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "borscht",
+          "file": "icons/borscht.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              87,
+              466,
+              424
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "injera_platter",
+          "file": "icons/injera_platter.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              94,
+              466,
+              418
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "gazpacho",
+          "file": "icons/gazpacho.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              82,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "mapo_tofu",
+          "file": "icons/mapo_tofu.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              94,
+              466,
+              418
             ],
             "minimum_margin": 46,
             "edge_clear": true

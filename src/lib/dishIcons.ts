@@ -8,6 +8,33 @@ type DishIconRule = {
 // 料理名から具体的な見た目を優先して解決する。一般語ほど後ろに置き、
 // 「カレーパン→カレー」「魚介パスタ→魚介」のような誤分類を避ける。
 const DISH_ICON_RULES: readonly DishIconRule[] = [
+  // 文化圏ごとの代表料理は、見た目の近い汎用カテゴリへ落とす前に固有画像を優先する。
+  { slug: "ramen", keywords: ["ラーメン", "ramen"] },
+  { slug: "pho", keywords: ["フォー", "phở", "pho"] },
+  { slug: "udon", keywords: ["うどん", "饂飩", "udon"] },
+  { slug: "soba", keywords: ["そば", "蕎麦", "soba"] },
+  { slug: "bibimbap", keywords: ["ビビンバ", "ピビンパ", "bibimbap"] },
+  { slug: "poke_bowl", keywords: ["ポケボウル", "ポキボウル", "ポキ丼", "poke bowl", "poke"] },
+  { slug: "pad_thai", keywords: ["パッタイ", "パッ・タイ", "pad thai"] },
+  { slug: "tom_yum", keywords: ["トムヤム", "tom yum"] },
+  { slug: "butter_chicken", keywords: ["バターチキン", "ムルグマカニ", "butter chicken", "murgh makhani"] },
+  { slug: "masala_dosa", keywords: ["マサラドーサ", "ドーサ", "masala dosa", "dosa"] },
+  { slug: "falafel_plate", keywords: ["ファラフェル", "falafel"] },
+  { slug: "shawarma", keywords: ["シャワルマ", "シャウルマ", "shawarma"] },
+  { slug: "moussaka", keywords: ["ムサカ", "moussaka"] },
+  { slug: "shakshuka", keywords: ["シャクシュカ", "shakshuka"] },
+  { slug: "ratatouille", keywords: ["ラタトゥイユ", "ratatouille"] },
+  { slug: "fish_and_chips", keywords: ["フィッシュアンドチップス", "フィッシュ＆チップス", "fish and chips"] },
+  { slug: "ceviche", keywords: ["セビーチェ", "セビチェ", "ceviche"] },
+  { slug: "feijoada", keywords: ["フェイジョアーダ", "feijoada"] },
+  { slug: "jollof_rice", keywords: ["ジョロフライス", "jollof rice", "jollof"] },
+  { slug: "arepa", keywords: ["アレパ", "arepa"] },
+  { slug: "pierogi", keywords: ["ピエロギ", "pierogi"] },
+  { slug: "borscht", keywords: ["ボルシチ", "borscht", "borsch"] },
+  { slug: "injera_platter", keywords: ["インジェラ", "injera"] },
+  { slug: "gazpacho", keywords: ["ガスパチョ", "gazpacho"] },
+  { slug: "mapo_tofu", keywords: ["麻婆豆腐", "マーボー豆腐", "mapo tofu", "mapo doufu"] },
+
   { slug: "pilaf_biryani", keywords: ["ビリヤニ", "biryani", "ピラフ", "pilaf"] },
   { slug: "fried_rice", keywords: ["炒飯", "チャーハン", "fried rice", "nasi goreng"] },
   { slug: "rice_porridge", keywords: ["おかゆ", "お粥", "雑炊", "リゾット風おかゆ", "congee", "rice porridge", "juk"] },
