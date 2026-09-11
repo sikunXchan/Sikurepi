@@ -66,6 +66,8 @@ const ja = {
     deleteConfirmTitle: (name: string) => `「${name}」を削除しますか？`,
     deleteConfirmCancel: "キャンセル",
     deleteConfirmOk: "削除する",
+    itemPreviewHint: "ダブルタップで削除・長押しでピン留め",
+    itemPreviewClose: "食材カードを閉じる",
     emptyTitle: "棚にはまだ何もないみたい",
     emptyBody: "レシートを1枚撮るだけで、食材がずらっと棚に並ぶよ",
     emptyCta: "レシートを撮る",

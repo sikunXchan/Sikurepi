@@ -65,6 +65,8 @@ const en: typeof ja = {
     deleteConfirmTitle: (name: string) => `Delete "${name}"?`,
     deleteConfirmCancel: "Cancel",
     deleteConfirmOk: "Delete",
+    itemPreviewHint: "Double-tap to delete · Hold to pin",
+    itemPreviewClose: "Close ingredient card",
     emptyTitle: "Looks like the shelves are empty",
     emptyBody: "Just snap a photo of a receipt and your shelves will fill right up",
     emptyCta: "Scan a receipt",
