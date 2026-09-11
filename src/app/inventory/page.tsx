@@ -430,11 +430,6 @@ export default function InventoryPage() {
 
       {!loading && !hasIngredients && (
         <div className={styles.fridgeFrame}>
-          <div className={styles.fridgeCardSkeleton}>
-            <div className={styles.fridgeSkeletonBand} />
-            <div className={styles.fridgeSkeletonBand} />
-            <div className={styles.fridgeSkeletonBandLast} />
-          </div>
           <div className={styles.emptyStateCard}>
             <img src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
             <p className={styles.emptyStateTitle}>{t.inventory.emptyTitle}</p>

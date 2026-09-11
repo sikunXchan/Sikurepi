@@ -5,11 +5,11 @@
   flex-wrap: wrap;
   background: var(--card-bg-solid);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 10px 12px;
-  margin-bottom: 16px;
+  border-radius: 20px;
+  padding: 9px 11px;
+  margin-bottom: 0;
   gap: 8px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 10px 26px rgba(98, 62, 46, 0.08);
 }
 
 .rankPill {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, X, ZoomIn } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -101,7 +101,7 @@ export default function RecipePage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
-  const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const [expandedIndex, setExpandedIndex] = useState<number>(-1);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [creationMode, setCreationMode] = useState<'inventory' | 'free'>('inventory');
@@ -113,7 +113,6 @@ export default function RecipePage() {
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [previewRecipeIndex, setPreviewRecipeIndex] = useState<number | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
@@ -143,7 +142,8 @@ export default function RecipePage() {
     if (cached) {
       setRecipes(cached.recipes);
       setCookingTips(cached.cookingTips);
-      setExpandedIndex(cached.expandedIndex);
+      // 一覧へ戻った時に詳細モーダルが勝手に開かないよう、結果だけ復元する。
+      setExpandedIndex(-1);
       setSavedSet(new Set(cached.savedIndices));
       setCreationMode(cached.creationMode);
       setInstruction(cached.instruction);
@@ -272,7 +272,7 @@ export default function RecipePage() {
 
       if (data.recipes && data.recipes.length > 0) {
         setRecipes(data.recipes);
-        setExpandedIndex(0);
+        setExpandedIndex(-1);
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -291,7 +291,7 @@ export default function RecipePage() {
       setLocalLastRecipeGeneration({
         recipes: data.recipes,
         cookingTips: tips,
-        expandedIndex: 0,
+        expandedIndex: -1,
         savedIndices: [],
         creationMode,
         instruction,
@@ -299,9 +299,9 @@ export default function RecipePage() {
         servings: sessionServings,
         savedAt: new Date().toISOString(),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(err.message || t.recipe.errorGeneric);
+      setErrorMsg(err instanceof Error ? err.message : t.recipe.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -365,6 +365,17 @@ export default function RecipePage() {
     if (items.length > 0) acc[cat] = items;
     return acc;
   }, {});
+  const detailRecipe = expandedIndex >= 0 ? recipes[expandedIndex] : null;
+  const detailIsSaved = expandedIndex >= 0 && savedSet.has(expandedIndex);
+
+  useEffect(() => {
+    if (!detailRecipe) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [detailRecipe]);
 
   return (
     <div className={styles.container}>
@@ -674,193 +685,30 @@ export default function RecipePage() {
               <div className={styles.resultsBannerSub}>{t.recipe.resultsBannerSub}</div>
             </div>
           </div>
-          {recipes.map((recipe, index) => {
-            const isExpanded = expandedIndex === index;
-            const isSaved = savedSet.has(index);
-            const isSingleDish = !recipe.course;
-
-            return (
-              <div key={index} className={styles.recipeCard}>
-                <div
-                  className={`${styles.cardHeader} ${isSingleDish ? styles.singleCardHeader : ''}`}
-                  style={{ backgroundImage: `url("${selectedTray.asset}")` }}
-                  onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
+          <div
+            className={styles.recipeTrayGallery}
+            style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+          >
+            <div className={styles.recipeDishGrid}>
+              {recipes.map((recipe, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className={styles.recipeDishChoice}
+                  onClick={() => setExpandedIndex(index)}
+                  aria-label={`${recipe.title} — ${language === 'ja' ? 'レシピを表示' : 'View recipe'}`}
                 >
-                  <button
-                    type="button"
-                    className={styles.trayDishVisual}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setPreviewRecipeIndex(index);
-                    }}
-                    aria-label={`${recipe.title} — ${language === 'ja' ? '大きく表示' : 'View larger'}`}
-                  >
-                    <RecipeThumbnail
-                      genre={recipe.genre}
-                      fallbackIngredientName={recipe.title}
-                      size={168}
-                      className={styles.trayDishIcon}
-                    />
-                    <span className={styles.dishZoomHint}><ZoomIn size={14} /></span>
-                  </button>
-                  <div className={styles.titleInfo}>
-                    <div className={styles.badgeRow}>
-                      {recipe.course && (
-                        <span className={styles.genreBadge}>
-                          <UiIcon slug={COURSE_ICON_SLUGS[recipe.course] || 'other'} size={16} alt={recipe.course} />
-                          {' '}{t.recipe.courseLabel[recipe.course] || recipe.course}
-                        </span>
-                      )}
-                      {recipe.genre && (
-                        <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
-                      )}
-                      {recipe.climate_badge && (
-                        <span className={styles.climateBadge}>
-                          <UiIcon slug="clear" size={15} alt="" />
-                          {stripLeadingEmoji(recipe.climate_badge)}
-                        </span>
-                      )}
-                      {recipe.dish_badge && (
-                        <span className={styles.climateBadge}>
-                          <UiIcon slug="dishwashing" size={15} alt="" />
-                          {stripLeadingEmoji(recipe.dish_badge)}
-                        </span>
-                      )}
-                    </div>
-                    <h2 className={styles.recipeTitle}>{recipe.title}</h2>
-                    <span className={styles.recipeTime}>
-                      <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
-                      {recipe.time}
-                    </span>
-                    {recipe.ingredients.length > 0 && (
-                      <div className={styles.ingredientIconRow}>
-                        {recipe.ingredients.slice(0, 9).map((item, i) => (
-                          <IngredientIcon key={i} name={item.name} size={24} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={styles.headerActions}>
-                    <button
-                      type="button"
-                      className={isSaved ? styles.savedBtn : styles.saveBtn}
-                      onClick={(e) => { e.stopPropagation(); handleSaveRecipe(index); }}
-                      disabled={isSaved || savingIndex === index}
-                    >
-                      {isSaved ? <Check size={14} /> : <Bookmark size={14} />}
-                      {isSaved ? t.recipe.saved : t.recipe.save}
-                    </button>
-                    <button className={styles.expandBtn}>
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </button>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className={styles.cardContent}>
-                    {recipe.nutrition && (
-                      <div className={styles.nutritionSection}>
-                        <NutritionChart nutrition={recipe.nutrition} />
-                      </div>
-                    )}
-
-                    {/* 材料リスト（不足分は赤字＋「追加」ボタンで買い物リストへ） */}
-                    <div className={styles.section}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <h3>{t.recipe.ingredientsSectionTitle}</h3>
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.recipe.ingredientsSectionHint}</span>
-                      </div>
-                      <ul className={styles.ingredientList}>
-                        {recipe.ingredients.map((item, i) => {
-                          const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
-                          const pinKey = `${index}-${item.name}`;
-                          const isPinned = pinnedToShoppingSet.has(pinKey);
-                          return (
-                            <li key={i} className={missing ? styles.ingredientMissing : undefined}>
-                              <span className={styles.ingredientName}>
-                                <IngredientIcon name={item.name} size={30} />
-                                <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
-                                  {item.name}
-                                </span>
-                              </span>
-                              <span className={styles.ingredientRight}>
-                                <span className={styles.ingredientAmount}>{item.amount}</span>
-                                {missing && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(index, item.name); }}
-                                    className={isPinned ? styles.addedBtn : styles.addToCartBtn}
-                                    disabled={isPinned}
-                                  >
-                                    {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                    {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
-                                  </button>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-
-                    {/* 作り方 */}
-                    <div className={styles.section}>
-                      <div className={styles.sectionHeader}>
-                        <h3>{t.recipe.stepsSectionTitle}</h3>
-                        <button
-                          className={styles.startCookingBtn}
-                          onClick={(e) => { e.stopPropagation(); setCookingRecipeIndex(index); }}
-                        >
-                          <PlayCircle size={16} />
-                          {t.recipe.cookingModeButton}
-                        </button>
-                      </div>
-                      <ol className={styles.stepList}>
-                        {recipe.steps.map((step, i) => (
-                          <li key={i}>
-                            <span className={styles.stepNumber}>{i + 1}</span>
-                            <span className={styles.stepText}>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-
-                    {recipe.tips && (
-                      <div className={styles.tipsBox}>
-                        <strong>{t.recipe.tipsPrefix}</strong> {recipe.tips}
-                      </div>
-                    )}
-
-                    {/* 調理完了ボタン (在庫消費 & PFC累積) */}
-                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                      <button
-                        style={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 12,
-                          padding: '12px 14px',
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          boxShadow: '0 3px 10px rgba(255, 111, 145, 0.25)',
-                        }}
-                        onClick={() => setCookedModalRecipe(recipe)}
-                      >
-                        {t.recipe.cookedButton}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  <RecipeThumbnail
+                    genre={recipe.genre}
+                    fallbackIngredientName={recipe.title}
+                    size={168}
+                    className={styles.recipeDishChoiceIcon}
+                  />
+                  <span className={styles.recipeDishChoiceName}>{recipe.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -931,40 +779,169 @@ export default function RecipePage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {previewRecipeIndex !== null && recipes[previewRecipeIndex] && (
+        {detailRecipe && expandedIndex >= 0 && cookingRecipeIndex === null && !cookedModalRecipe && (
           <motion.div
-            className={styles.dishPreviewOverlay}
+            className={styles.recipeDetailOverlay}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setPreviewRecipeIndex(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label={detailRecipe.title}
           >
-            <motion.div
-              className={styles.dishPreviewCard}
-              initial={{ opacity: 0, scale: 0.9, y: 18 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label={recipes[previewRecipeIndex].title}
-            >
+            <div className={styles.recipeDetailTopbar}>
               <button
                 type="button"
-                className={styles.dishPreviewClose}
-                onClick={() => setPreviewRecipeIndex(null)}
+                className={styles.recipeDetailClose}
+                onClick={() => setExpandedIndex(-1)}
                 aria-label={language === 'ja' ? '閉じる' : 'Close'}
               >
-                <X size={20} />
+                <X size={22} />
               </button>
-              <RecipeThumbnail
-                genre={recipes[previewRecipeIndex].genre}
-                fallbackIngredientName={recipes[previewRecipeIndex].title}
-                size={280}
-                className={styles.dishPreviewImage}
-              />
-              <h2>{recipes[previewRecipeIndex].title}</h2>
-            </motion.div>
+              <strong>{detailRecipe.title}</strong>
+              <button
+                type="button"
+                className={detailIsSaved ? styles.savedBtn : styles.saveBtn}
+                onClick={() => handleSaveRecipe(expandedIndex)}
+                disabled={detailIsSaved || savingIndex === expandedIndex}
+              >
+                {detailIsSaved ? <Check size={15} /> : <Bookmark size={15} />}
+                {detailIsSaved ? t.recipe.saved : t.recipe.save}
+              </button>
+            </div>
+
+            <div className={styles.recipeDetailScroll}>
+              <div
+                className={styles.recipeDetailHero}
+                style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+              >
+                <RecipeThumbnail
+                  genre={detailRecipe.genre}
+                  fallbackIngredientName={detailRecipe.title}
+                  size={184}
+                  className={styles.recipeDetailDishIcon}
+                />
+              </div>
+
+              <div className={styles.recipeDetailSummary}>
+                <div className={styles.badgeRow}>
+                  {detailRecipe.course && (
+                    <span className={styles.genreBadge}>
+                      <UiIcon slug={COURSE_ICON_SLUGS[detailRecipe.course] || 'other'} size={16} alt={detailRecipe.course} />
+                      {' '}{t.recipe.courseLabel[detailRecipe.course] || detailRecipe.course}
+                    </span>
+                  )}
+                  {detailRecipe.genre && (
+                    <span className={styles.genreBadge}>{t.tagLabel[detailRecipe.genre] || detailRecipe.genre}</span>
+                  )}
+                  {detailRecipe.climate_badge && (
+                    <span className={styles.climateBadge}>
+                      <UiIcon slug="clear" size={15} alt="" />
+                      {stripLeadingEmoji(detailRecipe.climate_badge)}
+                    </span>
+                  )}
+                  {detailRecipe.dish_badge && (
+                    <span className={styles.climateBadge}>
+                      <UiIcon slug="dishwashing" size={15} alt="" />
+                      {stripLeadingEmoji(detailRecipe.dish_badge)}
+                    </span>
+                  )}
+                </div>
+                <h2 className={styles.recipeTitle}>{detailRecipe.title}</h2>
+                <span className={styles.recipeTime}>
+                  <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
+                  {detailRecipe.time}
+                </span>
+                {detailRecipe.ingredients.length > 0 && (
+                  <div className={styles.ingredientIconRow}>
+                    {detailRecipe.ingredients.slice(0, 9).map((item, i) => (
+                      <IngredientIcon key={i} name={item.name} size={25} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.recipeDetailContent}>
+                {detailRecipe.nutrition && (
+                  <div className={styles.nutritionSection}>
+                    <NutritionChart nutrition={detailRecipe.nutrition} />
+                  </div>
+                )}
+
+                <div className={styles.section}>
+                  <div className={styles.detailSectionHeading}>
+                    <h3>{t.recipe.ingredientsSectionTitle}</h3>
+                    <span>{t.recipe.ingredientsSectionHint}</span>
+                  </div>
+                  <ul className={styles.ingredientList}>
+                    {detailRecipe.ingredients.map((item, i) => {
+                      const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
+                      const pinKey = `${expandedIndex}-${item.name}`;
+                      const isPinned = pinnedToShoppingSet.has(pinKey);
+                      return (
+                        <li key={i} className={missing ? styles.ingredientMissing : undefined}>
+                          <span className={styles.ingredientName}>
+                            <IngredientIcon name={item.name} size={30} />
+                            <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
+                              {item.name}
+                            </span>
+                          </span>
+                          <span className={styles.ingredientRight}>
+                            <span className={styles.ingredientAmount}>{item.amount}</span>
+                            {missing && (
+                              <button
+                                type="button"
+                                onClick={() => handlePinToShopping(expandedIndex, item.name)}
+                                className={isPinned ? styles.addedBtn : styles.addToCartBtn}
+                                disabled={isPinned}
+                              >
+                                {isPinned ? <Check size={15} /> : <Plus size={15} />}
+                                {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
+                              </button>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                <div className={styles.section}>
+                  <div className={styles.sectionHeader}>
+                    <h3>{t.recipe.stepsSectionTitle}</h3>
+                    <button
+                      className={styles.startCookingBtn}
+                      onClick={() => setCookingRecipeIndex(expandedIndex)}
+                    >
+                      <PlayCircle size={16} />
+                      {t.recipe.cookingModeButton}
+                    </button>
+                  </div>
+                  <ol className={styles.stepList}>
+                    {detailRecipe.steps.map((step, i) => (
+                      <li key={i}>
+                        <span className={styles.stepNumber}>{i + 1}</span>
+                        <span className={styles.stepText}>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {detailRecipe.tips && (
+                  <div className={styles.tipsBox}>
+                    <strong>{t.recipe.tipsPrefix}</strong> {detailRecipe.tips}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className={styles.cookedDetailBtn}
+                  onClick={() => setCookedModalRecipe(detailRecipe)}
+                >
+                  {t.recipe.cookedButton}
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

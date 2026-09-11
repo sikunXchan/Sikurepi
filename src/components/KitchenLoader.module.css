@@ -33,6 +33,10 @@
   filter: drop-shadow(0 10px 14px rgba(100, 66, 37, 0.12));
 }
 
+.cookingBear {
+  transition: opacity 180ms ease;
+}
+
 .bear_serving { animation: servingSway 1.45s ease-in-out infinite; }
 .bear_delivering { animation: deliveringBob 1.1s ease-in-out infinite; }
 .bear_reading { animation: readingFloat 1.9s ease-in-out infinite; }

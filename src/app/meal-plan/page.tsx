@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
@@ -38,7 +37,7 @@ import recipeStyles from "@/app/recipe/Recipe.module.css";
 
 const SLOTS: MealSlot[] = ['lunch', 'dinner'];
 
-type DayInfo = { date: string; label: string };
+type DayInfo = { date: string; monthDay: string; weekday: string };
 
 function buildDays(weekday: string[]): DayInfo[] {
   const days: DayInfo[] = [];
@@ -47,23 +46,10 @@ function buildDays(weekday: string[]): DayInfo[] {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     const date = d.toISOString().split('T')[0];
-    const label = `${d.getMonth() + 1}/${d.getDate()}(${weekday[d.getDay()]})`;
-    days.push({ date, label });
+    days.push({ date, monthDay: `${d.getMonth() + 1}/${d.getDate()}`, weekday: weekday[d.getDay()] });
   }
   return days;
 }
-
-const iconBtn: CSSProperties = {
-  background: 'rgba(0,0,0,0.04)',
-  border: 'none',
-  borderRadius: 8,
-  padding: 6,
-  cursor: 'pointer',
-  color: 'var(--text-muted)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
 
 export default function MealPlanPage() {
   const { t, language } = useLanguage();
@@ -213,8 +199,8 @@ export default function MealPlanPage() {
       if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
       loadData();
       showToast(t.mealPlan.generatedToast(entries.length));
-    } catch (err: any) {
-      setErrorMsg(err.message || t.mealPlan.errorGeneric);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : t.mealPlan.errorGeneric);
     } finally {
       setGenerating(false);
     }
@@ -254,8 +240,8 @@ export default function MealPlanPage() {
       setLocalWeekPlanEntries([mapPlanItem(r)]);
       loadData();
       showToast(t.mealPlan.regeneratedToast);
-    } catch (err: any) {
-      showToast(err.message || t.mealPlan.errorRegenFailed);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : t.mealPlan.errorRegenFailed);
     } finally {
       setRegeneratingKey(null);
     }
@@ -304,7 +290,7 @@ export default function MealPlanPage() {
 
   const findEntry = (date: string, mealSlot: MealSlot) => plan.find(e => e.date === date && e.mealSlot === mealSlot);
 
-  const hasAnyRow = days.some(d => active[`${d.date}_lunch`] || active[`${d.date}_dinner`] || findEntry(d.date, 'lunch') || findEntry(d.date, 'dinner'));
+  const selectedMealCount = activeSlots().length;
 
   return (
     <div className={styles.container}>
@@ -331,18 +317,18 @@ export default function MealPlanPage() {
           ) : undefined
         }
       />
-      <p className={styles.description}>
-        {t.mealPlan.description}
-      </p>
-
       <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
         <div className={styles.plannerTopline}>
           <div>
             <span className={styles.plannerEyebrow}>WEEKLY TABLE</span>
-            <h2 className={styles.plannerTitle}>{t.mealPlan.title}</h2>
+            <h2 className={styles.plannerTitle}>{days[0].monthDay} — {days[days.length - 1].monthDay}</h2>
           </div>
-          <UiIcon slug="calendar_date" size={42} alt="" />
+          <div className={styles.selectionCount} title={t.mealPlan.selectedMeals(selectedMealCount)}>
+            <UiIcon slug="calendar_date" size={34} alt="" />
+            <span>{t.mealPlan.selectedMeals(selectedMealCount)}</span>
+          </div>
         </div>
+        <p className={styles.plannerHint}>{t.mealPlan.description}</p>
         <div className={styles.dayRail}>
           {days.map(d => {
             const lunchOn = !!active[`${d.date}_lunch`];
@@ -350,16 +336,8 @@ export default function MealPlanPage() {
             return (
               <article key={d.date} className={`${styles.dayCard} ${lunchOn || dinnerOn ? styles.dayCardActive : styles.dayCardOff}`}>
                 <div className={styles.dayCardHeader}>
-                  <span className={styles.dayLabel}>{d.label}</span>
-                  <button
-                    type="button"
-                    className={styles.skipButton}
-                    onClick={() => toggleDay(d.date, false)}
-                    aria-label={t.mealPlan.skipDay}
-                    title={t.mealPlan.skipDay}
-                  >
-                    <X size={14} />
-                  </button>
+                  <span className={styles.dayLabel}>{d.monthDay}</span>
+                  <span className={styles.dayWeek}>{d.weekday}</span>
                 </div>
                 <div className={styles.mealSlots}>
                   <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} className={`${styles.mealSlot} ${lunchOn ? styles.mealSlotActive : ''}`}>
@@ -411,54 +389,54 @@ export default function MealPlanPage() {
       </section>
 
       {generating && (
-        <KitchenLoader variant="serving" text={t.mealPlan.generatingText} />
+        <KitchenLoader variant="cooking" text={t.mealPlan.generatingText} />
       )}
 
       {errorMsg && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center' }}>
+        <div className={styles.errorCard} role="alert">
           {errorMsg}
         </div>
       )}
 
       {plan.length > 0 && (
-        <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--foreground)' }}>{t.mealPlan.weeklySummaryTitle}</div>
+        <section className={styles.summaryCard}>
+          <div className={styles.summaryHeading}>
+            <UiIcon slug="healthy" size={30} alt="" />
+            <span>{t.mealPlan.weeklySummaryTitle}</span>
+          </div>
           <NutritionChart nutrition={weeklyNutritionSum()} />
           {weeklyTargets && (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+            <p className={styles.summaryTarget}>
               {t.mealPlan.weeklyTargetText(weeklyTargets.calories, weeklyTargets.protein_g, weeklyTargets.fat_g, weeklyTargets.carbs_g)}
             </p>
           )}
           <button
             type="button"
             onClick={handleAddMissingToShopping}
-            style={{ width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--gradient-cool)', color: 'white', border: 'none', borderRadius: 12, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            className={styles.shoppingButton}
           >
             <ShoppingCart size={15} /> {t.mealPlan.addMissingButton}
           </button>
-        </div>
+        </section>
       )}
 
-      {hasAnyRow && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {plan.length > 0 && (
+        <section className={styles.planResults}>
           {days.map(d => {
-            const slotsToShow = SLOTS.filter(s => active[`${d.date}_${s}`] || findEntry(d.date, s));
+            const slotsToShow = SLOTS.filter(s => findEntry(d.date, s));
             if (slotsToShow.length === 0) return null;
             return (
-              <div key={d.date}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{d.label}</div>
+              <div key={d.date} className={styles.planDay}>
+                <div className={styles.planDayHeading}>
+                  <span>{d.monthDay}</span>
+                  <small>{d.weekday}</small>
+                </div>
                 {slotsToShow.map(slot => {
-                  const entry = findEntry(d.date, slot);
+                  const entry = findEntry(d.date, slot)!;
                   const key = `${d.date}_${slot}`;
                   const isExpanded = expandedKey === key;
                   return (
-                    <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`} style={{ marginBottom: 10 }}>
-                      {!entry ? (
-                        <div style={{ padding: 14, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
-                          {t.mealPlan.notGenerated(SLOT_LABEL[slot])}
-                        </div>
-                      ) : (
-                        <>
+                    <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`}>
                           <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
                             <div className={styles.planDish}>
                               <RecipeThumbnail genre={entry.recipe.genre} fallbackIngredientName={entry.recipe.title} size={74} />
@@ -488,7 +466,7 @@ export default function MealPlanPage() {
                                 onClick={(e) => { e.stopPropagation(); handleRegenerateSlot(d.date, slot); }}
                                 disabled={regeneratingKey === key}
                                 title={t.mealPlan.regenerateTitle}
-                                style={iconBtn}
+                                className={styles.iconButton}
                               >
                                 {regeneratingKey === key ? <Loader2 className="spinner" size={14} /> : <RefreshCw size={14} />}
                               </button>
@@ -496,7 +474,7 @@ export default function MealPlanPage() {
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveSlot(d.date, slot); }}
                                 title={t.mealPlan.removeTitle}
-                                style={iconBtn}
+                                className={styles.iconButton}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -602,15 +580,13 @@ export default function MealPlanPage() {
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </>
-                      )}
                     </div>
                   );
                 })}
               </div>
             );
           })}
-        </div>
+        </section>
       )}
 
       {/* 調理完了モーダル: 在庫消費・自炊記録への連携をレシピ生成画面と共通化する */}
