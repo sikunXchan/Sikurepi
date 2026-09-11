@@ -188,6 +188,7 @@ const en: typeof ja = {
     slotLunch: "Lunch",
     slotDinner: "Dinner",
     skipDay: "Skip this day",
+    selectedMeals: (n: number) => `${n} meal${n === 1 ? "" : "s"} selected`,
     generateButton: "Auto-generate weekly plan",
     generateLoading: "The AI chef is planning your week...",
     freeRemaining: (n: number) => `Free plan: ${n} generation${n === 1 ? "" : "s"} left`,

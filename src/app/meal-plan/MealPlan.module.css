@@ -1,41 +1,19 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 16px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary-text);
-  margin: 0;
-}
-
-.description {
-  margin: -2px 2px 2px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.65;
 }
 
 .planner {
   position: relative;
-  padding: 18px;
+  padding: 20px;
   overflow: hidden;
   border: 1px solid rgba(133, 91, 58, 0.16);
-  border-radius: var(--radius-lg);
+  border-radius: 30px;
   background:
-    radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.86), transparent 25%),
-    linear-gradient(145deg, #fff9ef 0%, #f4e4cf 100%);
-  box-shadow: var(--shadow-lifted);
+    radial-gradient(circle at 94% 4%, rgba(255, 255, 255, 0.92), transparent 25%),
+    linear-gradient(145deg, #fffaf1 0%, #f5e5cf 100%);
+  box-shadow: 0 20px 48px rgba(107, 70, 42, 0.13);
   transition: opacity var(--motion-base) ease;
 }
 
@@ -44,10 +22,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(90deg, transparent 0 72px, rgba(135, 89, 51, 0.025) 72px 74px);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.35), transparent 22%, transparent 78%, rgba(255,255,255,0.22)),
+    repeating-linear-gradient(90deg, transparent 0 74px, rgba(135, 89, 51, 0.026) 74px 76px);
 }
 
-.plannerBusy { pointer-events: none; opacity: 0.55; }
+.plannerBusy { pointer-events: none; opacity: 0.58; }
 
 .plannerTopline {
   position: relative;
@@ -55,31 +35,59 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: 14px;
 }
 
 .plannerEyebrow {
   color: var(--secondary);
   font-size: 9px;
   font-weight: 900;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
 }
 
 .plannerTitle {
   margin-top: 2px;
   color: var(--ink);
-  font-size: 18px;
+  font-size: 20px;
+}
+
+.selectionCount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid rgba(23, 148, 141, 0.12);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.74);
+  color: var(--secondary);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.plannerHint {
+  position: relative;
+  z-index: 1;
+  margin: 14px 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(23, 148, 141, 0.42);
+  border-radius: 6px 14px 14px 6px;
+  background: rgba(255,255,255,0.58);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.55;
 }
 
 .dayRail {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(7, minmax(142px, 1fr));
-  gap: 10px;
-  margin: 0 -18px;
-  padding: 4px 18px 12px;
+  grid-template-columns: repeat(7, minmax(118px, 1fr));
+  gap: 9px;
+  margin: 0 -20px;
+  padding: 3px 20px 13px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
@@ -89,104 +97,114 @@
 
 .dayCard {
   scroll-snap-align: start;
-  min-height: 184px;
-  padding: 11px;
-  border: 1px solid rgba(115, 78, 51, 0.12);
+  min-height: 164px;
+  padding: 10px;
+  border: 1px solid rgba(115, 78, 51, 0.11);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.83);
-  box-shadow: 0 7px 18px rgba(102, 65, 39, 0.08);
-  transition: opacity var(--motion-fast) ease, transform var(--motion-fast) var(--ease-out);
+  background: rgba(255, 253, 249, 0.9);
+  box-shadow: 0 7px 17px rgba(102, 65, 39, 0.07);
+  transition: opacity var(--motion-fast) ease, transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast) ease;
 }
 
-.dayCardActive { opacity: 1; }
-.dayCardOff { opacity: 0.62; filter: saturate(0.6); }
+.dayCardActive {
+  opacity: 1;
+  border-color: rgba(23, 148, 141, 0.22);
+  box-shadow: 0 9px 20px rgba(23, 148, 141, 0.09);
+}
+
+.dayCardOff { opacity: 0.55; filter: saturate(0.55); }
 
 .dayCardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
+  min-height: 25px;
   margin-bottom: 8px;
+  padding-inline: 2px;
 }
 
 .dayLabel {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
   white-space: nowrap;
 }
 
-.skipButton {
-  width: 27px;
-  height: 27px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(111, 78, 59, 0.07);
+.dayWeek {
+  display: grid;
+  place-items: center;
+  min-width: 23px;
+  height: 23px;
+  padding-inline: 5px;
+  border-radius: 9px;
+  background: #f5ebe1;
   color: var(--ink-soft);
-  box-shadow: none;
+  font-size: 10px;
+  font-weight: 900;
 }
 
-.skipButton:hover { transform: none; box-shadow: none; background: rgba(111, 78, 59, 0.12); }
+.dayCardActive .dayWeek { background: #def2ed; color: var(--secondary); }
 
 .mealSlots { display: grid; gap: 7px; }
 
 .mealSlot {
   position: relative;
   display: grid;
-  grid-template-columns: 26px 1fr 18px;
+  grid-template-columns: 23px 1fr 17px;
   align-items: center;
   gap: 5px;
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   padding: 6px 7px;
-  border: 1px solid rgba(111, 78, 59, 0.1);
-  border-radius: 14px;
-  background: #fffdf9;
+  border: 1px solid rgba(111, 78, 59, 0.09);
+  border-radius: 13px;
+  background: rgba(255,255,255,0.85);
   color: var(--ink-soft);
   box-shadow: none;
   font-size: 12px;
 }
 
 .mealSlot:hover { transform: none; box-shadow: none; }
-.mealSlotActive { border-color: rgba(23, 148, 141, 0.24); background: var(--surface-mint); color: var(--ink); }
+.mealSlotActive { border-color: rgba(23, 148, 141, 0.22); background: #e9f7f3; color: var(--ink); }
 
 .slotCheck {
   display: grid;
   place-items: center;
   width: 17px;
   height: 17px;
-  border: 1px solid rgba(111, 78, 59, 0.14);
+  border: 1px solid rgba(111, 78, 59, 0.16);
   border-radius: 50%;
   background: #fff;
   color: var(--secondary);
   font-style: normal;
 }
 
-.mealSlotActive .slotCheck { border-color: rgba(23, 148, 141, 0.28); background: rgba(23, 148, 141, 0.1); }
+.mealSlotActive .slotCheck { border-color: rgba(23, 148, 141, 0.3); background: rgba(23, 148, 141, 0.1); }
 
 .moonMark {
-  width: 19px;
-  height: 19px;
-  margin-left: 3px;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
   border-radius: 50%;
-  background: #7180b4;
-  box-shadow: 6px -3px 0 0 #fffdf9;
+  background: #6f7eaf;
+  box-shadow: 6px -3px 0 0 #fff;
 }
 
-.mealSlotActive .moonMark { box-shadow: 6px -3px 0 0 var(--surface-mint); }
+.mealSlotActive .moonMark { box-shadow: 6px -3px 0 0 #e9f7f3; }
 
 .dayToggle {
   width: 100%;
-  margin-top: 8px;
-  padding: 4px;
+  min-height: 25px;
+  margin-top: 5px;
+  padding: 3px 1px;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .dayToggle:hover { transform: none; box-shadow: none; }
@@ -195,20 +213,108 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  min-height: 52px;
-  margin-top: 3px;
-  padding: 11px 16px;
+  min-height: 54px;
+  margin-top: 2px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.42);
   border-radius: 18px;
-  background: linear-gradient(135deg, #2b9d96, #72cfc5);
-  box-shadow: 0 9px 20px rgba(23, 148, 141, 0.22);
+  background: linear-gradient(135deg, #168f88, #64cbc1);
+  box-shadow: 0 11px 23px rgba(23, 148, 141, 0.24);
   font-size: 14px;
 }
 
+.errorCard {
+  padding: 13px 15px;
+  border: 1px solid rgba(214, 68, 84, 0.2);
+  border-radius: 16px;
+  background: #fff0f1;
+  color: #c8384d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.summaryCard {
+  padding: 18px;
+  border: 1px solid rgba(23, 148, 141, 0.14);
+  border-radius: 24px;
+  background: linear-gradient(145deg, #ffffff, #edf8f4);
+  box-shadow: var(--shadow-soft);
+}
+
+.summaryHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.summaryTarget {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.shoppingButton {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 11px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--gradient-cool);
+  font-size: 13px;
+}
+
+.planResults {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.planDay {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.planDayHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 31px;
+  padding: 4px 10px;
+  border: 1px solid rgba(224, 70, 110, 0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.74);
+  color: var(--primary-text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.planDayHeading small {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  border-radius: 8px;
+  background: #fff0f3;
+  font-size: 9px;
+}
+
 .planRecipeCard {
+  margin: 0 !important;
   overflow: hidden !important;
   border: 1px solid var(--line-soft) !important;
-  border-radius: var(--radius-md) !important;
-  background: rgba(255,255,255,0.9) !important;
+  border-radius: 22px !important;
+  background: rgba(255,255,255,0.94) !important;
   box-shadow: var(--shadow-soft) !important;
 }
 
@@ -222,6 +328,7 @@
   border-radius: 0 !important;
   background: linear-gradient(135deg, #fffaf2, #eef8f4) !important;
   filter: none !important;
+  cursor: pointer;
 }
 
 .planDish {
@@ -230,8 +337,9 @@
   width: 76px;
   height: 76px;
   flex-shrink: 0;
+  border: 1px solid rgba(111, 78, 59, 0.08);
   border-radius: 22px;
-  background: rgba(255,255,255,0.82);
+  background: rgba(255,255,255,0.8);
 }
 
 .planDish img { width: 70px !important; height: 70px !important; object-fit: contain !important; }
@@ -239,6 +347,7 @@
 .planTitleInfo {
   position: static !important;
   width: auto !important;
+  min-width: 0 !important;
   flex: 1 !important;
   padding: 0 !important;
   border: 0 !important;
@@ -253,6 +362,19 @@
   margin-left: auto;
 }
 
+.iconButton {
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(111, 78, 59, 0.07);
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+.iconButton:hover { transform: none; box-shadow: none; background: rgba(111, 78, 59, 0.12); }
+
 .planCardContent {
   margin: 0 !important;
   border: 0 !important;
@@ -262,19 +384,21 @@
 }
 
 @media (max-width: 480px) {
+  .container { gap: 14px; }
+  .planner { padding: 16px 14px; border-radius: 26px; }
+  .plannerTitle { font-size: 18px; }
+  .selectionCount { min-height: 38px; padding-right: 8px; font-size: 10px; }
+  .selectionCount img { width: 29px !important; height: 29px !important; }
+  .plannerHint { margin-top: 12px; }
+  .dayRail { margin-inline: -14px; padding-inline: 14px; grid-template-columns: repeat(7, minmax(116px, 1fr)); }
   .planDish { width: 58px; height: 58px; border-radius: 18px; }
   .planDish img { width: 54px !important; height: 54px !important; }
-  .planHeaderActions { gap: 3px !important; }
+  .planRecipeHeader { gap: 9px !important; padding: 11px !important; }
+  .planHeaderActions { flex-direction: column !important; gap: 3px !important; }
+  .planHeaderActions > svg { width: 15px; height: 15px; }
+  .iconButton { width: 27px; height: 27px; }
 }
 
-@media (min-width: 820px) {
-  .dayRail { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (prefers-reduced-motion: reduce) {
+  .dayCard { transition: none; }
 }
-
-@media (max-width: 480px) {
-  .planner { padding: 15px; }
-  .dayRail { margin-inline: -15px; padding-inline: 15px; grid-template-columns: repeat(7, minmax(132px, 1fr)); }
-}
-
-/* スロットカードはレシピ生成ページと全く同じ見た目にするため、
-   ここではなくRecipe.module.css側のスタイル(recipeCard/cardHeader等)を直接使い回す */
