@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "theme": "C / product pictogram",
+  "count": 25,
+  "canvas": {
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "background": "transparent"
+  },
+  "icons": [
+    {
+      "key": "success",
+      "file": "icons/success.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "warning",
+      "file": "icons/warning.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "error",
+      "file": "icons/error.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "info",
+      "file": "icons/info.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "save",
+      "file": "icons/save.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "delete",
+      "file": "icons/delete.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "add",
+      "file": "icons/add.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "pin",
+      "file": "icons/pin.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "share",
+      "file": "icons/share.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "sync",
+      "file": "icons/sync.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "offline",
+      "file": "icons/offline.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "notification",
+      "file": "icons/notification.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "search",
+      "file": "icons/search.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "filter_sort",
+      "file": "icons/filter_sort.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "refresh",
+      "file": "icons/refresh.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "receipt",
+      "file": "icons/receipt.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "scan_camera",
+      "file": "icons/scan_camera.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "shopping_cart",
+      "file": "icons/shopping_cart.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "timer_clock",
+      "file": "icons/timer_clock.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "servings",
+      "file": "icons/servings.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "location",
+      "file": "icons/location.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "language_globe",
+      "file": "icons/language_globe.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "nutrition_chart",
+      "file": "icons/nutrition_chart.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "streak_flame",
+      "file": "icons/streak_flame.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    },
+    {
+      "key": "premium_crown",
+      "file": "icons/premium_crown.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "edge_clear": true
+    }
+  ]
+}

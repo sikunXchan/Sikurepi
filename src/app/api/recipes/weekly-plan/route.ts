@@ -113,7 +113,7 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
       "title": "料理名",
       "time": "調理時間目安（例：15分）",
       "genre": "和食",
-      "dish_badge": "🍽️ 洗い物少なめ（2点）",
+      "dish_badge": "洗い物少なめ（2点）",
       "ingredients": [
         { "name": "使用する具材または調味料", "amount": "分量の目安" }
       ],
