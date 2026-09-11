@@ -168,17 +168,19 @@ export default function ShoppingPage() {
       {!loading && (
         <>
           {Object.keys(groupedItems).length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className={styles.categoryStack}>
               {CATEGORY_ORDER.map(category => {
                 const categoryItems = groupedItems[category];
                 if (!categoryItems || categoryItems.length === 0) return null;
 
                 return (
-                  <div key={category} style={{ background: 'var(--card-bg-solid)', borderRadius: 'var(--border-radius)', padding: '14px 14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                      <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={20} alt={category} />
+                  <section key={category} className={styles.categoryCard}>
+                    <div className={styles.categoryHeader}>
+                      <span className={styles.categoryIcon}>
+                        <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={24} alt="" />
+                      </span>
                       <span>{t.category[category] || category}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '2px 9px', borderRadius: 20, marginLeft: 'auto' }}>{t.shopping.itemCount(categoryItems.length)}</span>
+                      <span className={styles.categoryCount}>{t.shopping.itemCount(categoryItems.length)}</span>
                     </div>
 
                     <ul className={styles.list}>
@@ -193,14 +195,18 @@ export default function ShoppingPage() {
                             layout
                           >
                             <div className={styles.itemInfo}>
-                              <div
+                              <button
+                                type="button"
                                 className={styles.checkbox}
                                 onClick={(e) => handleComplete(item, e)}
                                 title={t.shopping.checkboxTitle}
+                                aria-label={`${item.name}: ${t.shopping.checkboxTitle}`}
                               >
                                 <Check size={16} />
-                              </div>
-                              <IngredientIcon name={item.name} size={32} />
+                              </button>
+                              <span className={styles.itemIcon}>
+                                <IngredientIcon name={item.name} size={38} />
+                              </span>
                               <span className={styles.itemName}>{item.name}</span>
                             </div>
                             <button
@@ -214,7 +220,7 @@ export default function ShoppingPage() {
                         ))}
                       </AnimatePresence>
                     </ul>
-                  </div>
+                  </section>
                 );
               })}
             </div>

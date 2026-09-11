@@ -2,8 +2,15 @@
 
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Sparkles, Loader2, Trash2 } from "lucide-react";
-import { consumeLocalIngredients, recordLocalCookingDone, NutritionData } from "@/lib/storage";
+import { X, Sparkles, Loader2, Trash2 } from "lucide-react";
+import {
+  consumeLocalIngredients,
+  getLocalIngredients,
+  isIngredientMissing,
+  recordLocalCookingDone,
+  NutritionData,
+} from "@/lib/storage";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import IngredientIcon from "./IngredientIcon";
 import styles from "./CookedModal.module.css";
 
@@ -32,15 +39,24 @@ export default function CookedModal({
   onCompleted,
   onSuccess
 }: Props) {
-  const title = recipe?.title || propTitle || "料理";
+  const { t } = useLanguage();
+  const title = recipe?.title || propTitle || t.cookingSession.cookedDefaultTitle;
   const rawIngredients = recipe?.ingredients || propIngredients || [];
   const nutrition = recipe?.nutrition || propNutrition || null;
 
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(
-    new Set(rawIngredients.map((i) => i.name))
-  );
+  // レシピには在庫に無い調味料や不足食材も含まれる。在庫に実在する材料だけを
+  // 初期選択し、料理を記録しただけで無関係な在庫が消える事故を防ぐ。
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(() => {
+    const inventory = getLocalIngredients();
+    return new Set(
+      rawIngredients
+        .filter((item) => !isIngredientMissing(item.name, inventory, false))
+        .map((item) => item.name)
+    );
+  });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [consumedCount, setConsumedCount] = useState(0);
   // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
   // 同じJSタスク内で完結してしまい、Reactの再レンダーを待たずに終わる。
   // そのためstateのdisabled表示だけでは、素早い連打(ダブルタップ)で
@@ -78,12 +94,13 @@ export default function CookedModal({
     setLoading(true);
     try {
       const toConsume = consume ? Array.from(selectedItems) : [];
-      let consumedCount = 0;
+      let nextConsumedCount = 0;
       if (toConsume.length > 0) {
-        consumedCount = consumeLocalIngredients(toConsume);
+        nextConsumedCount = consumeLocalIngredients(toConsume);
       }
-      recordLocalCookingDone(consumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
+      recordLocalCookingDone(nextConsumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
 
+      setConsumedCount(nextConsumedCount);
       setDone(true);
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
@@ -95,7 +112,7 @@ export default function CookedModal({
       }, 3400);
     } catch (e) {
       console.error(e);
-      alert("エラーが発生しました");
+      alert(t.cookingSession.cookedError);
     } finally {
       setLoading(false);
     }
@@ -150,30 +167,34 @@ export default function CookedModal({
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 16 }}
               />
-              <h3>調理完了！お疲れさまでした！</h3>
-              <p>自炊記録と在庫が更新されました</p>
+              <h3>{t.cookingSession.cookedDoneTitle}</h3>
+              <p>{t.cookingSession.cookedDoneMessage(consumedCount)}</p>
             </div>
           ) : (
             <>
               <div className={styles.header}>
                 <div className={styles.headerTitle}>
                   <Sparkles size={18} className={styles.sparkleIcon} />
-                  <h3>「{title}」を調理しました！</h3>
+                  <h3>{t.cookingSession.cookedTitle(title)}</h3>
                 </div>
-                <button className={styles.closeBtn} onClick={onClose}>
+                <button
+                  className={styles.closeBtn}
+                  onClick={onClose}
+                  aria-label={t.cookingSession.close}
+                >
                   <X size={18} />
                 </button>
               </div>
 
               <p className={styles.desc}>
-                使い切った食材にチェックを入れてください。選択した食材が冷蔵庫の在庫から削除されます。
+                {t.cookingSession.cookedDescription}
               </p>
 
               <div className={styles.itemList}>
                 {rawIngredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
                   return (
-                    <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.itemRowActive : ""}`}>
+                    <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.checkedRow : ""}`}>
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -198,18 +219,20 @@ export default function CookedModal({
                   ) : (
                     <>
                       <Trash2 size={15} />
-                      <span>{selectedItems.size}個を在庫から削除して完了</span>
+                      <span>{t.cookingSession.cookedCompleteButton(selectedItems.size)}</span>
                     </>
                   )}
                 </button>
 
-                <button
-                  className={styles.skipBtn}
-                  disabled={loading}
-                  onClick={() => handleConfirm(false)}
-                >
-                  在庫を減らさずに記録のみ
-                </button>
+                {selectedItems.size > 0 && (
+                  <button
+                    className={styles.skipBtn}
+                    disabled={loading}
+                    onClick={() => handleConfirm(false)}
+                  >
+                    {t.cookingSession.cookedRecordOnly}
+                  </button>
+                )}
               </div>
             </>
           )}

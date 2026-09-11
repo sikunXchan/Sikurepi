@@ -35,6 +35,7 @@ import {
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
+import { setNavLocked } from "@/lib/navLock";
 import styles from "./Recipe.module.css";
 
 type RecipeItem = {
@@ -131,7 +132,10 @@ export default function RecipePage() {
     loadLocalData();
     const handleUpdate = () => loadLocalData();
     window.addEventListener("storage-updated", handleUpdate);
-    return () => window.removeEventListener("storage-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("storage-updated", handleUpdate);
+      setNavLocked(false);
+    };
   }, []);
 
   // 前回の生成結果を復元する（別タブへ移動して戻ってきても消えないように）。
@@ -202,6 +206,7 @@ export default function RecipePage() {
 
   const handleGenerate = async () => {
     setLoading(true);
+    setNavLocked(true);
     setErrorMsg("");
     setRecipes([]);
     setCookingTips([]);
@@ -258,7 +263,10 @@ export default function RecipePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || t.recipe.errorGenerateFailed);
+        // API内部の例外文が別言語でも、そのままUIへ漏らさず現在の表示言語で案内する。
+        throw new Error(typeof data.error === 'string' && data.error.trim()
+          ? data.error
+          : t.recipe.errorGenerateFailed);
       }
 
       // 生成前の成立可否判定でNGと出た場合は、エラーではなく専用の警告として扱う
@@ -304,6 +312,7 @@ export default function RecipePage() {
       setErrorMsg(err instanceof Error ? err.message : t.recipe.errorGeneric);
     } finally {
       setLoading(false);
+      setNavLocked(false);
     }
   };
 

@@ -6,8 +6,9 @@
 
 .panelCard {
   padding: 0;
+  min-width: 0;
   overflow: hidden;
-  border-color: var(--line-soft);
+  border: 1px solid var(--line-soft);
   border-radius: var(--radius-lg);
   background:
     repeating-linear-gradient(180deg, transparent 0 42px, rgba(93, 148, 139, 0.04) 42px 43px),
