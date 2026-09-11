@@ -162,7 +162,7 @@ export default function ShoppingPage() {
       </form>
 
       {loading && (
-        <KitchenLoader compact text={t.shopping.subtitle} />
+        <KitchenLoader compact variant="basket" text={t.shopping.subtitle} />
       )}
 
       {!loading && (
@@ -220,7 +220,6 @@ export default function ShoppingPage() {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <span className={styles.emptyShelf} aria-hidden="true" />
               <img src="/mascot/bear_basket.png" alt="" width={112} height={112} />
               <p>{t.shopping.emptyState}</p>
             </div>

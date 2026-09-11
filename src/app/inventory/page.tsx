@@ -17,6 +17,7 @@ import {
   toggleLocalIngredientPin,
   inferIngredientCategory,
   getForgottenIngredients,
+  ignoreForgottenIngredient,
   CATEGORY_ORDER,
   CATEGORY_ICON_SLUGS,
   Ingredient
@@ -119,15 +120,17 @@ function ShelfItemChip({
   );
 }
 
-// 食品ロス防止の「呼びかけ」を、5日以上放置された食材ごとに強めのアラートカードで
+// 食品ロス防止の「呼びかけ」を、食材ごとの日持ち目安を超えた場合に表示する
 // 出す。該当ゾーンの通常チップからは除外し(二重表示にならないよう)、このアラートの
 // 中だけに出す。CTAから/recipeへ遷移し、その食材を選択状態にして引き渡す。
 function ForgottenShelfAlert({
   item,
   onFindRecipe,
+  onIgnore,
 }: {
   item: Ingredient;
   onFindRecipe: (item: Ingredient) => void;
+  onIgnore: (item: Ingredient) => void;
 }) {
   const { t } = useLanguage();
   const ageDays = computeAgeDays(item.created_at);
@@ -149,9 +152,14 @@ function ForgottenShelfAlert({
           <span className={styles.forgottenAlertText}>{message}</span>
         </div>
       </div>
-      <button type="button" className={styles.forgottenAlertCta} onClick={() => onFindRecipe(item)}>
-        {t.inventory.forgottenRecipeCta(item.name)}
-      </button>
+      <div className={styles.forgottenAlertActions}>
+        <button type="button" className={styles.forgottenAlertCta} onClick={() => onFindRecipe(item)}>
+          {t.inventory.forgottenRecipeCta(item.name)}
+        </button>
+        <button type="button" className={styles.forgottenAlertIgnore} onClick={() => onIgnore(item)}>
+          {t.inventory.forgottenIgnore}
+        </button>
+      </div>
     </div>
   );
 }
@@ -192,6 +200,12 @@ export default function InventoryPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleIgnoreForgotten = (item: Ingredient) => {
+    ignoreForgottenIngredient(item.id);
+    setForgottenItems(getForgottenIngredients());
+    showToast(t.inventory.forgottenIgnoredToast(item.name));
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -359,11 +373,11 @@ export default function InventoryPage() {
       </form>
 
       {isJudging && (
-        <KitchenLoader compact text={t.inventory.aiJudgingText} />
+        <KitchenLoader compact variant="basket" text={t.inventory.aiJudgingText} />
       )}
 
       {loading && (
-        <KitchenLoader compact text={t.inventory.subtitle} />
+        <KitchenLoader compact variant="basket" text={t.inventory.subtitle} />
       )}
 
       {!loading && hasIngredients && (
@@ -405,7 +419,7 @@ export default function InventoryPage() {
                     </div>
                   )}
                   {spotlightForgotten && (
-                    <ForgottenShelfAlert item={spotlightForgotten} onFindRecipe={handleFindRecipeForForgotten} />
+                    <ForgottenShelfAlert item={spotlightForgotten} onFindRecipe={handleFindRecipeForForgotten} onIgnore={handleIgnoreForgotten} />
                   )}
                 </div>
               );

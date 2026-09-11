@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, Settings } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, X, ZoomIn } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import ClimateBar from "@/components/ClimateBar";
-import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
@@ -114,7 +113,7 @@ export default function RecipePage() {
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [previewRecipeIndex, setPreviewRecipeIndex] = useState<number | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
@@ -125,6 +124,9 @@ export default function RecipePage() {
   // 警告(理由・不足食材・次のアクション)を表示する
   const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
   const selectedTray = getTrayTheme(userProfile.trayTheme);
+  const validSelectedIngredientIds = selectedIngredientIds.filter((id) =>
+    ingredients.some((ingredient) => ingredient.id === id)
+  );
 
   useEffect(() => {
     loadLocalData();
@@ -208,7 +210,7 @@ export default function RecipePage() {
 
     try {
       const selectedNames = creationMode === 'inventory'
-        ? ingredients.filter(i => selectedIngredientIds.length === 0 ? true : selectedIngredientIds.includes(i.id)).map(i => i.name)
+        ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
         : [];
 
       const currentClimate = getLocalClimateState();
@@ -293,7 +295,7 @@ export default function RecipePage() {
         savedIndices: [],
         creationMode,
         instruction,
-        selectedIngredientIds,
+        selectedIngredientIds: validSelectedIngredientIds,
         servings: sessionServings,
         savedAt: new Date().toISOString(),
       });
@@ -391,16 +393,6 @@ export default function RecipePage() {
         title={t.recipe.title}
         subtitle={t.recipe.subtitle}
         mascot="bear_hero"
-        actions={
-          <button
-            type="button"
-            className={styles.settingsBtn}
-            onClick={() => setIsSettingsOpen(true)}
-            title={t.recipe.settingsButtonTitle}
-          >
-            <Settings size={18} />
-          </button>
-        }
       />
 
       <ClimateBar />
@@ -531,28 +523,16 @@ export default function RecipePage() {
             <button
               type="button"
               onClick={() => setIngredientPickerExpanded(v => !v)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'none',
-                border: 'none',
-                boxShadow: 'none',
-                padding: 0,
-                marginBottom: 8,
-                cursor: 'pointer',
-                color: 'var(--foreground)',
-              }}
+              className={styles.ingredientPickerToggle}
             >
-              <span style={{ fontSize: 15, fontWeight: 900, textAlign: 'left' }}>
-                {t.recipe.selectIngredientsLabel}
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 6 }}>{t.recipe.selectIngredientsHint}</span>
+              <span className={styles.ingredientPickerCopy}>
+                <span className={styles.ingredientPickerLabel}>{t.recipe.selectIngredientsLabel}</span>
+                <span className={styles.ingredientPickerHint}>{t.recipe.selectIngredientsHint}</span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 8 }}>
-                {selectedIngredientIds.length > 0 && (
-                  <span style={{ color: 'var(--primary-text)', fontWeight: 800 }}>
-                    {t.recipe.selectIngredientsSelectedCount(selectedIngredientIds.length)}
+              <span className={styles.ingredientPickerStatus}>
+                {validSelectedIngredientIds.length > 0 && (
+                  <span className={styles.ingredientPickerCount}>
+                    {t.recipe.selectIngredientsSelectedCount(validSelectedIngredientIds.length)}
                   </span>
                 )}
                 {ingredientPickerExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -697,22 +677,32 @@ export default function RecipePage() {
           {recipes.map((recipe, index) => {
             const isExpanded = expandedIndex === index;
             const isSaved = savedSet.has(index);
+            const isSingleDish = !recipe.course;
 
             return (
               <div key={index} className={styles.recipeCard}>
                 <div
-                  className={styles.cardHeader}
+                  className={`${styles.cardHeader} ${isSingleDish ? styles.singleCardHeader : ''}`}
                   style={{ backgroundImage: `url("${selectedTray.asset}")` }}
                   onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
                 >
-                  <div className={styles.trayDishVisual}>
+                  <button
+                    type="button"
+                    className={styles.trayDishVisual}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPreviewRecipeIndex(index);
+                    }}
+                    aria-label={`${recipe.title} — ${language === 'ja' ? '大きく表示' : 'View larger'}`}
+                  >
                     <RecipeThumbnail
                       genre={recipe.genre}
                       fallbackIngredientName={recipe.title}
-                      size={132}
+                      size={168}
                       className={styles.trayDishIcon}
                     />
-                  </div>
+                    <span className={styles.dishZoomHint}><ZoomIn size={14} /></span>
+                  </button>
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
                       {recipe.course && (
@@ -940,11 +930,44 @@ export default function RecipePage() {
         )}
       </AnimatePresence>
 
-      <ProfileSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSaved={loadLocalData}
-      />
+      <AnimatePresence>
+        {previewRecipeIndex !== null && recipes[previewRecipeIndex] && (
+          <motion.div
+            className={styles.dishPreviewOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewRecipeIndex(null)}
+          >
+            <motion.div
+              className={styles.dishPreviewCard}
+              initial={{ opacity: 0, scale: 0.9, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={recipes[previewRecipeIndex].title}
+            >
+              <button
+                type="button"
+                className={styles.dishPreviewClose}
+                onClick={() => setPreviewRecipeIndex(null)}
+                aria-label={language === 'ja' ? '閉じる' : 'Close'}
+              >
+                <X size={20} />
+              </button>
+              <RecipeThumbnail
+                genre={recipes[previewRecipeIndex].genre}
+                fallbackIngredientName={recipes[previewRecipeIndex].title}
+                size={280}
+                className={styles.dishPreviewImage}
+              />
+              <h2>{recipes[previewRecipeIndex].title}</h2>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -59,9 +59,11 @@ function formatClock(totalSeconds: number) {
 }
 
 const stepVariants = {
-  enter: (dir: number) => ({ x: dir >= 0 ? 40 : -40, opacity: 0 }),
+  // iOS PWAで初期アニメーションが中断されても本文が透明のまま残らないよう、
+  // スライド中も常に可視にする。
+  enter: (dir: number) => ({ x: dir >= 0 ? 40 : -40, opacity: 1 }),
   center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir >= 0 ? -40 : 40, opacity: 0 }),
+  exit: (dir: number) => ({ x: dir >= 0 ? -40 : 40, opacity: 1 }),
 };
 
 export default function CookingSession({
@@ -357,13 +359,13 @@ export default function CookingSession({
       </div>
 
       <div className={styles.stage}>
-        <AnimatePresence mode="wait" custom={direction}>
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
           {finished ? (
             <motion.div
               key="finished"
               custom={direction}
               variants={stepVariants}
-              initial="enter"
+              initial={false}
               animate="center"
               exit="exit"
               className={styles.finishedCard}
@@ -387,7 +389,7 @@ export default function CookingSession({
               key={index}
               custom={direction}
               variants={stepVariants}
-              initial="enter"
+              initial={false}
               animate="center"
               exit="exit"
               transition={{ duration: 0.25 }}
