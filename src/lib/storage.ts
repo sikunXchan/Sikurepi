@@ -100,10 +100,13 @@ export const PANTRY_STAPLES = [
   '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
   '酢', 'サラダ油', 'ごま油', 'バター', 'だし', 'コンソメ', '鶏がらスープ',
   'ケチャップ', 'マヨネーズ', 'にんにく', 'ニンニク', 'しょうが', '生姜',
+  'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
+  'vegetable oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
+  'mayonnaise', 'garlic', 'ginger',
 ];
 
 export function isPantryStaple(ingredientName: string): boolean {
-  const name = ingredientName.trim();
+  const name = ingredientName.normalize('NFKC').trim().toLowerCase();
   return PANTRY_STAPLES.some(s => name.includes(s));
 }
 
@@ -188,13 +191,18 @@ export function isIngredientMissing(
   inventory: Ingredient[],
   assumeSeasoningsAvailable: boolean = true
 ): boolean {
-  const target = ingredientName.trim().toLowerCase();
+  const target = normalizeIngredientName(ingredientName);
   if (!target) return false;
   if (assumeSeasoningsAvailable && isPantryStaple(ingredientName)) return false;
   return !inventory.some(inv => {
-    const invName = inv.name.trim().toLowerCase();
+    const invName = normalizeIngredientName(inv.name);
+    if (!invName) return false;
     return invName.includes(target) || target.includes(invName);
   });
+}
+
+function normalizeIngredientName(name: string): string {
+  return toHiragana(name.normalize('NFKC').trim().toLowerCase()).replace(/\s+/g, '');
 }
 
 // --- レシピ検索: 材料充足度 ---
@@ -519,13 +527,31 @@ export function updateLocalIngredientCategory(id: number, category: string): voi
 
 export function consumeLocalIngredients(ingredientNames: string[]): number {
   const list = getLocalIngredients();
-  const normalizedTargets = new Set(ingredientNames.map(n => n.trim().toLowerCase()));
-  const remaining = list.filter(item => {
-    const itemName = item.name.trim().toLowerCase();
-    const shouldRemove = Array.from(normalizedTargets).some(t => itemName.includes(t) || t.includes(itemName));
-    return !shouldRemove;
-  });
-  const consumedCount = list.length - remaining.length;
+  const idsToRemove = new Set<number>();
+
+  for (const rawTarget of ingredientNames) {
+    const target = normalizeIngredientName(rawTarget);
+    if (!target) continue;
+
+    const available = list.filter(item => !idsToRemove.has(item.id));
+    const exact = available.find(item => normalizeIngredientName(item.name) === target);
+    if (exact) {
+      idsToRemove.add(exact.id);
+      continue;
+    }
+
+    // 「ねぎ」で玉ねぎと長ねぎの両方を消すような曖昧な削除は禁止する。
+    // 部分一致しかない場合は候補を1件に特定できたときだけ消費する。
+    const partial = available.filter(item => {
+      const itemName = normalizeIngredientName(item.name);
+      if (!itemName) return false;
+      return itemName.includes(target) || target.includes(itemName);
+    });
+    if (partial.length === 1) idsToRemove.add(partial[0].id);
+  }
+
+  const remaining = list.filter(item => !idsToRemove.has(item.id));
+  const consumedCount = idsToRemove.size;
   setStorage(KEYS.INVENTORY, remaining);
   return consumedCount;
 }
@@ -603,8 +629,20 @@ export function getRecentLocalRecipeNames(limit = 5): string[] {
 // --- 直近のAIレシピ生成結果 (別タブへ移動しても消えないように保持する) ---
 
 export type LastRecipeGeneration = {
-  recipes: any[];
-  cookingTips: any[];
+  recipes: {
+    title: string;
+    time: string;
+    genre?: string;
+    climate_badge?: string;
+    dish_badge?: string;
+    course?: string;
+    ingredients: { name: string; amount: string }[];
+    steps: string[];
+    tips: string;
+    image_url: string | null;
+    nutrition?: NutritionData | null;
+  }[];
+  cookingTips: { category: string; tip: string }[];
   expandedIndex: number;
   savedIndices: number[];
   creationMode: 'inventory' | 'free';
@@ -898,18 +936,20 @@ export function exportBackupJSON(): void {
 // アカウント同期(SyncManager)でも、サーバーから取得したスナップショットを
 // ローカルへ反映するのに同じロジックを使うため、JSON文字列を受け取る
 // importBackupJSON と、パース済みオブジェクトを受け取るこちらとで分けている。
-export function applyBackupPayload(data: any): void {
+export function applyBackupPayload(data: unknown): void {
   if (typeof window === 'undefined') return;
   if (!data || typeof data !== 'object') return;
 
-  if (Array.isArray(data.inventory)) setStorage(KEYS.INVENTORY, data.inventory);
-  if (Array.isArray(data.shopping)) setStorage(KEYS.SHOPPING, data.shopping);
-  if (Array.isArray(data.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, data.savedRecipes);
-  if (data.stats && typeof data.stats === 'object') setStorage(KEYS.STATS, data.stats);
-  if (data.profile && typeof data.profile === 'object') setStorage(KEYS.PROFILE, data.profile);
-  if (data.climate && typeof data.climate === 'object') setStorage(KEYS.CLIMATE, data.climate);
-  if (Array.isArray(data.tips)) setStorage(KEYS.TIPS, data.tips);
-  if (Array.isArray(data.weekPlan)) setStorage(KEYS.WEEK_PLAN, data.weekPlan);
+  const payload = data as Record<string, unknown>;
+
+  if (Array.isArray(payload.inventory)) setStorage(KEYS.INVENTORY, payload.inventory);
+  if (Array.isArray(payload.shopping)) setStorage(KEYS.SHOPPING, payload.shopping);
+  if (Array.isArray(payload.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, payload.savedRecipes);
+  if (payload.stats && typeof payload.stats === 'object') setStorage(KEYS.STATS, payload.stats);
+  if (payload.profile && typeof payload.profile === 'object') setStorage(KEYS.PROFILE, payload.profile);
+  if (payload.climate && typeof payload.climate === 'object') setStorage(KEYS.CLIMATE, payload.climate);
+  if (Array.isArray(payload.tips)) setStorage(KEYS.TIPS, payload.tips);
+  if (Array.isArray(payload.weekPlan)) setStorage(KEYS.WEEK_PLAN, payload.weekPlan);
 
   window.dispatchEvent(new Event('storage-updated'));
 }
@@ -936,8 +976,8 @@ export function importBackupJSON(jsonStr: string): { success: boolean; error?: s
     }
     applyBackupPayload(data);
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Import error:', e);
-    return { success: false, error: e.message || '復元に失敗しました' };
+    return { success: false, error: e instanceof Error ? e.message : '復元に失敗しました' };
   }
 }

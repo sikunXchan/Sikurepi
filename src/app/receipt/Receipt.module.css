@@ -146,6 +146,10 @@
 }
 
 .errorAlert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding: 14px 16px;
   border: 1px solid rgba(239, 68, 68, 0.18);
   border-radius: 16px;
@@ -155,6 +159,27 @@
   font-weight: 800;
   line-height: 1.5;
   text-align: center;
+}
+
+.manualEntryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid rgba(214, 49, 69, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #bd263b;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.manualEntryBtn:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .successAlert {

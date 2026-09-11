@@ -291,6 +291,7 @@ const en: typeof ja = {
     selectPhotoHint: "Receipt, fridge contents, or ingredients",
     analyzeButton: (n: number) => `Analyze ${n} photo${n === 1 ? "" : "s"}`,
     analyzingText: "AI is analyzing your photos to detect ingredients...",
+    manualEntryButton: "Enter items manually",
   },
   chefRanks: [
     "Commis",
@@ -345,6 +346,18 @@ const en: typeof ja = {
     pause: "Pause",
     startTimer: "Start timer",
     tapHint: "Tap right for next / left to go back",
+    cookedDefaultTitle: "Dish",
+    cookedTitle: (title: string) => `You cooked “${title}”!`,
+    cookedDescription: "Select the ingredients you used up. Only ingredients already in your pantry are selected by default.",
+    cookedDoneTitle: "Cooking complete! Great work!",
+    cookedDoneMessage: (n: number) => n > 0
+      ? `Your cooking log was saved and ${n} pantry item${n === 1 ? " was" : "s were"} updated.`
+      : "Your cooking log was saved.",
+    cookedCompleteButton: (n: number) => n > 0
+      ? `Use ${n} pantry item${n === 1 ? "" : "s"} and finish`
+      : "Save cooking log and finish",
+    cookedRecordOnly: "Save without changing pantry",
+    cookedError: "Something went wrong while saving",
   },
   settings: {
     tabProfile: "My Settings",
