@@ -1,0 +1,2342 @@
+{
+  "version": 1,
+  "count": 100,
+  "canvas": {
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "background": "transparent"
+  },
+  "groups": [
+    {
+      "key": "pilot",
+      "count": 12,
+      "icons": [
+        {
+          "key": "curry_rice",
+          "file": "icons/curry_rice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              131,
+              466,
+              380
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "rice_bowl",
+          "file": "icons/rice_bowl.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              72,
+              466,
+              440
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "noodle_soup",
+          "file": "icons/noodle_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              79,
+              466,
+              432
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pasta",
+          "file": "icons/pasta.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              392
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "clear_soup",
+          "file": "icons/clear_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              87,
+              466,
+              425
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "stew",
+          "file": "icons/stew.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              107,
+              466,
+              405
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "grilled_fish",
+          "file": "icons/grilled_fish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              392
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "meat_stir_fry",
+          "file": "icons/meat_stir_fry.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              124,
+              466,
+              388
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fried_food",
+          "file": "icons/fried_food.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              105,
+              466,
+              406
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "salad",
+          "file": "icons/salad.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              75,
+              466,
+              436
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "sandwich",
+          "file": "icons/sandwich.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              92,
+              466,
+              419
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "strawberry_cake",
+          "file": "icons/strawberry_cake.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              69,
+              466,
+              442
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "grains_noodles",
+      "count": 22,
+      "icons": [
+        {
+          "key": "plain_rice",
+          "file": "icons/plain_rice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              66,
+              466,
+              445
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "mixed_rice",
+          "file": "icons/mixed_rice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              80,
+              466,
+              432
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fried_rice",
+          "file": "icons/fried_rice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              112,
+              466,
+              400
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "rice_porridge",
+          "file": "icons/rice_porridge.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              91,
+              466,
+              420
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pilaf_biryani",
+          "file": "icons/pilaf_biryani.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              114,
+              466,
+              397
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "risotto",
+          "file": "icons/risotto.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              392
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "sushi",
+          "file": "icons/sushi.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              106,
+              466,
+              405
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "rice_ball",
+          "file": "icons/rice_ball.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              76,
+              466,
+              436
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "stuffed_rice_roll",
+          "file": "icons/stuffed_rice_roll.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              105,
+              466,
+              407
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "paella",
+          "file": "icons/paella.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              113,
+              466,
+              399
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "couscous",
+          "file": "icons/couscous.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              77,
+              466,
+              435
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "noodle_stir_fry",
+          "file": "icons/noodle_stir_fry.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              115,
+              466,
+              397
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "cold_noodles",
+          "file": "icons/cold_noodles.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              105,
+              466,
+              407
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "flat_noodles",
+          "file": "icons/flat_noodles.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              88,
+              466,
+              423
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "creamy_pasta",
+          "file": "icons/creamy_pasta.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              114,
+              466,
+              398
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "baked_pasta",
+          "file": "icons/baked_pasta.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              109,
+              466,
+              403
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "stuffed_pasta",
+          "file": "icons/stuffed_pasta.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              115,
+              466,
+              396
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "gnocchi",
+          "file": "icons/gnocchi.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              393
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "savory_pancake",
+          "file": "icons/savory_pancake.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              116,
+              466,
+              395
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "dumplings",
+          "file": "icons/dumplings.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              115,
+              466,
+              397
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "steamed_bun",
+          "file": "icons/steamed_bun.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              81,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "stuffed_pastry",
+          "file": "icons/stuffed_pastry.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              114,
+              466,
+              397
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "mains_proteins",
+      "count": 22,
+      "icons": [
+        {
+          "key": "fried_fish",
+          "file": "icons/fried_fish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              112,
+              466,
+              399
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fish_stew",
+          "file": "icons/fish_stew.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              77,
+              466,
+              434
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "seafood_platter",
+          "file": "icons/seafood_platter.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              77,
+              466,
+              434
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "shellfish",
+          "file": "icons/shellfish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              53,
+              466,
+              459
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "grilled_chicken",
+          "file": "icons/grilled_chicken.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              111,
+              466,
+              400
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "roast_chicken",
+          "file": "icons/roast_chicken.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              95,
+              466,
+              417
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fried_chicken",
+          "file": "icons/fried_chicken.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              97,
+              466,
+              415
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "chicken_skewer",
+          "file": "icons/chicken_skewer.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              58,
+              466,
+              453
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "steak",
+          "file": "icons/steak.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              107,
+              466,
+              404
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "grilled_meat",
+          "file": "icons/grilled_meat.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              108,
+              466,
+              404
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "roast_meat",
+          "file": "icons/roast_meat.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              112,
+              466,
+              399
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "meat_skewer",
+          "file": "icons/meat_skewer.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              75,
+              466,
+              436
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "meatballs",
+          "file": "icons/meatballs.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              76,
+              466,
+              435
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "sausage_plate",
+          "file": "icons/sausage_plate.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              104,
+              466,
+              407
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "meat_cutlet",
+          "file": "icons/meat_cutlet.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              100,
+              466,
+              412
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "egg_dish",
+          "file": "icons/egg_dish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              89,
+              466,
+              422
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "omelet",
+          "file": "icons/omelet.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              109,
+              466,
+              402
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "tofu_dish",
+          "file": "icons/tofu_dish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              68,
+              466,
+              443
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "bean_dish",
+          "file": "icons/bean_dish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              83,
+              466,
+              429
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "lentil_dish",
+          "file": "icons/lentil_dish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              82,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "stuffed_vegetable",
+          "file": "icons/stuffed_vegetable.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              106,
+              466,
+              405
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "savory_pie",
+          "file": "icons/savory_pie.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              109,
+              466,
+              402
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "soups_veg_world",
+      "count": 22,
+      "icons": [
+        {
+          "key": "cream_soup",
+          "file": "icons/cream_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              92,
+              466,
+              420
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "tomato_soup",
+          "file": "icons/tomato_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              80,
+              466,
+              431
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "spicy_soup",
+          "file": "icons/spicy_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              89,
+              466,
+              422
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "bean_soup",
+          "file": "icons/bean_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              81,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "seafood_soup",
+          "file": "icons/seafood_soup.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              87,
+              466,
+              424
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "hotpot",
+          "file": "icons/hotpot.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              88,
+              466,
+              423
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "cheese_fondue",
+          "file": "icons/cheese_fondue.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              58,
+              46,
+              453,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "casserole",
+          "file": "icons/casserole.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              115,
+              466,
+              396
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "baked_dish",
+          "file": "icons/baked_dish.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              392
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "vegetable_stir_fry",
+          "file": "icons/vegetable_stir_fry.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              122,
+              466,
+              389
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "roasted_vegetables",
+          "file": "icons/roasted_vegetables.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              136,
+              466,
+              375
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "steamed_vegetables",
+          "file": "icons/steamed_vegetables.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              56,
+              466,
+              455
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pickled_vegetables",
+          "file": "icons/pickled_vegetables.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              87,
+              466,
+              425
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "vegetable_skewer",
+          "file": "icons/vegetable_skewer.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              56,
+              46,
+              455,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "dip_spread",
+          "file": "icons/dip_spread.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              50,
+              466,
+              462
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "bread_loaf",
+          "file": "icons/bread_loaf.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              81,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "flatbread",
+          "file": "icons/flatbread.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              113,
+              466,
+              399
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pizza",
+          "file": "icons/pizza.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              81,
+              466,
+              430
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "burger",
+          "file": "icons/burger.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              56,
+              466,
+              456
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "wrap",
+          "file": "icons/wrap.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              69,
+              466,
+              443
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "taco",
+          "file": "icons/taco.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              111,
+              466,
+              401
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "toast",
+          "file": "icons/toast.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              105,
+              466,
+              407
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "desserts_drinks",
+      "count": 22,
+      "icons": [
+        {
+          "key": "pancake",
+          "file": "icons/pancake.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              68,
+              466,
+              444
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "waffle",
+          "file": "icons/waffle.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              95,
+              466,
+              417
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "crepe",
+          "file": "icons/crepe.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              104,
+              466,
+              408
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "donut",
+          "file": "icons/donut.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              85,
+              466,
+              426
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "cupcake",
+          "file": "icons/cupcake.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              93,
+              46,
+              418,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "whole_cake",
+          "file": "icons/whole_cake.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              58,
+              466,
+              453
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fruit_tart",
+          "file": "icons/fruit_tart.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              91,
+              466,
+              421
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pie_slice",
+          "file": "icons/pie_slice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              95,
+              466,
+              417
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "cookie",
+          "file": "icons/cookie.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              108,
+              466,
+              403
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "brownie",
+          "file": "icons/brownie.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              50,
+              466,
+              461
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "pudding",
+          "file": "icons/pudding.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              118,
+              466,
+              394
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "custard",
+          "file": "icons/custard.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              80,
+              46,
+              432,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "ice_cream",
+          "file": "icons/ice_cream.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              49,
+              466,
+              462
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "popsicle",
+          "file": "icons/popsicle.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              105,
+              46,
+              406,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "shaved_ice",
+          "file": "icons/shaved_ice.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              52,
+              46,
+              460,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "fruit_bowl",
+          "file": "icons/fruit_bowl.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              80,
+              466,
+              431
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "mochi",
+          "file": "icons/mochi.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              119,
+              466,
+              393
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "sweet_bun",
+          "file": "icons/sweet_bun.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              109,
+              466,
+              403
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "chocolate_sweets",
+          "file": "icons/chocolate_sweets.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              46,
+              78,
+              466,
+              433
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "parfait",
+          "file": "icons/parfait.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              122,
+              46,
+              390,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "smoothie",
+          "file": "icons/smoothie.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              97,
+              46,
+              414,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        },
+        {
+          "key": "hot_drink",
+          "file": "icons/hot_drink.png",
+          "qa": {
+            "size": [
+              512,
+              512
+            ],
+            "mode": "RGBA",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "content_bbox": [
+              72,
+              46,
+              440,
+              466
+            ],
+            "minimum_margin": 46,
+            "edge_clear": true
+          }
+        }
+      ]
+    }
+  ]
+}
