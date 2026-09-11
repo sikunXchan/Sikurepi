@@ -443,8 +443,8 @@
   background: var(--card-bg-solid);
   border: 1px solid rgba(255, 111, 145, 0.14);
   border-radius: var(--radius-md);
-  min-height: 280px;
-  padding: 34px 20px;
+  min-height: 240px;
+  padding: 28px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;

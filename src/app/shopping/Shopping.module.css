@@ -6,43 +6,94 @@
   min-height: 80vh;
 }
 
-.title {
-  font-size: 28px;
-  font-weight: 800;
-  text-align: center;
-  color: var(--primary-text);
-}
-
 .addForm {
   display: flex;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), #fff7eb);
-  padding: 14px;
-  border-radius: var(--radius-md);
+  padding: 12px;
   border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), #fff7eb);
   box-shadow: var(--shadow-soft);
 }
 
 .addForm input {
   flex: 1;
+  min-width: 0;
+  min-height: 50px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.addForm button {
+  min-height: 50px;
+  padding-inline: 18px;
+  border-radius: 15px;
+  white-space: nowrap;
+}
+
+.categoryStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.categoryCard {
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 249, 240, 0.9));
+  box-shadow: var(--shadow-soft);
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  margin-bottom: 10px;
+  padding: 0 2px 10px;
+  border-bottom: 1px solid rgba(112, 79, 58, 0.1);
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.categoryIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255, 111, 145, 0.08);
+}
+
+.categoryCount {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 111, 145, 0.12);
+  color: var(--primary-text);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .list {
-  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
 }
 
 .listItem {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  background: rgba(255,255,255,0.86);
-  border: 1px solid var(--line-soft);
-  border-radius: 18px;
-  box-shadow: 0 6px 16px rgba(88, 57, 42, 0.06);
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 9px 10px;
+  border: 1px solid rgba(112, 79, 58, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
 }
 
 .itemInfo {
@@ -50,48 +101,77 @@
   align-items: center;
   gap: 12px;
   flex: 1;
+  min-width: 0;
 }
 
 .checkbox {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: #fff;
+  color: transparent;
+  box-shadow: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, background 0.2s;
 }
 
-.checkboxActive {
-  background: var(--primary);
-  color: white;
+.checkbox:hover,
+.checkbox:focus-visible {
+  background: rgba(255, 111, 145, 0.08);
+  color: var(--primary);
+  transform: none;
+  box-shadow: none;
+}
+
+.itemIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 14px;
+  background: #fffaf3;
 }
 
 .itemName {
+  min-width: 0;
+  color: var(--foreground);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .deleteBtn {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
   background: transparent;
   color: var(--text-muted);
-  padding: 8px;
-  border-radius: 10px;
   box-shadow: none;
 }
 
 .deleteBtn:hover {
-  color: #ef4444;
   background: rgba(239, 68, 68, 0.05);
+  color: #ef4444;
+  transform: none;
+  box-shadow: none;
 }
 
-/* Particle / Flying Animation Styles */
 .particle {
   position: fixed;
-  pointer-events: none;
   z-index: 9999;
+  pointer-events: none;
 }
 
 .emptyState {
@@ -100,21 +180,35 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
-  text-align: center;
-  padding: 58px 20px 70px;
+  min-height: 240px;
+  padding: 38px 20px 46px;
   overflow: hidden;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255,255,255,0.86), #f8ead8);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), #f8ead8);
   box-shadow: var(--shadow-soft);
   color: var(--text-muted);
+  text-align: center;
 }
 
-.emptyState img { position: relative; z-index: 2; object-fit: contain; filter: drop-shadow(0 8px 11px rgba(93, 58, 38, 0.12)); }
-.emptyState p { position: relative; z-index: 2; max-width: 300px; font-size: 14px; font-weight: 800; }
+.emptyState img {
+  position: relative;
+  z-index: 2;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 11px rgba(93, 58, 38, 0.12));
+}
+
+.emptyState p {
+  position: relative;
+  z-index: 2;
+  max-width: 300px;
+  font-size: 14px;
+  font-weight: 800;
+}
 
 @media (max-width: 480px) {
-  .addForm { gap: 8px; padding: 10px; }
-  .addForm button { padding-inline: 15px; }
+  .addForm { gap: 8px; padding: 9px; }
+  .addForm button { padding-inline: 13px; }
+  .categoryCard { padding: 11px; }
+  .itemInfo { gap: 9px; }
 }

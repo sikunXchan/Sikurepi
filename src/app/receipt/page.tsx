@@ -67,27 +67,32 @@ export default function ReceiptPage() {
         body: formData,
       });
 
-      const data = await res.json();
+      const data: { error?: string; ingredients?: unknown } = await res.json();
 
       if (!res.ok) {
         throw new Error(data.error || t.receipt.errorReadFailed);
       }
 
-      const rawItems = data.ingredients || [];
-      const parsed: ExtractedItem[] = rawItems.map((item: any, idx: number) => ({
-        id: `ext_${idx}_${Date.now()}`,
-        name: typeof item === 'string' ? item : item.name || '',
-        category: typeof item === 'object' && item.category ? item.category : 'その他',
-      })).filter((i: ExtractedItem) => i.name.trim() !== '');
+      const rawItems = Array.isArray(data.ingredients) ? data.ingredients : [];
+      const parsed: ExtractedItem[] = rawItems.map((item: unknown, idx: number) => {
+        const values = typeof item === "object" && item !== null
+          ? item as Record<string, unknown>
+          : null;
+        return {
+          id: `ext_${idx}_${Date.now()}`,
+          name: typeof item === "string" ? item : typeof values?.name === "string" ? values.name : "",
+          category: typeof values?.category === "string" ? values.category : "その他",
+        };
+      }).filter((item) => item.name.trim() !== "");
 
       if (parsed.length === 0) {
         throw new Error(t.receipt.errorNoIngredientsDetected);
       }
 
       setExtractedList(parsed);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setErrorMsg(e.message);
+      setErrorMsg(e instanceof Error ? e.message : t.receipt.errorReadFailed);
     } finally {
       setLoading(false);
       setNavLocked(false);
@@ -134,7 +139,7 @@ export default function ReceiptPage() {
         origin: { y: 0.6 },
         colors: ['#ff6f91', '#20b2aa', '#fbbf24']
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       alert(t.receipt.errorSaveFailed);
     } finally {
@@ -150,9 +155,25 @@ export default function ReceiptPage() {
         mascot="bear_wave"
       />
 
-      <p className="text-muted mb-4" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>
-        {t.receipt.description}
-      </p>
+      <section className={styles.introCard}>
+        <div className={styles.flowRow} aria-label={t.receipt.description}>
+          <div className={styles.flowStep}>
+            <span className={styles.flowIcon}><Camera size={19} /></span>
+            <span>{t.receipt.flowSelect}</span>
+          </div>
+          <span className={styles.flowLine} aria-hidden="true" />
+          <div className={styles.flowStep}>
+            <span className={styles.flowIcon}><Sparkles size={19} /></span>
+            <span>{t.receipt.flowReview}</span>
+          </div>
+          <span className={styles.flowLine} aria-hidden="true" />
+          <div className={styles.flowStep}>
+            <span className={styles.flowIcon}><CheckCircle size={19} /></span>
+            <span>{t.receipt.flowStore}</span>
+          </div>
+        </div>
+        <p className={styles.description}>{t.receipt.description}</p>
+      </section>
 
       {errorMsg && (
         <div className={styles.errorAlert}>
@@ -165,15 +186,14 @@ export default function ReceiptPage() {
           <div className={styles.successIcon}>
             <CheckCircle size={40} />
           </div>
-          <div>
-            <p style={{ fontWeight: 700, fontSize: '18px', color: 'var(--primary)', marginBottom: '8px' }}>{t.receipt.successTitle}</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+          <div className={styles.successCopy}>
+            <p className={styles.successTitle}>{t.receipt.successTitle}</p>
+            <p className={styles.successText}>
               {t.receipt.successText(registeredCount)}
             </p>
             <button
               className={styles.submitBtn}
               onClick={() => router.push("/inventory")}
-              style={{ marginTop: "12px" }}
             >
               {t.receipt.checkInventoryButton}
             </button>
@@ -183,33 +203,33 @@ export default function ReceiptPage() {
 
       {/* 抽出結果プレビュー＆編集UI */}
       {!loading && !success && extractedList.length > 0 && (
-        <div style={{ background: '#ffffff', borderRadius: 20, padding: 20, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <section className={styles.reviewCard}>
+          <div className={styles.reviewHeader}>
+            <h3 className={styles.reviewTitle}>
               <Sparkles size={18} color="#ff6f91" />
               {t.receipt.reviewTitle}
             </h3>
-            <span style={{ fontSize: 13, color: '#6b7280' }}>{t.receipt.reviewCount(extractedList.length)}</span>
+            <span className={styles.reviewCount}>{t.receipt.reviewCount(extractedList.length)}</span>
           </div>
 
-          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>
+          <p className={styles.reviewHint}>
             {t.receipt.reviewHint}
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', paddingRight: 4, marginBottom: 16 }}>
+          <div className={styles.reviewList}>
             {extractedList.map((item) => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', padding: '8px 10px', borderRadius: 12, border: '1px solid #f3f4f6' }}>
+              <div key={item.id} className={styles.reviewItem}>
                 <input
                   type="text"
                   value={item.name}
                   placeholder={t.receipt.namePlaceholder}
                   onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                  style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 14, background: 'white' }}
+                  className={styles.reviewInput}
                 />
                 <select
                   value={item.category}
                   onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
-                  style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, background: 'white', color: '#4b5563' }}
+                  className={styles.reviewSelect}
                 >
                   {CATEGORY_ORDER.map(cat => (
                     <option key={cat} value={cat}>{t.category[cat] || cat}</option>
@@ -217,7 +237,7 @@ export default function ReceiptPage() {
                 </select>
                 <button
                   onClick={() => handleItemDelete(item.id)}
-                  style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}
+                  className={styles.reviewDelete}
                   title={t.receipt.deleteTitle}
                 >
                   <Trash2 size={16} />
@@ -226,24 +246,10 @@ export default function ReceiptPage() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div className={styles.reviewActions}>
             <button
               onClick={handleAddItem}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '8px',
-                background: '#f3f4f6',
-                border: '1px dashed #d1d5db',
-                borderRadius: 10,
-                fontSize: 13,
-                color: '#4b5563',
-                cursor: 'pointer',
-                fontWeight: 700,
-              }}
+              className={styles.addItemBtn}
             >
               <Plus size={15} /> {t.receipt.addItemButton}
             </button>
@@ -257,7 +263,7 @@ export default function ReceiptPage() {
             {saving ? <Loader2 className="spinner" size={20} /> : <CheckCircle size={20} />}
             {t.receipt.saveButton(extractedList.filter(i => i.name.trim() !== '').length)}
           </button>
-        </div>
+        </section>
       )}
 
       {/* 画像選択UI */}
@@ -273,24 +279,24 @@ export default function ReceiptPage() {
               className={styles.hiddenInput}
             />
             {previews.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', padding: 12 }}>
+              <div className={styles.previewGrid}>
                 {previews.map((src, i) => (
                   <img
                     key={i}
                     src={src}
                     alt={`Preview ${i + 1}`}
-                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6f91' }}
+                    className={styles.previewThumb}
                   />
                 ))}
               </div>
             ) : (
               <div className={styles.placeholder}>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 8 }}>
+                <div className={styles.uploadIcons}>
                   <Camera size={36} className="text-muted" />
                   <ImageIcon size={36} className="text-muted" />
                 </div>
-                <span style={{ fontWeight: 700, color: '#374151' }}>{t.receipt.selectPhotoLabel}</span>
-                <span style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>{t.receipt.selectPhotoHint}</span>
+                <span className={styles.uploadTitle}>{t.receipt.selectPhotoLabel}</span>
+                <span className={styles.uploadHint}>{t.receipt.selectPhotoHint}</span>
               </div>
             )}
           </label>
@@ -299,7 +305,6 @@ export default function ReceiptPage() {
             <button
               className={styles.submitBtn}
               onClick={processImages}
-              style={{ marginTop: "20px" }}
             >
               <Upload size={20} />
               {t.receipt.analyzeButton(files.length)}
