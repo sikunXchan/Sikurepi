@@ -18,7 +18,7 @@ type ExtractedItem = {
 };
 
 export default function ReceiptPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,16 +29,31 @@ export default function ReceiptPage() {
   const [success, setSuccess] = useState(false);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<string[]>([]);
 
-  // このページを離れる際は、ロックしたままにならないよう必ず解除する
-  useEffect(() => () => setNavLocked(false), []);
+  // このページを離れる際は、ロックと画像プレビュー用URLを必ず片付ける。
+  useEffect(() => () => {
+    setNavLocked(false);
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const clearSelectedFiles = () => {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrlsRef.current = [];
+    setFiles([]);
+    setPreviews([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (selected && selected.length > 0) {
       const fileArr = Array.from(selected);
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      const nextPreviews = fileArr.map((file) => URL.createObjectURL(file));
+      previewUrlsRef.current = nextPreviews;
       setFiles(fileArr);
-      setPreviews(fileArr.map(f => URL.createObjectURL(f)));
+      setPreviews(nextPreviews);
       setErrorMsg("");
       setExtractedList([]);
       setSuccess(false);
@@ -61,6 +76,7 @@ export default function ReceiptPage() {
       for (const file of files) {
         formData.append("files", file);
       }
+      formData.append("language", language);
 
       const res = await fetch("/api/ocr", {
         method: "POST",
@@ -128,10 +144,8 @@ export default function ReceiptPage() {
 
       setRegisteredCount(count);
       setSuccess(true);
-      setFiles([]);
-      setPreviews([]);
+      clearSelectedFiles();
       setExtractedList([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
 
       confetti({
         particleCount: 120,
@@ -177,7 +191,19 @@ export default function ReceiptPage() {
 
       {errorMsg && (
         <div className={styles.errorAlert}>
-          {errorMsg}
+          <span>{errorMsg}</span>
+          <button
+            type="button"
+            className={styles.manualEntryBtn}
+            onClick={() => {
+              setErrorMsg("");
+              clearSelectedFiles();
+              handleAddItem();
+            }}
+          >
+            <Plus size={16} />
+            {t.receipt.manualEntryButton}
+          </button>
         </div>
       )}
 

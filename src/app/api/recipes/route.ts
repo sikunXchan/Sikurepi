@@ -305,10 +305,18 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         : '条件を満たすレシピをAIが生成できませんでした。条件を変えるか、もう一度お試しください。',
     }, { status: 422 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Recipe Gen Error:', error);
-    const status = error?.status || error?.httpStatusCode || error?.code;
-    if (status === 429 || status === 503 || status === 'UNAVAILABLE') {
+    const details = typeof error === 'object' && error !== null
+      ? error as { status?: number | string; httpStatusCode?: number | string; code?: number | string; message?: string }
+      : {};
+    const status = details.status || details.httpStatusCode || details.code;
+    const message = details.message || '';
+    const isTemporaryFailure = status === 429
+      || status === 503
+      || status === 'UNAVAILABLE'
+      || /temporar|unavailable|一時的|利用不可|混雑/i.test(message);
+    if (isTemporaryFailure) {
       return NextResponse.json({
         error: language === 'en'
           ? 'The AI model is temporarily busy. Please try again in a moment.'
@@ -317,8 +325,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     }
     return NextResponse.json({
       error: language === 'en'
-        ? `Failed to generate recipes: ${error.message}`
-        : `レシピの生成に失敗しました: ${error.message}`,
+        ? 'Failed to generate recipes. Please try again in a moment.'
+        : 'レシピの生成に失敗しました。しばらく時間をおいてもう一度お試しください。',
     }, { status: 500 });
   }
 }
