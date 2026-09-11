@@ -12,7 +12,6 @@ import {
   Check,
   Play,
   Pause,
-  PartyPopper,
   RefreshCw,
   Loader2,
   ClipboardList,
@@ -21,6 +20,7 @@ import CookedModal from "./CookedModal";
 import IngredientIcon from "./IngredientIcon";
 import UiIcon from "./UiIcon";
 import styles from "./CookingSession.module.css";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type IngredientItem = {
   name: string;
@@ -71,6 +71,7 @@ export default function CookingSession({
   autoGenerateImages = false,
   onClose,
 }: Props) {
+  const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -183,16 +184,16 @@ export default function CookingSession({
           body: JSON.stringify({ title, step: steps[i], ingredients: ingredientNames }),
         });
         const data = await res.json();
-        if (!res.ok || !data.image) throw new Error(data.error || "画像の生成に失敗しました");
+        if (!res.ok || !data.image) throw new Error(data.error || t.cookingSession.imageError);
         setStepImages((prev) => ({ ...prev, [i]: data.image }));
       } catch (err) {
-        const message = err instanceof Error ? err.message : "画像の生成に失敗しました";
+        const message = err instanceof Error ? err.message : t.cookingSession.imageError;
         setImageErrors((prev) => ({ ...prev, [i]: message }));
       } finally {
         setImageLoading((prev) => ({ ...prev, [i]: false }));
       }
     },
-    [title, steps, ingredientNames]
+    [title, steps, ingredientNames, t.cookingSession.imageError]
   );
 
   // α mode: generate every step's image up front, one at a time
@@ -272,17 +273,17 @@ export default function CookingSession({
           <div className={styles.headerTitle}>{title}</div>
           {autoGenerateImages && (
             <div className={styles.headerSubtitle}>
-              画像を準備中 {generatedImageCount}/{total}
+              {t.cookingSession.imagePreparing(generatedImageCount, total)}
             </div>
           )}
         </div>
         {ingredients && ingredients.length > 0 && (
           <button className={styles.ingredientsBtn} onClick={() => setShowIngredients(true)}>
             <ClipboardList size={16} />
-            材料
+            {t.cookingSession.ingredients}
           </button>
         )}
-        <button className={styles.closeBtn} onClick={onClose} aria-label="閉じる">
+        <button className={styles.closeBtn} onClick={onClose} aria-label={t.cookingSession.close}>
           <X size={22} />
         </button>
       </div>
@@ -305,11 +306,11 @@ export default function CookingSession({
               onClick={(e) => e.stopPropagation()}
             >
               <div className={styles.ingredientsSheetHeader}>
-                <span>材料</span>
+                <span>{t.cookingSession.ingredients}</span>
                 <button
                   className={styles.closeBtn}
                   onClick={() => setShowIngredients(false)}
-                  aria-label="閉じる"
+                  aria-label={t.cookingSession.close}
                 >
                   <X size={20} />
                 </button>
@@ -367,18 +368,18 @@ export default function CookingSession({
               exit="exit"
               className={styles.finishedCard}
             >
-              <PartyPopper size={56} color="#ff6f91" />
-              <h2>完成です！</h2>
-              <p>お疲れさまでした 🍽️</p>
+              <img src="/mascot/bear_serving.png" alt="" width={132} height={132} className={styles.finishedBear} />
+              <h2>{t.cookingSession.completeTitle}</h2>
+              <p>{t.cookingSession.completeMessage}</p>
               <button
                 className={styles.finishBtn}
                 style={{ marginBottom: "12px", background: "linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)", color: "white" }}
                 onClick={() => setShowCookedModal(true)}
               >
-                <UiIcon slug="cooking_pot" size={18} alt="" /> 在庫の消費を記録する
+                <UiIcon slug="cooking_pot" size={18} alt="" /> {t.cookingSession.recordConsumption}
               </button>
               <button className={styles.finishBtn} onClick={onClose}>
-                閉じる
+                {t.cookingSession.close}
               </button>
             </motion.div>
           ) : (
@@ -396,6 +397,13 @@ export default function CookingSession({
               <div className={styles.stepLabel}>
                 STEP {index + 1} / {total}
               </div>
+
+              {!autoGenerateImages && (
+                <div className={styles.stepGuide} aria-hidden="true">
+                  <span className={styles.guideSteam} />
+                  <img src="/mascot/bear_reading.png" alt="" width={92} height={92} />
+                </div>
+              )}
 
               {(currentMeta?.heat || currentMeta?.seconds) && (
                 <div className={styles.badgeRow}>
@@ -417,7 +425,7 @@ export default function CookingSession({
                   {stepImages[index] ? (
                     <div className={styles.imageWrap}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={stepImages[index]} alt={`STEP ${index + 1}`} className={styles.stepImage} />
+                      <img src={stepImages[index]} alt={t.cookingSession.imageAlt(index + 1)} className={styles.stepImage} />
                       <button
                         className={styles.imageRegenBtn}
                         onClick={(e) => {
@@ -425,7 +433,7 @@ export default function CookingSession({
                           generateStepImage(index);
                         }}
                         disabled={imageLoading[index]}
-                        title="画像を再生成"
+                        title={t.cookingSession.regenerateImage}
                       >
                         {imageLoading[index] ? (
                           <Loader2 className="spinner" size={14} />
@@ -437,7 +445,7 @@ export default function CookingSession({
                   ) : imageLoading[index] ? (
                     <div className={styles.imagePlaceholder}>
                       <Loader2 className="spinner" size={20} />
-                      <span>画像を生成中...</span>
+                      <span>{t.cookingSession.generatingImage}</span>
                     </div>
                   ) : imageErrors[index] ? (
                     <button
@@ -447,7 +455,7 @@ export default function CookingSession({
                         generateStepImage(index);
                       }}
                     >
-                      <RefreshCw size={14} /> 再試行
+                      <RefreshCw size={14} /> {t.cookingSession.retry}
                     </button>
                   ) : null}
                   {imageErrors[index] && <p className={styles.imageError}>{imageErrors[index]}</p>}
@@ -469,12 +477,12 @@ export default function CookingSession({
                     }}
                   >
                     {timerRunning ? <Pause size={16} /> : <Play size={16} />}
-                    {timerRunning ? "一時停止" : "タイマー開始"}
+                    {timerRunning ? t.cookingSession.pause : t.cookingSession.startTimer}
                   </button>
                 </div>
               )}
 
-              <div className={styles.tapHint}>画面タップ：右で次へ / 左で戻る</div>
+              <div className={styles.tapHint}>{t.cookingSession.tapHint}</div>
             </motion.div>
           )}
         </AnimatePresence>

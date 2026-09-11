@@ -1,6 +1,7 @@
 // LocalStorage Unified Storage Service with JSON Backup & Restore
 
 import { toHiragana } from './kana';
+import type { TrayThemeId } from './trayThemes';
 
 export type Ingredient = {
   id: number;
@@ -84,6 +85,8 @@ export type UserProfile = {
   // 優先的に食べたい料理ジャンル。dietaryRestrictionsと違い「絶対」ではなく
   // 「できれば優先して」というやわらかい希望としてAIに伝える。デフォルトは未選択。
   preferredGenres: string[];
+  // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
+  trayTheme?: TrayThemeId;
 };
 
 // --- 材料の不足チェック (レシピの材料が在庫にあるか) ---
@@ -740,6 +743,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   assumeSeasoningsAvailable: true,
   dietaryRestrictions: [],
   preferredGenres: [],
+  trayTheme: 'wood',
 };
 
 export function getLocalUserProfile(): UserProfile {

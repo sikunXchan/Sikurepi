@@ -12,22 +12,59 @@
 }
 
 .emptyState {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
   text-align: center;
-  padding: 60px 20px;
+  padding: 48px 20px 62px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), #fff3df);
+  box-shadow: var(--shadow-soft);
   color: var(--text-muted);
 }
 
 .emptyState p {
+  position: relative;
+  z-index: 2;
   margin-top: 12px;
   font-size: 15px;
 }
 
+.emptyState img { position: relative; z-index: 2; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(91, 57, 39, 0.12)); }
+
+.emptyBook {
+  position: absolute;
+  right: 11%;
+  bottom: 42px;
+  left: 11%;
+  height: 58px;
+  border-radius: 12px 12px 24px 24px;
+  background: linear-gradient(90deg, #f0c889 49.4%, #b77a49 50%, #f0c889 50.6%);
+  opacity: 0.7;
+  transform: perspective(240px) rotateX(52deg);
+}
+
+.emptyIcon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--surface-mint);
+  color: var(--secondary);
+}
+
 .recipeCard {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--shadow-soft);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform, opacity;
 }
@@ -449,13 +486,18 @@
 
 /* Search & Filter */
 .searchSection {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
+  background: rgba(255, 253, 249, 0.92);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
   padding: 14px 16px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px);
 }
 
 .searchBar {

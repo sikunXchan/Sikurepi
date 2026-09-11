@@ -277,18 +277,13 @@
 
 .recipeCard {
   position: relative;
-  background:
-    repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.055) 0 2px, transparent 2px 22px),
-    linear-gradient(145deg, #d69a62 0%, #c27c48 52%, #ad6339 100%);
-  border: 2px solid rgba(116, 62, 32, 0.3);
-  border-radius: 26px;
-  padding: 10px;
-  overflow: hidden;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -3px 0 rgba(101, 50, 25, 0.16),
-    0 12px 28px rgba(92, 48, 28, 0.15);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  border: 0;
+  border-radius: 28px;
+  padding: 0;
+  overflow: visible;
+  box-shadow: none;
+  transition: filter var(--motion-base) ease, transform var(--motion-base) var(--ease-out);
   transform-style: preserve-3d;
   perspective: 1000px;
   will-change: transform, opacity;
@@ -318,10 +313,7 @@
 }
 
 .recipeCard:hover {
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -3px 0 rgba(101, 50, 25, 0.16),
-    0 18px 42px rgba(92, 48, 28, 0.22);
+  filter: drop-shadow(0 16px 22px rgba(92, 48, 28, 0.14));
 }
 
 .recipeIcon {
@@ -903,65 +895,109 @@
 }
 
 .cardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 1.46 / 1;
+  padding: 0;
   cursor: pointer;
-  background: rgba(255, 252, 247, 0.96);
-  border: 1px solid rgba(126, 75, 43, 0.14);
+  background-color: transparent;
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  border: 0;
+  border-radius: 34px;
+  filter: drop-shadow(0 12px 16px rgba(92, 48, 28, 0.16));
+}
+
+.modeTabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
   border-radius: 18px;
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 6px 16px rgba(91, 57, 40, 0.05);
+}
+
+.modeTab {
+  flex: 1;
+  min-height: 44px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.modeTab:hover { transform: none; box-shadow: none; }
+.modeTabPrimary { background: var(--gradient-primary); color: #fff; box-shadow: 0 5px 14px rgba(224,70,110,0.18); }
+.mealTabs { background: rgba(236, 248, 244, 0.8); }
+.mealTabActive { background: var(--gradient-cool); color: #fff; box-shadow: 0 5px 14px rgba(23,148,141,0.18); }
+
+.requestCard {
+  position: relative;
+  margin-bottom: 16px;
+  padding: 18px !important;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 225, 190, 0.32), transparent 25%),
+    rgba(255,255,255,0.92);
+  box-shadow: var(--shadow-lifted);
 }
 
 .trayDishVisual {
-  position: relative;
-  flex: 0 0 126px;
-  width: 126px;
-  height: 126px;
+  position: absolute;
+  left: 9.5%;
+  top: 25%;
+  width: 31%;
+  height: 43%;
   display: grid;
   place-items: center;
+  animation: dishArrive 520ms var(--ease-out) both;
 }
 
 .trayDishVisual::after {
   content: '';
   position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 5px;
+  left: 16px;
+  right: 16px;
+  bottom: 4px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(78, 43, 27, 0.13);
+  background: rgba(78, 43, 27, 0.16);
   filter: blur(5px);
-}
-
-.trayPlate {
-  position: relative;
-  z-index: 1;
-  width: 118px;
-  height: 118px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 45% 38%, #ffffff 0 44%, #fff7ec 45% 63%, #dfc5a9 64% 67%, #fffaf3 68% 100%);
-  border: 1px solid rgba(111, 67, 40, 0.14);
-  box-shadow: 0 5px 12px rgba(87, 47, 26, 0.13);
 }
 
 .trayDishIcon {
   position: relative;
   z-index: 2;
   object-fit: contain !important;
+  filter: drop-shadow(0 7px 5px rgba(78, 43, 27, 0.16));
 }
 
 .titleInfo {
+  position: absolute;
+  right: 8%;
+  bottom: 14%;
+  width: 50%;
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  flex: 1;
+  padding: 12px 15px;
+  background: rgba(255, 252, 247, 0.94);
+  border: 1px solid rgba(116, 62, 32, 0.12);
+  border-radius: 18px 18px 18px 7px;
+  box-shadow: 0 5px 14px rgba(91, 51, 30, 0.1);
+  backdrop-filter: blur(5px);
 }
 
 .badgeRow {
@@ -985,6 +1021,10 @@
 }
 
 .headerActions {
+  position: absolute;
+  z-index: 4;
+  top: 16%;
+  right: 8%;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1013,44 +1053,63 @@
 
 .cardContent {
   padding: 16px;
-  margin-top: 10px;
+  margin: -18px 18px 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   background: rgba(255, 252, 247, 0.97);
   border: 1px solid rgba(126, 75, 43, 0.14);
   border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(92, 48, 28, 0.1);
 }
 
 @media (max-width: 560px) {
   .cardHeader {
-    display: grid;
-    grid-template-columns: 94px minmax(0, 1fr);
-    align-items: center;
-    gap: 10px;
-    padding: 12px;
+    display: block;
+    min-height: 0;
+    padding: 0;
+    aspect-ratio: 1.33 / 1;
+    background-size: 108% 100%;
   }
 
   .trayDishVisual {
-    width: 90px;
-    height: 90px;
-    flex-basis: 90px;
-  }
-
-  .trayPlate {
-    width: 88px;
-    height: 88px;
+    left: 8%;
+    top: 22%;
+    width: 34%;
+    height: 42%;
   }
 
   .trayDishIcon {
-    width: 82px !important;
-    height: 82px !important;
+    width: 104px !important;
+    height: 104px !important;
   }
 
   .headerActions {
-    grid-column: 1 / -1;
+    top: 12%;
+    right: 7%;
     justify-content: flex-end;
   }
+
+  .titleInfo {
+    right: 7%;
+    bottom: 11%;
+    width: 61%;
+    padding: 9px 10px;
+    border-radius: 14px 14px 14px 6px;
+  }
+
+  .recipeTitle { font-size: 15px; line-height: 1.35; }
+  .badgeRow { max-height: 25px; overflow: hidden; }
+  .ingredientIconRow { max-height: 29px; overflow: hidden; }
+
+  .cardContent {
+    margin: -14px 10px 0;
+  }
+}
+
+@keyframes dishArrive {
+  from { opacity: 0; transform: translate(-18px, 8px) rotate(-4deg) scale(0.9); }
+  to { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
 }
 
 .sectionHeader {
@@ -1159,3 +1218,5 @@
   gap: 5px;
   margin-top: 6px;
 }
+  width: min(100%, 150px) !important;
+  height: min(100%, 150px) !important;

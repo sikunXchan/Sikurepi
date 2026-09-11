@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Loader2, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import CookedModal from "@/components/CookedModal";
+import KitchenLoader from "@/components/KitchenLoader";
+import RecipeThumbnail from "@/components/RecipeThumbnail";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -51,17 +53,6 @@ function buildDays(weekday: string[]): DayInfo[] {
   return days;
 }
 
-const chip = (active: boolean): CSSProperties => ({
-  background: active ? 'var(--primary)' : 'var(--card-bg-solid)',
-  color: active ? '#ffffff' : 'var(--foreground)',
-  border: '1px solid var(--border)',
-  padding: '6px 12px',
-  borderRadius: 20,
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: 'pointer',
-});
-
 const iconBtn: CSSProperties = {
   background: 'rgba(0,0,0,0.04)',
   border: 'none',
@@ -77,7 +68,7 @@ const iconBtn: CSSProperties = {
 export default function MealPlanPage() {
   const { t, language } = useLanguage();
   const SLOT_LABEL: Record<MealSlot, string> = { lunch: t.mealPlan.slotLunch, dinner: t.mealPlan.slotDinner };
-  const days = useMemo(() => buildDays(t.mealPlan.weekdayShort), [language]);
+  const days = useMemo(() => buildDays(t.mealPlan.weekdayShort), [t.mealPlan.weekdayShort]);
   const [active, setActive] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     buildDays(t.mealPlan.weekdayShort).forEach(d => {
@@ -340,28 +331,56 @@ export default function MealPlanPage() {
           ) : undefined
         }
       />
-      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+      <p className={styles.description}>
         {t.mealPlan.description}
       </p>
 
-      <div className="card" style={{ padding: 16, pointerEvents: generating ? 'none' : undefined, opacity: generating ? 0.5 : 1, transition: 'opacity 0.2s' }} aria-disabled={generating}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
+        <div className={styles.plannerTopline}>
+          <div>
+            <span className={styles.plannerEyebrow}>WEEKLY TABLE</span>
+            <h2 className={styles.plannerTitle}>{t.mealPlan.title}</h2>
+          </div>
+          <UiIcon slug="calendar_date" size={42} alt="" />
+        </div>
+        <div className={styles.dayRail}>
           {days.map(d => {
             const lunchOn = !!active[`${d.date}_lunch`];
             const dinnerOn = !!active[`${d.date}_dinner`];
             return (
-              <div key={d.date} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px dashed var(--border)' }}>
-                <span style={{ width: 64, fontSize: 13, fontWeight: 700, color: 'var(--foreground)', flexShrink: 0 }}>{d.label}</span>
-                <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} style={chip(lunchOn)}>{t.mealPlan.slotLunch}</button>
-                <button type="button" onClick={() => toggleSlot(d.date, 'dinner')} style={chip(dinnerOn)}>{t.mealPlan.slotDinner}</button>
+              <article key={d.date} className={`${styles.dayCard} ${lunchOn || dinnerOn ? styles.dayCardActive : styles.dayCardOff}`}>
+                <div className={styles.dayCardHeader}>
+                  <span className={styles.dayLabel}>{d.label}</span>
+                  <button
+                    type="button"
+                    className={styles.skipButton}
+                    onClick={() => toggleDay(d.date, false)}
+                    aria-label={t.mealPlan.skipDay}
+                    title={t.mealPlan.skipDay}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className={styles.mealSlots}>
+                  <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} className={`${styles.mealSlot} ${lunchOn ? styles.mealSlotActive : ''}`}>
+                    <UiIcon slug="clear" size={22} alt="" />
+                    <span>{t.mealPlan.slotLunch}</span>
+                    <i className={styles.slotCheck}>{lunchOn && <Check size={11} />}</i>
+                  </button>
+                  <button type="button" onClick={() => toggleSlot(d.date, 'dinner')} className={`${styles.mealSlot} ${dinnerOn ? styles.mealSlotActive : ''}`}>
+                    <span className={styles.moonMark} aria-hidden="true" />
+                    <span>{t.mealPlan.slotDinner}</span>
+                    <i className={styles.slotCheck}>{dinnerOn && <Check size={11} />}</i>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => toggleDay(d.date, false)}
-                  style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', background: 'none', border: 'none', boxShadow: 'none', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', padding: '6px 8px' }}
+                  onClick={() => toggleDay(d.date, !(lunchOn || dinnerOn))}
+                  className={styles.dayToggle}
                 >
-                  {t.mealPlan.skipDay}
+                  {lunchOn || dinnerOn ? t.mealPlan.skipDay : `${t.mealPlan.slotLunch} + ${t.mealPlan.slotDinner}`}
                 </button>
-              </div>
+              </article>
             );
           })}
         </div>
@@ -370,8 +389,7 @@ export default function MealPlanPage() {
           type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="btn-primary"
-          style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 700, marginTop: 14 }}
+          className={styles.generateButton}
         >
           {generating ? (
             <>
@@ -380,7 +398,7 @@ export default function MealPlanPage() {
             </>
           ) : (
             <>
-              <Sparkles size={18} />
+              <UiIcon slug="cooking_pot" size={24} alt="" />
               {t.mealPlan.generateButton}
             </>
           )}
@@ -390,20 +408,10 @@ export default function MealPlanPage() {
             {t.mealPlan.freeRemaining(Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed()))}
           </p>
         )}
-      </div>
+      </section>
 
       {generating && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '20px 0' }}>
-          <motion.img
-            src="/mascot/bear_basket.png"
-            alt={t.mealPlan.generatingAlt}
-            width={96}
-            height={96}
-            animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
-            transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.generatingText}</p>
-        </div>
+        <KitchenLoader text={t.mealPlan.generatingText} />
       )}
 
       {errorMsg && (
@@ -444,15 +452,18 @@ export default function MealPlanPage() {
                   const key = `${d.date}_${slot}`;
                   const isExpanded = expandedKey === key;
                   return (
-                    <div key={key} className={recipeStyles.recipeCard} style={{ marginBottom: 10 }}>
+                    <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`} style={{ marginBottom: 10 }}>
                       {!entry ? (
                         <div style={{ padding: 14, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
                           {t.mealPlan.notGenerated(SLOT_LABEL[slot])}
                         </div>
                       ) : (
                         <>
-                          <div className={recipeStyles.cardHeader} onClick={() => setExpandedKey(isExpanded ? null : key)}>
-                            <div className={recipeStyles.titleInfo}>
+                          <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
+                            <div className={styles.planDish}>
+                              <RecipeThumbnail genre={entry.recipe.genre} fallbackIngredientName={entry.recipe.title} size={74} />
+                            </div>
+                            <div className={`${recipeStyles.titleInfo} ${styles.planTitleInfo}`}>
                               <div className={recipeStyles.badgeRow}>
                                 <span className={recipeStyles.genreBadge}>{SLOT_LABEL[slot]}</span>
                                 {entry.recipe.genre && <span className={recipeStyles.genreBadge}>{t.tagLabel[entry.recipe.genre] || entry.recipe.genre}</span>}
@@ -460,7 +471,8 @@ export default function MealPlanPage() {
                               </div>
                               <h2 className={recipeStyles.recipeTitle}>{entry.recipe.title}</h2>
                               <span className={recipeStyles.recipeTime}>
-                                ⏱ {entry.recipe.time}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
+                                <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
+                                {entry.recipe.time}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
                               </span>
                               {(entry.recipe.ingredients || []).length > 0 && (
                                 <div className={recipeStyles.ingredientIconRow}>
@@ -470,7 +482,7 @@ export default function MealPlanPage() {
                                 </div>
                               )}
                             </div>
-                            <div className={recipeStyles.headerActions}>
+                            <div className={`${recipeStyles.headerActions} ${styles.planHeaderActions}`}>
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRegenerateSlot(d.date, slot); }}
@@ -500,7 +512,7 @@ export default function MealPlanPage() {
                                 exit={{ height: 0, opacity: 0 }}
                                 style={{ overflow: 'hidden' }}
                               >
-                                <div className={recipeStyles.cardContent}>
+                                <div className={`${recipeStyles.cardContent} ${styles.planCardContent}`}>
                                   {entry.recipe.nutrition && (
                                     <div className={recipeStyles.nutritionSection}>
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
