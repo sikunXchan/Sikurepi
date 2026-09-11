@@ -21,7 +21,26 @@
   transform: scale(0.96);
 }
 
-.flag {
-  font-size: 15px;
-  line-height: 1;
+.languageCode {
+  padding-right: 5px;
+  border-right: 1px solid var(--line-soft);
+  color: var(--secondary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 480px) {
+  .toggle {
+    right: 8px;
+    gap: 4px;
+    padding: 7px 9px;
+  }
+
+  .toggle > span:last-child { display: none; }
+
+  .languageCode {
+    padding-right: 0;
+    border-right: 0;
+  }
 }

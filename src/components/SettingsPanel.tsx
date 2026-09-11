@@ -25,6 +25,7 @@ import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { TRAY_THEMES, TrayThemeId } from "@/lib/trayThemes";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -133,7 +134,7 @@ type Props = {
 // マイ設定モーダルとマイページの両方から使われる共通の中身。
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, isSupabaseConfigured, sendLoginCode, verifyLoginCode, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [accountEmail, setAccountEmail] = useState("");
@@ -324,6 +325,49 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           <p className={styles.description}>
             {t.settings.profileDescription}
           </p>
+
+          <div className={styles.section}>
+            <div className={styles.trayHeadingRow}>
+              <label className={styles.sectionLabel}>
+                {language === 'ja' ? '配膳トレー' : 'Serving tray'}
+              </label>
+              <span className={styles.trayAvailableBadge}>
+                {language === 'ja' ? 'すべて利用可能' : 'All available'}
+              </span>
+            </div>
+            <div className={styles.trayGrid}>
+              {TRAY_THEMES.map(theme => {
+                const active = (profile.trayTheme || 'wood') === theme.id;
+                const label = theme.name[language === 'ja' ? 'ja' : 'en'];
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    aria-pressed={active}
+                    className={`${styles.trayOption} ${active ? styles.trayOptionActive : ''}`}
+                    onClick={() => setProfile(prev => ({ ...prev, trayTheme: theme.id as TrayThemeId }))}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={theme.asset}
+                      alt=""
+                      width={190}
+                      height={80}
+                      loading="eager"
+                      className={styles.trayPreview}
+                    />
+                    <span>{label}</span>
+                    {active && <Check size={14} className={styles.trayCheck} />}
+                  </button>
+                );
+              })}
+            </div>
+            <span className={styles.hint}>
+              {language === 'ja'
+                ? '設定を保存すると、選んだトレーがレシピ結果に反映されます。'
+                : 'Save settings to apply this tray to recipe results.'}
+            </span>
+          </div>
 
           <div className={styles.section}>
             <label className={styles.sectionLabel}>{t.settings.addressLabel}</label>

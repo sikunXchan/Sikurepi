@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
 import { getIngredientIconUrl } from "@/lib/ingredientIcons";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
@@ -11,6 +11,7 @@ import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
+import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalSavedRecipes,
@@ -51,19 +52,22 @@ export default function HistoryPage() {
   // 「作れる可能性があるレシピ」を洗い出すための並び替え(材料充足度が高い順)
   const [sortByFulfillment, setSortByFulfillment] = useState(false);
 
-  useEffect(() => {
-    loadRecipes();
-    const handleUpdate = () => loadRecipes();
-    window.addEventListener("storage-updated", handleUpdate);
-    return () => window.removeEventListener("storage-updated", handleUpdate);
-  }, []);
-
-  const loadRecipes = () => {
+  function loadRecipes() {
     setAllRecipes(getLocalSavedRecipes());
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
     setLoading(false);
-  };
+  }
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(loadRecipes, 0);
+    const handleUpdate = () => loadRecipes();
+    window.addEventListener("storage-updated", handleUpdate);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener("storage-updated", handleUpdate);
+    };
+  }, []);
 
   const handlePinToShopping = (recipeId: number, ingredientName: string) => {
     const key = `${recipeId}-${ingredientName}`;
@@ -225,7 +229,7 @@ export default function HistoryPage() {
           >
             {TIME_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>
-                {opt.value ? `⏱ ${opt.label}` : t.history.timeAll}
+                {opt.value ? opt.label : t.history.timeAll}
               </option>
             ))}
           </select>
@@ -236,7 +240,7 @@ export default function HistoryPage() {
             onClick={() => setSortByFulfillment(v => !v)}
             title={t.history.sortByFulfillmentHint}
           >
-            🧺 {t.history.sortByFulfillment}
+            <UiIcon slug="filter_sort" collection="core" size={16} alt="" /> {t.history.sortByFulfillment}
           </button>
 
           {hasFilters && (
@@ -288,9 +292,7 @@ export default function HistoryPage() {
       </AnimatePresence>
 
       {loading && (
-        <div className="flex justify-center mt-4">
-          <Loader2 className="spinner" size={32} color="var(--primary)" />
-        </div>
+        <KitchenLoader compact text={t.history.subtitle} />
       )}
 
       {!loading && (
@@ -314,7 +316,7 @@ export default function HistoryPage() {
                   <div className={styles.titleInfo}>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
                     <div className={styles.recipeMetaRow}>
-                      <span className={styles.recipeTime}>⏱ {recipe.time}</span>
+                      <span className={styles.recipeTime}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{recipe.time}</span>
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
@@ -327,7 +329,7 @@ export default function HistoryPage() {
                           data-level={fulfillment.percent >= 80 ? 'high' : fulfillment.percent >= 50 ? 'mid' : 'low'}
                           title={t.history.fulfillmentTitle(fulfillment.matchedCount, fulfillment.totalCount)}
                         >
-                          🧺 {t.history.fulfillmentLabel(fulfillment.percent)}
+                          <UiIcon slug="fridge" size={16} alt="" />{t.history.fulfillmentLabel(fulfillment.percent)}
                         </span>
                       )}
                     </div>
@@ -466,7 +468,7 @@ export default function HistoryPage() {
 
           {filteredRecipes.length === 0 && allRecipes.length > 0 && (
             <div className={styles.emptyState}>
-              <Search size={48} style={{ opacity: 0.4 }} />
+              <div className={styles.emptyIcon}><Search size={32} /></div>
               <p>{t.history.noFilterResults}</p>
               <button className={styles.clearFiltersBtn2} onClick={clearFilters}>{t.history.resetFiltersButton2}</button>
             </div>
@@ -474,7 +476,8 @@ export default function HistoryPage() {
 
           {allRecipes.length === 0 && (
             <div className={styles.emptyState}>
-              <img src="/mascot/bear_reading.png" alt="" width={96} height={96} />
+              <span className={styles.emptyBook} aria-hidden="true" />
+              <img src="/mascot/bear_reading.png" alt="" width={112} height={112} />
               <p>{t.history.emptyState}</p>
             </div>
           )}

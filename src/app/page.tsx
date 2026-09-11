@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Heart, ChevronRight, Receipt as ReceiptIcon, Refrigerator, Flame } from "lucide-react";
+import { Settings, Heart, ChevronRight, Flame } from "lucide-react";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import UiIcon from "@/components/UiIcon";
+import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalShoppingItems,
@@ -149,36 +151,43 @@ export default function HomePage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.greeting}>
-        <img className={styles.greetingMascot} src="/mascot/bear_wave.png" alt="" width={56} height={56} />
+      <header className={styles.greeting}>
+        <div className={styles.greetingMascotWrap}>
+          <img className={styles.greetingMascot} src="/mascot/bear_wave.png" alt="" width={72} height={72} />
+        </div>
         <div className={styles.greetingTextCol}>
-          <p className={styles.greetingTitle}>{greeting} 👋</p>
+          <p className={styles.greetingEyebrow}>SIKUREPI KITCHEN</p>
+          <p className={styles.greetingTitle}>{greeting}</p>
           <p className={styles.greetingSubtitle}>{t.home.greetingSubtitle}</p>
         </div>
         <button type="button" className={styles.settingsBtn} onClick={() => setIsSettingsOpen(true)} title={t.home.settingsButtonTitle}>
           <Settings size={18} />
         </button>
-      </div>
+      </header>
 
       <div className={styles.quickActions}>
         <Link href="/receipt" className={styles.quickActionBtn}>
-          <ReceiptIcon size={18} />
-          {t.home.quickScanReceipt}
+          <span className={`${styles.quickIcon} ${styles.quickIconWarm}`}><UiIcon slug="receipt" collection="core" size={28} alt="" /></span>
+          <span><strong>{t.home.quickScanReceipt}</strong><small>SCAN</small></span>
         </Link>
         <Link href="/inventory" className={styles.quickActionBtn}>
-          <Refrigerator size={18} />
-          {t.home.quickAddIngredient}
+          <span className={`${styles.quickIcon} ${styles.quickIconMint}`}><UiIcon slug="fridge" size={28} alt="" /></span>
+          <span><strong>{t.home.quickAddIngredient}</strong><small>STOCK</small></span>
         </Link>
       </div>
 
       <div className={`${styles.card} ${styles.cardPick}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}>🧑‍🍳 {t.home.todaysPickTitle}</span>
+          <span className={styles.cardTitle}><UiIcon slug="cooking_pot" size={25} alt="" />{t.home.todaysPickTitle}</span>
+          <span className={styles.todayBadge}>TODAY</span>
         </div>
         {dailyPickLoading ? (
-          <p className={styles.emptyLine}>{t.home.todaysPickLoading}</p>
+          <KitchenLoader compact text={t.home.todaysPickLoading} />
         ) : !dailyPick ? (
-          <p className={styles.emptyLine}>{t.home.todaysPickEmpty}</p>
+          <div className={styles.emptyKitchen}>
+            <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
+            <p>{t.home.todaysPickEmpty}</p>
+          </div>
         ) : (
           <div className={styles.pickBody}>
             <div className={styles.pickThumb}>
@@ -187,7 +196,7 @@ export default function HomePage() {
             <div className={styles.pickTextCol}>
               <p className={styles.pickTagline}>{pickText(dailyPick.tagline, language)}</p>
               <p className={styles.pickTitle}>{pickText(dailyPick.title, language)}</p>
-              <p className={styles.pickMeta}>⏱ {dailyPick.time}</p>
+              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{dailyPick.time}</p>
             </div>
             <button type="button" className={styles.pickViewBtn} onClick={handleOpenDailyPick}>
               {t.home.todaysPickViewButton}
@@ -198,11 +207,11 @@ export default function HomePage() {
 
       <div className={`${styles.card} ${styles.cardShopping}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}>🛒 {t.home.shoppingTitle}</span>
+          <span className={styles.cardTitle}><UiIcon slug="shopping_cart" collection="core" size={24} alt="" />{t.home.shoppingTitle}</span>
           <Link href="/shopping" className={styles.cardSeeAll}>{t.home.shoppingSeeAll}<ChevronRight size={14} /></Link>
         </div>
         {shoppingItems.length === 0 ? (
-          <p className={styles.emptyLine}>{t.home.shoppingEmpty}</p>
+          <div className={styles.emptyRow}><UiIcon slug="shopping_cart" collection="core" size={34} alt="" /><p>{t.home.shoppingEmpty}</p></div>
         ) : (
           <ul className={styles.shoppingList}>
             {shoppingItems.slice(0, 3).map(item => (
@@ -226,13 +235,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className={styles.card} style={{ background: "var(--card-bg-solid)" }}>
+      <div className={`${styles.card} ${styles.cardRecipes}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}>📖 {t.home.recentRecipesTitle}</span>
+          <span className={styles.cardTitle}><UiIcon slug="teishoku" size={24} alt="" />{t.home.recentRecipesTitle}</span>
           <Link href="/history" className={styles.cardSeeAll}>{t.home.recentRecipesSeeAll}<ChevronRight size={14} /></Link>
         </div>
         {recentRecipes.length === 0 ? (
-          <p className={styles.emptyLine}>{t.home.recentRecipesEmpty}</p>
+          <div className={styles.emptyRow}><img src="/mascot/bear_reading.png" alt="" width={52} height={52} /><p>{t.home.recentRecipesEmpty}</p></div>
         ) : (
           <div className={styles.recentScroll}>
             {recentRecipes.map(recipe => (
@@ -249,10 +258,10 @@ export default function HomePage() {
 
       <div className={`${styles.card} ${styles.cardCommunity}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}>💗 {t.home.communityTitle}</span>
+          <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
         </div>
         {communityRecipes.length === 0 ? (
-          <p className={styles.emptyLine}>{t.home.communityEmpty}</p>
+          <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
         ) : (
           <div className={styles.communityList}>
             {communityRecipes.map(row => (
