@@ -58,14 +58,6 @@ function formatClock(totalSeconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const stepVariants = {
-  // iOS PWAで初期アニメーションが中断されても本文が透明のまま残らないよう、
-  // スライド中も常に可視にする。
-  enter: (dir: number) => ({ x: dir >= 0 ? 40 : -40, opacity: 1 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir >= 0 ? -40 : 40, opacity: 1 }),
-};
-
 export default function CookingSession({
   title,
   steps,
@@ -75,7 +67,6 @@ export default function CookingSession({
 }: Props) {
   const { t } = useLanguage();
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
   const [finished, setFinished] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState<number | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -141,7 +132,6 @@ export default function CookingSession({
   }
 
   const goNext = useCallback(() => {
-    setDirection(1);
     setIndex((prev) => {
       if (prev >= total - 1) {
         setFinished(true);
@@ -158,17 +148,15 @@ export default function CookingSession({
   }, [total]);
 
   const goPrev = useCallback(() => {
-    setDirection(-1);
     setIndex((prev) => Math.max(0, prev - 1));
   }, []);
 
   const goTo = useCallback(
     (i: number) => {
-      setDirection(i >= index ? 1 : -1);
       setFinished(false);
       setIndex(i);
     },
-    [index]
+    []
   );
 
   const generateStepImage = useCallback(
@@ -264,12 +252,7 @@ export default function CookingSession({
   const currentMeta = metas[index];
 
   return (
-    <motion.div
-      className={styles.overlay}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
+    <div className={styles.overlay}>
       <div className={styles.header}>
         <div className={styles.headerText}>
           <div className={styles.headerTitle}>{title}</div>
@@ -359,17 +342,8 @@ export default function CookingSession({
       </div>
 
       <div className={styles.stage}>
-        <AnimatePresence mode="wait" custom={direction} initial={false}>
-          {finished ? (
-            <motion.div
-              key="finished"
-              custom={direction}
-              variants={stepVariants}
-              initial={false}
-              animate="center"
-              exit="exit"
-              className={styles.finishedCard}
-            >
+        {finished ? (
+            <div key="finished" className={styles.finishedCard}>
               <img src="/mascot/bear_serving.png" alt="" width={132} height={132} className={styles.finishedBear} />
               <h2>{t.cookingSession.completeTitle}</h2>
               <p>{t.cookingSession.completeMessage}</p>
@@ -383,19 +357,14 @@ export default function CookingSession({
               <button className={styles.finishBtn} onClick={onClose}>
                 {t.cookingSession.close}
               </button>
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
+            <div
               key={index}
-              custom={direction}
-              variants={stepVariants}
-              initial={false}
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.25 }}
               className={styles.stepCard}
               onClick={handleTapZone}
             >
+              <div className={styles.stepBody}>
               <div className={styles.stepLabel}>
                 STEP {index + 1} / {total}
               </div>
@@ -485,9 +454,9 @@ export default function CookingSession({
               )}
 
               <div className={styles.tapHint}>{t.cookingSession.tapHint}</div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
       </div>
 
       <div className={styles.controls}>
@@ -508,6 +477,6 @@ export default function CookingSession({
           onSuccess={() => onClose()}
         />
       )}
-    </motion.div>
+    </div>
   );
 }
