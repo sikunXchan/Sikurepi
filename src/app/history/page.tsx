@@ -337,21 +337,7 @@ export default function HistoryPage() {
                 <div className={styles.cardActions}>
                   <button
                     type="button"
-                    style={{
-                      flex: 1,
-                      background: 'var(--gradient-cool)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 12,
-                      padding: '10px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                    }}
+                    className={styles.cookBtn}
                     onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(recipe); }}
                   >
                     <PlayCircle size={15} />
@@ -360,22 +346,7 @@ export default function HistoryPage() {
 
                   <button
                     type="button"
-                    style={{
-                      flex: 1.3,
-                      background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 12,
-                      padding: '10px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      boxShadow: '0 2px 8px rgba(255, 111, 145, 0.25)',
-                    }}
+                    className={styles.madeBtn}
                     onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(recipe); }}
                   >
                     {t.history.cookedButton}
