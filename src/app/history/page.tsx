@@ -467,7 +467,6 @@ export default function HistoryPage() {
 
           {allRecipes.length === 0 && (
             <div className={styles.emptyState}>
-              <span className={styles.emptyBook} aria-hidden="true" />
               <img src="/mascot/bear_reading.png" alt="" width={112} height={112} />
               <p>{t.history.emptyState}</p>
             </div>
