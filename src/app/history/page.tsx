@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
-import { getIngredientIconUrl } from "@/lib/ingredientIcons";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -145,14 +144,6 @@ export default function HistoryPage() {
     showToast(t.history.deletedToast);
   };
 
-  // サムネイルは犬(main.png/sub.png)固定だったのを、レシピの主材料アイコンに変更。
-  // アイコンが見つかる最初の材料を選ぶ（無ければIngredientIcon側のプレースホルダーに任せる）。
-  const getRecipeMainIngredientName = (recipe: SavedRecipe): string => {
-    const list = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-    const withIcon = list.find(i => getIngredientIconUrl(i.name));
-    return (withIcon || list[0])?.name || recipe.title;
-  };
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(language === "ja" ? "ja-JP" : "en-US", {
@@ -292,7 +283,7 @@ export default function HistoryPage() {
       </AnimatePresence>
 
       {loading && (
-        <KitchenLoader compact text={t.history.subtitle} />
+        <KitchenLoader compact variant="reading" text={t.history.subtitle} />
       )}
 
       {!loading && (
@@ -308,7 +299,7 @@ export default function HistoryPage() {
                 >
                   <RecipeThumbnail
                     genre={recipe.genre}
-                    fallbackIngredientName={getRecipeMainIngredientName(recipe)}
+                    fallbackIngredientName={recipe.title}
                     size={50}
                     className={styles.recipeIcon}
                   />

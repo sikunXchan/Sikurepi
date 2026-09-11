@@ -14,13 +14,16 @@ import {
   deleteLocalSavedTip,
   deleteLocalCookedRecord,
   getForgottenIngredients,
+  getIgnoredForgottenIngredientIds,
+  ignoreForgottenIngredient,
+  clearIgnoredForgottenIngredients,
   DEFAULT_USER_STATS,
   UserStats,
   CookedRecord,
   SavedTip,
   Ingredient
 } from "@/lib/storage";
-import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut } from "lucide-react";
+import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -76,11 +79,11 @@ function SwipeableRecordRow({
         onDragEnd={handleDragEnd}
         onTap={() => { if (isOpen) onOpenChange(false); }}
       >
-        <div>
-          <div style={{ fontWeight: 700, color: '#111827' }}>{record.recipeTitle}</div>
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(record.date).toLocaleDateString('ja-JP')}</div>
+        <div className={styles.recordMain}>
+          <div className={styles.recordTitle}>{record.recipeTitle}</div>
+          <div className={styles.recordDate}>{new Date(record.date).toLocaleDateString('ja-JP')}</div>
         </div>
-        <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 700, textAlign: 'right' }}>
+        <div className={styles.recordNutrition}>
           {record.calories ? `${record.calories}kcal` : ''}
           {record.protein_g ? ` (P:${record.protein_g}g)` : ''}
         </div>
@@ -150,6 +153,8 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const [stats, setStats] = useState<UserStats>(DEFAULT_USER_STATS);
   const [tips, setTips] = useState<SavedTip[]>([]);
   const [forgottenItems, setForgottenItems] = useState<Ingredient[]>([]);
+  const [ignoredForgottenCount, setIgnoredForgottenCount] = useState(0);
+  const [renderedAt] = useState(() => Date.now());
   const [excludedInput, setExcludedInput] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -163,6 +168,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     setStats(getLocalUserStats());
     setTips(getLocalSavedTips());
     setForgottenItems(getForgottenIngredients());
+    setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
   }, []);
 
   const toggleTaste = (taste: string) => {
@@ -249,6 +255,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         setStats(getLocalUserStats());
         setTips(getLocalSavedTips());
         setForgottenItems(getForgottenIngredients());
+        setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
         if (onSaved) onSaved();
       } else {
         setImportStatus(t.settings.importError(res.error || ""));
@@ -549,16 +556,27 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           <div className={styles.section}>
             <label className={styles.sectionLabel}>{t.settings.callingIngredientsLabel}</label>
             {forgottenItems.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className={styles.callingList}>
                 {forgottenItems.map((item) => {
-                  const ageDays = Math.floor((Date.now() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                  const ageDays = Math.floor((renderedAt - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
                   return (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255, 111, 145, 0.06)', border: '1px solid rgba(255, 111, 145, 0.25)', padding: '8px 10px', borderRadius: 12 }}>
+                    <div key={item.id} className={styles.callingRow}>
                       <IngredientIcon name={item.name} size={30} />
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#111827', fontSize: 13 }}>{item.name}</div>
-                        <div style={{ fontSize: 12, color: '#e0466e', fontWeight: 700 }}>{t.settings.callingIngredientMessage(ageDays)}</div>
+                      <div className={styles.callingCopy}>
+                        <div className={styles.callingName}>{item.name}</div>
+                        <div className={styles.callingMessage}>{t.settings.callingIngredientMessage(ageDays)}</div>
                       </div>
+                      <button
+                        type="button"
+                        className={styles.callingIgnoreBtn}
+                        onClick={() => {
+                          ignoreForgottenIngredient(item.id);
+                          setForgottenItems(getForgottenIngredients());
+                          setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
+                        }}
+                      >
+                        <EyeOff size={14} /> {t.settings.callingIngredientIgnore}
+                      </button>
                     </div>
                   );
                 })}
@@ -568,6 +586,19 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 {t.settings.noCallingIngredients}
               </p>
             )}
+            {ignoredForgottenCount > 0 && (
+              <button
+                type="button"
+                className={styles.restoreCallingBtn}
+                onClick={() => {
+                  clearIgnoredForgottenIngredients();
+                  setIgnoredForgottenCount(0);
+                  setForgottenItems(getForgottenIngredients());
+                }}
+              >
+                <RotateCcw size={14} /> {t.settings.restoreCallingIngredients}
+              </button>
+            )}
           </div>
 
           <div className={styles.section}>
@@ -575,7 +606,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
             {(stats.cooked_records && stats.cooked_records.length > 0) ? (
               <>
                 <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 6px' }}>{t.settings.historySwipeHint}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                <div className={styles.recordList}>
                   {stats.cooked_records.map((rec, i) => (
                     <SwipeableRecordRow
                       key={`${rec.date}-${i}`}

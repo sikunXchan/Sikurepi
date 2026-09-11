@@ -3,22 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Heart, ChevronRight, Flame } from "lucide-react";
+import { Settings, Heart, ChevronRight } from "lucide-react";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import ChefProfileBadge from "@/components/ChefProfileBadge";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalShoppingItems,
-  getLocalUserStats,
   getLocalSavedRecipes,
   getOrCreateDeviceId,
   getCachedDailyPick,
   setCachedDailyPick,
   setPendingDailyPickHandoff,
   ShoppingItem,
-  UserStats,
   SavedRecipe,
 } from "@/lib/storage";
 import styles from "./Home.module.css";
@@ -50,7 +49,6 @@ export default function HomePage() {
   const { t, language } = useLanguage();
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [stats, setStats] = useState<UserStats | null>(null);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
 
@@ -62,7 +60,6 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadLocal = () => {
-      setStats(getLocalUserStats());
       setShoppingItems(getLocalShoppingItems().filter(i => !i.is_completed));
       setRecentRecipes([...getLocalSavedRecipes()].sort((a, b) => new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()).slice(0, 6));
     };
@@ -176,13 +173,15 @@ export default function HomePage() {
         </Link>
       </div>
 
+      <ChefProfileBadge />
+
       <div className={`${styles.card} ${styles.cardPick}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}><UiIcon slug="cooking_pot" size={25} alt="" />{t.home.todaysPickTitle}</span>
           <span className={styles.todayBadge}>TODAY</span>
         </div>
         {dailyPickLoading ? (
-          <KitchenLoader compact text={t.home.todaysPickLoading} />
+          <KitchenLoader compact variant="reading" text={t.home.todaysPickLoading} />
         ) : !dailyPick ? (
           <div className={styles.emptyKitchen}>
             <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
@@ -221,18 +220,6 @@ export default function HomePage() {
             ))}
           </ul>
         )}
-      </div>
-
-      <div className={`${styles.card} ${styles.cardStreak}`}>
-        <div className={styles.streakBody}>
-          <span className={styles.streakCount}>{stats?.streak_days ?? 0}</span>
-          <span className={styles.streakUnitLabel}>{t.home.streakUnit(stats?.streak_days ?? 0)}</span>
-          <span className={styles.streakText}>
-            <Flame size={14} style={{ verticalAlign: -2, marginRight: 4 }} color="var(--accent)" />
-            {(stats?.streak_days ?? 0) > 0 ? t.home.streakEncouragement : t.home.streakZero}
-          </span>
-          <img className={styles.streakMascot} src="/mascot/bear_running.png" alt="" width={44} height={44} />
-        </div>
       </div>
 
       <div className={`${styles.card} ${styles.cardRecipes}`}>
@@ -284,7 +271,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSaved={() => setStats(getLocalUserStats())} />
+      <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

@@ -33,16 +33,16 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "pasta", keywords: ["パスタ", "スパゲティ", "スパゲッティ", "pasta", "spaghetti"] },
 
   { slug: "fried_fish", keywords: ["フィッシュフライ", "魚フライ", "白身魚フライ", "fish and chips", "fried fish"] },
-  { slug: "fish_stew", keywords: ["魚の煮付", "魚煮込み", "ブイヤベース", "fish stew", "fish curry", "cioppino"] },
+  { slug: "fish_stew", keywords: ["魚の煮付", "煮付け", "魚煮込み", "さば味噌煮", "鯖味噌煮", "あら煮", "ブイヤベース", "fish stew", "fish curry", "cioppino"] },
   { slug: "seafood_platter", keywords: ["シーフード盛", "海鮮盛", "seafood platter", "mixed seafood"] },
   { slug: "shellfish", keywords: ["貝料理", "ムール貝", "あさり", "牡蠣", "shellfish", "mussels", "clams", "oyster"] },
-  { slug: "grilled_fish", keywords: ["焼き魚", "魚の塩焼", "魚のグリル", "grilled fish", "焼鮭", "焼き鮭"] },
+  { slug: "grilled_fish", keywords: ["焼き魚", "魚の塩焼", "塩焼き", "西京焼き", "幽庵焼き", "魚のグリル", "魚のムニエル", "鮭のムニエル", "味噌マヨホイル", "鮭のホイル", "grilled fish", "焼鮭", "焼き鮭", "salmon meuniere"] },
   { slug: "seafood_soup", keywords: ["海鮮スープ", "魚介スープ", "クラムチャウダー", "seafood soup", "clam chowder"] },
 
   { slug: "fried_chicken", keywords: ["唐揚げ", "から揚げ", "フライドチキン", "チキン南蛮", "fried chicken", "karaage"] },
   { slug: "chicken_skewer", keywords: ["焼き鳥", "チキン串", "鶏串", "chicken skewer", "chicken kebab", "yakitori"] },
   { slug: "roast_chicken", keywords: ["ローストチキン", "丸鶏", "roast chicken", "roasted chicken"] },
-  { slug: "grilled_chicken", keywords: ["グリルチキン", "鶏のグリル", "照り焼きチキン", "grilled chicken", "chicken steak", "teriyaki chicken"] },
+  { slug: "grilled_chicken", keywords: ["グリルチキン", "鶏のグリル", "照り焼きチキン", "鶏の照り焼き", "チキンソテー", "grilled chicken", "chicken steak", "teriyaki chicken"] },
   { slug: "meat_cutlet", keywords: ["とんかつ", "トンカツ", "カツレツ", "シュニッツェル", "cutlet", "tonkatsu", "schnitzel"] },
   { slug: "meat_skewer", keywords: ["肉串", "ケバブ", "サテ", "meat skewer", "kebab", "satay"] },
   { slug: "meatballs", keywords: ["ミートボール", "肉団子", "つくね", "meatball", "kofta"] },
@@ -64,7 +64,7 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "bean_soup", keywords: ["豆スープ", "bean soup", "lentil soup"] },
   { slug: "hotpot", keywords: ["鍋料理", "寄せ鍋", "しゃぶしゃぶ", "すき焼き", "火鍋", "hotpot", "hot pot", "shabu-shabu", "sukiyaki"] },
   { slug: "clear_soup", keywords: ["お吸い物", "澄まし汁", "コンソメスープ", "clear soup", "consommé", "consomme"] },
-  { slug: "stew", keywords: ["シチュー", "煮込み", "stew", "goulash"] },
+  { slug: "stew", keywords: ["シチュー", "煮込み", "煮物", "肉じゃが", "筑前煮", "stew", "goulash"] },
   { slug: "cheese_fondue", keywords: ["チーズフォンデュ", "cheese fondue", "fondue"] },
   { slug: "casserole", keywords: ["キャセロール", "casserole"] },
   { slug: "baked_dish", keywords: ["オーブン焼き", "ベイク", "baked dish", "oven-baked"] },
@@ -73,7 +73,7 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "vegetable_skewer", keywords: ["野菜串", "vegetable skewer", "vegetable kebab"] },
   { slug: "roasted_vegetables", keywords: ["ロースト野菜", "焼き野菜", "roasted vegetable", "grilled vegetable"] },
   { slug: "steamed_vegetables", keywords: ["蒸し野菜", "温野菜", "steamed vegetable"] },
-  { slug: "vegetable_stir_fry", keywords: ["野菜炒め", "炒め野菜", "vegetable stir-fry", "stir-fried vegetable"] },
+  { slug: "vegetable_stir_fry", keywords: ["野菜炒め", "炒め野菜", "キャベツ炒め", "もやし炒め", "きのこ炒め", "vegetable stir-fry", "stir-fried vegetable"] },
   { slug: "salad", keywords: ["サラダ", "salad"] },
   { slug: "dip_spread", keywords: ["フムス", "ディップ", "パテ", "hummus", "dip", "spread"] },
 
@@ -116,7 +116,7 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "hot_drink", keywords: ["コーヒー", "紅茶", "ココア", "ホットドリンク", "coffee", "tea", "hot chocolate"] },
 
   { slug: "fried_food", keywords: ["揚げ物", "フライ", "天ぷら", "コロッケ", "fried", "tempura", "croquette"] },
-  { slug: "meat_stir_fry", keywords: ["肉炒め", "回鍋肉", "青椒肉絲", "stir-fried meat", "meat stir-fry"] },
+  { slug: "meat_stir_fry", keywords: ["肉炒め", "豚バラ炒め", "豚肉炒め", "牛肉炒め", "回鍋肉", "青椒肉絲", "生姜焼き", "しょうが焼き", "stir-fried meat", "meat stir-fry"] },
 ];
 
 function normalizeDishName(name: string): string {
@@ -132,6 +132,16 @@ export function getDishIconSlug(name: string): string | null {
       return rule.slug;
     }
   }
+
+  // AIが「豚バラとキャベツの旨辛炒め」のように食材を料理法の間へ挟むと、
+  // 完全な語句ルールだけでは既存アイコンを使えない。料理法＋主役カテゴリの
+  // 組み合わせで最後の補完を行い、ジャンルの汎用画像へ落ちる件数を減らす。
+  if (/(豚|牛|鶏|チキン|ポーク|ビーフ|肉|pork|beef|chicken)/.test(normalized) && /(炒|ソテー|stir.?fry|saute)/.test(normalized)) return "meat_stir_fry";
+  if (/(魚|鮭|さけ|サーモン|鯖|さば|鰤|ぶり|鱈|たら|fish|salmon|mackerel|cod)/.test(normalized) && /(焼|グリル|ホイル|ムニエル|grill|bake|meuniere)/.test(normalized)) return "grilled_fish";
+  if (/(炒|ソテー|stir.?fry|saute)/.test(normalized)) return "vegetable_stir_fry";
+  if (/(汁|スープ|味噌汁|soup|broth)/.test(normalized)) return "clear_soup";
+  if (/(煮|煮込|stew|braise)/.test(normalized)) return "stew";
+  if (/(焼|オーブン|bake|roast)/.test(normalized)) return "baked_dish";
   return null;
 }
 

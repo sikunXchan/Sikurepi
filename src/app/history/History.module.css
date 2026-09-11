@@ -486,9 +486,8 @@
 
 /* Search & Filter */
 .searchSection {
-  position: sticky;
-  top: 8px;
-  z-index: 10;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;

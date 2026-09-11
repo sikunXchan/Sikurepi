@@ -114,17 +114,6 @@
 .emptyState img { position: relative; z-index: 2; object-fit: contain; filter: drop-shadow(0 8px 11px rgba(93, 58, 38, 0.12)); }
 .emptyState p { position: relative; z-index: 2; max-width: 300px; font-size: 14px; font-weight: 800; }
 
-.emptyShelf {
-  position: absolute;
-  right: 10%;
-  bottom: 48px;
-  left: 10%;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #dfb67e, #b97d49);
-  box-shadow: inset 0 4px rgba(255,255,255,0.3);
-}
-
 @media (max-width: 480px) {
   .addForm { gap: 8px; padding: 10px; }
   .addForm button { padding-inline: 15px; }

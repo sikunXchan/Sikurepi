@@ -411,7 +411,7 @@ export default function MealPlanPage() {
       </section>
 
       {generating && (
-        <KitchenLoader text={t.mealPlan.generatingText} />
+        <KitchenLoader variant="serving" text={t.mealPlan.generatingText} />
       )}
 
       {errorMsg && (
