@@ -781,14 +781,12 @@ export default function RecipePage() {
                   onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
                 >
                   <div className={styles.trayDishVisual}>
-                    <div className={styles.trayPlate}>
-                      <RecipeThumbnail
-                        genre={recipe.genre}
-                        fallbackIngredientName={recipe.title}
-                        size={112}
-                        className={styles.trayDishIcon}
-                      />
-                    </div>
+                    <RecipeThumbnail
+                      genre={recipe.genre}
+                      fallbackIngredientName={recipe.title}
+                      size={132}
+                      className={styles.trayDishIcon}
+                    />
                   </div>
                   <div className={styles.titleInfo}>
                     <div className={styles.badgeRow}>
