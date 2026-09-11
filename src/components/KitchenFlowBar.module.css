@@ -1,0 +1,108 @@
+.flow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  min-height: 68px;
+  padding: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 0 50%, rgba(255, 225, 190, 0.28), transparent 34%),
+    radial-gradient(circle at 100% 50%, rgba(190, 231, 220, 0.28), transparent 34%),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.flow::before {
+  content: "";
+  position: absolute;
+  top: 27px;
+  right: 12.5%;
+  left: 12.5%;
+  height: 2px;
+  background: linear-gradient(90deg, #ebc58f, #f3bdca 48%, #abdcd2);
+  opacity: 0.62;
+}
+
+.step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 4px 3px;
+  border-radius: 16px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: background var(--motion-fast) ease, transform var(--motion-fast) var(--ease-out);
+}
+
+.step:hover { background: rgba(255, 255, 255, 0.74); transform: translateY(-1px); }
+
+.stepActive {
+  background: #fff0f4;
+  color: var(--primary-text);
+  box-shadow: inset 0 0 0 1px rgba(224, 70, 110, 0.12);
+}
+
+.iconWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid rgba(111, 78, 59, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 3px 8px rgba(91, 57, 39, 0.07);
+}
+
+.stepActive .iconWrap { border-color: rgba(224, 70, 110, 0.18); }
+
+.value {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 17px;
+  padding: 0 5px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #e9f6f3;
+  color: var(--secondary);
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.stepActive .value { background: var(--primary); color: #fff; }
+
+.label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .flow { min-height: 64px; padding-inline: 4px; border-radius: 20px; }
+  .step { min-height: 50px; }
+  .iconWrap { width: 32px; height: 32px; }
+  .iconWrap img { width: 22px !important; height: 22px !important; }
+  .label { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step { transition: none; }
+}

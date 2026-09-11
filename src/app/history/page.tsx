@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
@@ -11,6 +12,7 @@ import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
+import KitchenFlowBar from "@/components/KitchenFlowBar";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalSavedRecipes,
@@ -183,8 +185,10 @@ export default function HistoryPage() {
         mascot="bear_reading"
       />
 
+      <KitchenFlowBar active="history" />
+
       {/* Search & Filter */}
-      <div className={styles.searchSection}>
+      {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>
         <div className={styles.searchBar}>
           <Search size={16} className={styles.searchIcon} />
           <input
@@ -246,7 +250,7 @@ export default function HistoryPage() {
             {t.history.filterResultCount(filteredRecipes.length, allRecipes.length)}
           </p>
         )}
-      </div>
+      </div>}
 
       <AnimatePresence>
         {modalOpen && (
@@ -440,6 +444,7 @@ export default function HistoryPage() {
             <div className={styles.emptyState}>
               <img src="/mascot/bear_reading.png" alt="" width={112} height={112} />
               <p>{t.history.emptyState}</p>
+              <Link href="/recipe" className={styles.emptyStateCta}>{t.history.emptyStateCta}</Link>
             </div>
           )}
         </>

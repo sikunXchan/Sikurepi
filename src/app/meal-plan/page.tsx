@@ -10,6 +10,7 @@ import PageHeader from "@/components/PageHeader";
 import CookedModal from "@/components/CookedModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import KitchenFlowBar from "@/components/KitchenFlowBar";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -317,6 +318,7 @@ export default function MealPlanPage() {
           ) : undefined
         }
       />
+      <KitchenFlowBar active="mealPlan" />
       <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
         <div className={styles.plannerTopline}>
           <div>

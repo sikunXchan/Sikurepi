@@ -37,6 +37,23 @@
 
 .emptyState img { position: relative; z-index: 2; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(91, 57, 39, 0.12)); }
 
+.emptyStateCta {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 10px 20px;
+  border-radius: 14px;
+  background: var(--gradient-cool);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 7px 18px rgba(23, 148, 141, 0.2);
+}
+
 .emptyIcon {
   display: grid;
   place-items: center;
