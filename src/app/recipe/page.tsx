@@ -35,6 +35,7 @@ import {
   NutritionData
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { getTrayTheme } from "@/lib/trayThemes";
 import styles from "./Recipe.module.css";
 
 type RecipeItem = {
@@ -123,6 +124,7 @@ export default function RecipePage() {
   // 生成前の成立可否判定(要件8・9)でNGと判定された場合、レシピの代わりに
   // 警告(理由・不足食材・次のアクション)を表示する
   const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
+  const selectedTray = getTrayTheme(userProfile.trayTheme);
 
   useEffect(() => {
     loadLocalData();
@@ -778,6 +780,7 @@ export default function RecipePage() {
               <div key={index} className={styles.recipeCard}>
                 <div
                   className={styles.cardHeader}
+                  style={{ backgroundImage: `url("${selectedTray.asset}")` }}
                   onClick={() => setExpandedIndex(isExpanded ? -1 : index)}
                 >
                   <div className={styles.trayDishVisual}>
