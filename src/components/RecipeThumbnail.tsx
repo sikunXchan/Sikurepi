@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import IngredientIcon from "./IngredientIcon";
+import { getDishIconUrl } from "@/lib/dishIcons";
 
 // ジャンルの料理イラスト。public/genres/{slug}.png を参照する。
 // 「その他」用のイラストは無いため、画像が無い場合(404)はonErrorで
@@ -45,19 +46,22 @@ type Props = {
 
 export default function RecipeThumbnail({ genre, fallbackIngredientName, size = 50, className }: Props) {
   const slug = genre ? GENRE_ICON_SLUGS[genre] : undefined;
-  const [genreImageFailed, setGenreImageFailed] = useState(false);
+  const dishUrl = getDishIconUrl(fallbackIngredientName);
+  const genreUrl = slug ? `/genres/${slug}.png` : null;
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+  const imageUrl = [dishUrl, genreUrl].find(url => url && !failedUrls.has(url));
 
-  if (slug && !genreImageFailed) {
+  if (imageUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/genres/${slug}.png`}
-        alt={genre || ""}
+        src={imageUrl}
+        alt={fallbackIngredientName}
         width={size}
         height={size}
         className={className}
         style={{ objectFit: "contain", flexShrink: 0 }}
-        onError={() => setGenreImageFailed(true)}
+        onError={() => setFailedUrls(previous => new Set(previous).add(imageUrl))}
       />
     );
   }
