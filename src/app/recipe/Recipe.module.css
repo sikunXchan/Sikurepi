@@ -275,31 +275,7 @@
   color: var(--primary-text);
 }
 
-.recipeCard {
-  position: relative;
-  background: transparent;
-  border: 0;
-  border-radius: 28px;
-  padding: 0;
-  overflow: visible;
-  box-shadow: none;
-  transition: filter var(--motion-base) ease, transform var(--motion-base) var(--ease-out);
-  transform-style: preserve-3d;
-  perspective: 1000px;
-  will-change: transform, opacity;
-}
-
 @media (max-width: 768px) {
-  .recipeCard {
-    /* Disable 3D perspective on mobile — hurts performance */
-    transform-style: flat;
-    perspective: none;
-  }
-
-  .recipeCard:hover {
-    box-shadow: var(--glass-shadow);
-  }
-
   .saveBtn, .savedBtn {
     padding: 10px 16px;
     font-size: 14px;
@@ -310,10 +286,6 @@
     min-width: 44px;
     min-height: 44px;
   }
-}
-
-.recipeCard:hover {
-  filter: drop-shadow(0 16px 22px rgba(92, 48, 28, 0.14));
 }
 
 .recipeIcon {
@@ -877,25 +849,6 @@
   margin: 0;
 }
 
-/* ===== 以下、page.tsx が参照していたのに未定義だったクラス =====
-   レシピ結果カードの見出し・バッジ・展開部分がノースタイルで表示されていたため追加 */
-.cardHeader {
-  position: relative;
-  display: block;
-  width: 100%;
-  min-height: 0;
-  aspect-ratio: 1.46 / 1;
-  padding: 0;
-  cursor: pointer;
-  background-color: transparent;
-  background-position: center;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  border: 0;
-  border-radius: 34px;
-  filter: drop-shadow(0 12px 16px rgba(92, 48, 28, 0.16));
-}
-
 .modeTabs {
   display: flex;
   gap: 5px;
@@ -938,75 +891,6 @@
   box-shadow: var(--shadow-lifted);
 }
 
-.trayDishVisual {
-  position: absolute;
-  left: 7%;
-  top: 22%;
-  width: 38%;
-  height: 49%;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  cursor: zoom-in;
-  animation: dishArrive 520ms var(--ease-out) both;
-}
-
-.trayDishVisual:hover { transform: none; box-shadow: none; }
-
-.trayDishVisual::after {
-  content: '';
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 4px;
-  height: 12px;
-  border-radius: 50%;
-  background: rgba(78, 43, 27, 0.16);
-  filter: blur(5px);
-}
-
-.trayDishIcon {
-  position: relative;
-  z-index: 2;
-  object-fit: contain !important;
-  filter: drop-shadow(0 7px 5px rgba(78, 43, 27, 0.16));
-}
-
-.dishZoomHint {
-  position: absolute;
-  z-index: 3;
-  right: 7%;
-  bottom: 7%;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(255, 252, 247, 0.92);
-  color: var(--primary-text);
-  box-shadow: 0 4px 12px rgba(78, 43, 27, 0.16);
-}
-
-.titleInfo {
-  position: absolute;
-  right: 6%;
-  bottom: 12%;
-  width: 56%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding: 12px 15px;
-  background: rgba(255, 252, 247, 0.94);
-  border: 1px solid rgba(116, 62, 32, 0.12);
-  border-radius: 18px 18px 18px 7px;
-  box-shadow: 0 5px 14px rgba(91, 51, 30, 0.1);
-  backdrop-filter: blur(5px);
-}
-
 .badgeRow {
   display: flex;
   flex-wrap: wrap;
@@ -1026,73 +910,6 @@
   border-radius: 999px;
   white-space: nowrap;
 }
-
-.headerActions {
-  position: absolute;
-  z-index: 4;
-  top: 16%;
-  right: 8%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.expandBtn {
-  background: var(--background-secondary);
-  color: var(--text-secondary);
-  border: none;
-  box-shadow: none;
-  border-radius: 12px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.expandBtn:hover {
-  transform: none;
-  box-shadow: none;
-  background: rgba(255, 111, 145, 0.14);
-  color: var(--primary-text);
-}
-
-.cardContent {
-  padding: 16px;
-  margin: -18px 18px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: rgba(255, 252, 247, 0.97);
-  border: 1px solid rgba(126, 75, 43, 0.14);
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(92, 48, 28, 0.1);
-}
-
-.singleCardHeader .trayDishVisual {
-  left: 23%;
-  top: 12%;
-  width: 54%;
-  height: 50%;
-}
-
-.singleCardHeader .trayDishIcon {
-  width: 190px !important;
-  height: 190px !important;
-}
-
-.singleCardHeader .titleInfo {
-  right: 12%;
-  bottom: 7%;
-  width: 76%;
-  align-items: center;
-  text-align: center;
-  border-radius: 18px;
-}
-
-.singleCardHeader .badgeRow { justify-content: center; }
-.singleCardHeader .ingredientIconRow { justify-content: center; }
 
 .ingredientPickerToggle {
   width: 100%;
@@ -1118,82 +935,264 @@
 .ingredientPickerStatus { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; font-weight: 700; }
 .ingredientPickerCount { color: var(--primary-text); font-weight: 800; white-space: nowrap; }
 
-.dishPreviewOverlay {
-  position: fixed;
-  z-index: 10020;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(54, 35, 29, 0.48);
-  backdrop-filter: blur(8px);
+.recipeTrayGallery {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: clamp(380px, 68vw, 520px);
+  padding: clamp(54px, 9vw, 78px) clamp(30px, 7vw, 58px);
+  overflow: hidden;
+  border-radius: 36px;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: drop-shadow(0 16px 20px rgba(92, 48, 28, 0.18));
 }
 
-.dishPreviewCard {
+.recipeDishGrid {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: clamp(20px, 5vw, 42px);
+}
+
+.recipeDishChoice {
+  position: relative;
+  display: flex;
+  flex: 0 1 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f3024;
+  box-shadow: none;
+  cursor: pointer;
+  animation: dishArrive 520ms var(--ease-out) both;
+}
+
+.recipeDishChoice::after {
+  content: '';
+  position: absolute;
+  top: 142px;
+  width: 112px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(78, 43, 27, 0.15);
+  filter: blur(7px);
+}
+
+.recipeDishChoice:hover { transform: translateY(-4px); box-shadow: none; }
+.recipeDishChoice:active { transform: translateY(0) scale(0.97); }
+
+.recipeDishChoiceIcon {
+  position: relative;
+  z-index: 1;
+  width: 168px !important;
+  height: 168px !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
+}
+
+.recipeDishChoiceName {
+  position: relative;
+  z-index: 2;
+  max-width: 190px;
+  color: #4f3024;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.4;
+  text-align: center;
+  text-wrap: balance;
+  text-shadow:
+    0 2px 0 rgba(255, 250, 240, 0.96),
+    1px 0 0 rgba(255, 250, 240, 0.96),
+    -1px 0 0 rgba(255, 250, 240, 0.96),
+    0 4px 12px rgba(78, 43, 27, 0.18);
+}
+
+.recipeDetailOverlay {
+  position: fixed;
+  z-index: 9000;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: max(env(safe-area-inset-top), 10px);
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 226, 190, 0.42), transparent 28rem),
+    radial-gradient(circle at 100% 8%, rgba(190, 231, 220, 0.3), transparent 24rem),
+    #fffaf3;
+}
+
+.recipeDetailTopbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 800px);
+  min-height: 58px;
+  margin: 0 auto;
+  padding: 6px 16px 10px;
+  flex: 0 0 auto;
+}
+
+.recipeDetailTopbar strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipeDetailClose {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(113, 78, 56, 0.08);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.recipeDetailClose:hover { transform: none; box-shadow: none; }
+
+.recipeDetailScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 14px calc(max(env(safe-area-inset-bottom), 18px) + 28px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.recipeDetailHero {
+  position: relative;
+  width: min(100%, 760px);
+  aspect-ratio: 1.46 / 1;
+  margin: 0 auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: drop-shadow(0 14px 18px rgba(92, 48, 28, 0.16));
+}
+
+.recipeDetailDishIcon {
+  position: absolute;
+  left: 9%;
+  top: 24%;
+  width: 184px !important;
+  height: 184px !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
+}
+
+.recipeDetailHeroInfo {
+  position: absolute;
+  right: 7%;
+  bottom: 13%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 53%;
+  min-width: 0;
+  padding: 12px 15px;
+  border: 1px solid rgba(116, 62, 32, 0.12);
+  border-radius: 18px 18px 18px 7px;
+  background: rgba(255, 252, 247, 0.95);
+  box-shadow: 0 5px 14px rgba(91, 51, 30, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.recipeDetailContent {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: min(92vw, 420px);
-  padding: 34px 24px 24px;
+  gap: 18px;
+  width: min(calc(100% - 16px), 710px);
+  margin: -32px auto 0;
+  padding: 20px;
   border: 1px solid rgba(126, 75, 43, 0.14);
-  border-radius: 30px;
-  background: #fffaf4;
-  box-shadow: 0 24px 70px rgba(54, 35, 29, 0.28);
+  border-radius: 24px;
+  background: rgba(255, 253, 249, 0.98);
+  box-shadow: 0 14px 32px rgba(92, 48, 28, 0.12);
 }
 
-.dishPreviewCard h2 { margin: 8px 0 0; text-align: center; color: var(--foreground); font-size: 21px; line-height: 1.45; }
-.dishPreviewImage { width: min(66vw, 280px) !important; height: min(66vw, 280px) !important; object-fit: contain !important; filter: drop-shadow(0 12px 10px rgba(78, 43, 27, 0.16)); }
-.dishPreviewClose { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 50%; background: rgba(113, 78, 56, 0.08); color: var(--text-secondary); box-shadow: none; }
-.dishPreviewClose:hover { transform: none; box-shadow: none; }
+.detailSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.detailSectionHeading span { color: var(--text-muted); font-size: 13px; }
+
+.cookedDetailBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 6px 18px rgba(255, 111, 145, 0.25);
+}
 
 @media (max-width: 560px) {
-  .cardHeader {
-    display: block;
-    min-height: 0;
-    padding: 0;
-    aspect-ratio: 1.33 / 1;
-    background-size: 108% 100%;
+  .recipeTrayGallery { min-height: 360px; padding: 54px 24px; border-radius: 30px; }
+  .recipeDishGrid {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0 calc(50% - 85px);
+    overflow-x: auto;
+    scroll-padding-inline: calc(50% - 85px);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
+  .recipeDishGrid::-webkit-scrollbar { display: none; }
+  .recipeDishChoice { flex: 0 0 170px; scroll-snap-align: center; }
+  .recipeDishChoiceIcon { width: 148px !important; height: 148px !important; }
+  .recipeDishChoice::after { top: 124px; width: 96px; }
+  .recipeDishChoiceName { max-width: 164px; font-size: 15px; }
 
-  .trayDishVisual {
-    left: 5%;
-    top: 20%;
-    width: 41%;
-    height: 49%;
-  }
-
-  .trayDishIcon {
-    width: 132px !important;
-    height: 132px !important;
-  }
-
-  .headerActions {
-    top: 12%;
-    right: 7%;
-    justify-content: flex-end;
-  }
-
-  .titleInfo {
-    right: 5%;
-    bottom: 9%;
-    width: 58%;
-    padding: 9px 10px;
-    border-radius: 14px 14px 14px 6px;
-  }
-
+  .recipeDetailTopbar { padding-inline: 10px; }
+  .recipeDetailTopbar strong { font-size: 13px; }
+  .recipeDetailTopbar .saveBtn,
+  .recipeDetailTopbar .savedBtn { min-height: 42px; padding: 8px 12px; }
+  .recipeDetailScroll { padding-inline: 8px; }
+  .recipeDetailHero { aspect-ratio: 1.33 / 1; background-size: 108% 100%; }
+  .recipeDetailDishIcon { left: 5%; top: 23%; width: 132px !important; height: 132px !important; }
+  .recipeDetailHeroInfo { right: 5%; bottom: 10%; width: 58%; padding: 10px; border-radius: 15px 15px 15px 6px; }
+  .recipeDetailContent { width: calc(100% - 12px); margin-top: -16px; padding: 16px; border-radius: 20px; }
+  .detailSectionHeading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .recipeTitle { font-size: 15px; line-height: 1.35; }
   .badgeRow { max-height: 25px; overflow: hidden; }
   .ingredientIconRow { max-height: 29px; overflow: hidden; }
-
-  .cardContent {
-    margin: -14px 10px 0;
-  }
-
-  .singleCardHeader .trayDishVisual { left: 20%; top: 10%; width: 60%; height: 49%; }
-  .singleCardHeader .trayDishIcon { width: 158px !important; height: 158px !important; }
-  .singleCardHeader .titleInfo { right: 8%; bottom: 6%; width: 84%; }
-  .dishZoomHint { width: 28px; height: 28px; right: 4%; bottom: 4%; }
   .ingredientPickerToggle { align-items: flex-start; }
   .ingredientPickerCopy { flex-direction: column; align-items: flex-start; }
 }
