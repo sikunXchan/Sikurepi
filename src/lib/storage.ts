@@ -87,6 +87,9 @@ export type UserProfile = {
   preferredGenres: string[];
   // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
   trayTheme?: TrayThemeId;
+  // 「そろそろ使って」通知をユーザーが明示的に非表示にした食材ID。
+  // 食材を削除して再登録した場合は新IDになるため、再び通常判定へ戻る。
+  ignoredForgottenIngredientIds?: number[];
 };
 
 // --- 材料の不足チェック (レシピの材料が在庫にあるか) ---
@@ -229,26 +232,71 @@ export function computeIngredientFulfillment(
 // 一定日数以上在庫にあり、かつ直近の「料理した！」記録のどのレシピにも
 // 使われていない食材を検出する。調味料・常備品は対象外にする。
 
-const FORGOTTEN_INGREDIENT_MIN_DAYS = 5;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const RECENT_USAGE_WINDOW_DAYS = 30;
 
-export function getForgottenIngredients(minDays: number = FORGOTTEN_INGREDIENT_MIN_DAYS): Ingredient[] {
+function forgottenThresholdDays(item: Ingredient): number {
+  const name = item.name.normalize('NFKC').toLowerCase();
+
+  // 丸ごとの根菜・かぼちゃ等は6日程度で急かさない。カテゴリだけでは判断しにくい
+  // 長持ち食材を先に個別判定し、一般的な生鮮品より保守的な期間にする。
+  if (/かぼちゃ|南瓜|たまねぎ|玉ねぎ|玉葱|じゃがいも|さつまいも|にんじん|人参|ごぼう|大根|pumpkin|squash|onion|potato|carrot/.test(name)) return 14;
+  if (/キャベツ|白菜|れんこん|蓮根|cabbage|napa cabbage|lotus root/.test(name)) return 10;
+  if (/きのこ|キノコ|えのき|しめじ|舞茸|まいたけ|椎茸|しいたけ|トマト|tomato|mushroom/.test(name)) return 8;
+
+  switch (item.category) {
+    case '肉・魚介': return 3;
+    case '乳製品・卵': return 5;
+    case '野菜・果物': return 8;
+    case '穀物・豆・ナッツ': return 21;
+    case 'お菓子・飲み物': return 30;
+    default: return 14;
+  }
+}
+
+export function getIgnoredForgottenIngredientIds(): number[] {
+  return getLocalUserProfile().ignoredForgottenIngredientIds || [];
+}
+
+export function ignoreForgottenIngredient(id: number): void {
+  const profile = getLocalUserProfile();
+  const current = profile.ignoredForgottenIngredientIds || [];
+  if (current.includes(id)) return;
+  setLocalUserProfile({ ...profile, ignoredForgottenIngredientIds: [...current, id] });
+}
+
+export function clearIgnoredForgottenIngredients(): void {
+  const profile = getLocalUserProfile();
+  setLocalUserProfile({ ...profile, ignoredForgottenIngredientIds: [] });
+}
+
+export function getForgottenIngredients(minDays?: number): Ingredient[] {
   const inventory = getLocalIngredients();
   const stats = getLocalUserStats();
+  const ignoredIds = new Set(getIgnoredForgottenIngredientIds());
+  const now = Date.now();
+  const recentUsageCutoff = now - RECENT_USAGE_WINDOW_DAYS * MS_PER_DAY;
 
   // 表記ゆれ(「キャベツ」⇔「キャベツ（千切り）」等)に強くするため部分一致で判定する
   const usedNames = (stats.cooked_records || [])
+    .filter((record) => {
+      const usedAt = new Date(record.date).getTime();
+      return Number.isFinite(usedAt) && usedAt >= recentUsageCutoff;
+    })
     .flatMap(r => r.ingredientNames || [])
     .map(n => n.trim().toLowerCase())
     .filter(Boolean);
 
-  const now = Date.now();
-
   return inventory.filter(item => {
     if ((item.category || '') === '調味料') return false;
     if (isPantryStaple(item.name)) return false;
+    if (ignoredIds.has(item.id)) return false;
 
-    const ageDays = (now - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24);
-    if (ageDays < minDays) return false;
+    const createdAt = new Date(item.created_at).getTime();
+    if (!Number.isFinite(createdAt)) return false;
+    const ageDays = (now - createdAt) / MS_PER_DAY;
+    const threshold = minDays ?? forgottenThresholdDays(item);
+    if (ageDays < threshold) return false;
 
     const target = item.name.trim().toLowerCase();
     const wasUsedRecently = usedNames.some(used => used.includes(target) || target.includes(used));
@@ -744,6 +792,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   dietaryRestrictions: [],
   preferredGenres: [],
   trayTheme: 'wood',
+  ignoredForgottenIngredientIds: [],
 };
 
 export function getLocalUserProfile(): UserProfile {

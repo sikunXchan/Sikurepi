@@ -189,11 +189,15 @@ export function validateRecipeLogic(
     }
   }
 
-  // (c) 在庫モードでは「在庫食材＋常備調味料」以外を使っていないかチェック。
-  //     プロンプト自体が「ごく少量の例外的な追加も許容(tipsに理由を明記)」を
-  //     許しているため、それと同じ基準で判定する:
-  //     例外0件=OK / 例外1件かつtipsに言及あり=OK(警告のみ) / それ以外=NG
-  if (context.mode === "inventory" && context.inventoryNames.length > 0) {
+  // (c) 在庫モードでは「在庫食材＋許可された常備調味料」以外を1件も許可しない。
+  //     在庫外食材をtipsで説明すれば通る旧例外は、ユーザーの明示したモードと
+  //     矛盾するため廃止する。
+  if (context.mode === "inventory") {
+    if (context.inventoryNames.length === 0) {
+      errors.push("inventory mode requested without any inventory ingredients");
+      return errors;
+    }
+
     const extras = ingredientNames.filter((name) => {
       if (fuzzyIncludes(context.inventoryNames, name)) return false;
       if (context.assumeSeasoningsAvailable && isPantryStaple(name)) return false;
@@ -205,16 +209,8 @@ export function validateRecipeLogic(
       return true;
     });
 
-    if (extras.length >= 2) {
-      errors.push(`too many non-inventory ingredients used: ${extras.join(", ")}`);
-    } else if (extras.length === 1) {
-      const explained = recipe.tips && extras.some((e) => recipe.tips.includes(e));
-      if (!explained) {
-        errors.push(
-          `non-inventory ingredient "${extras[0]}" used without an explanation in tips`
-        );
-      }
-      // 説明ありの場合は許容範囲(プロンプトの例外規定どおり)。ハードエラーにはしない。
+    if (extras.length > 0) {
+      errors.push(`non-inventory ingredient(s) used: ${extras.join(", ")}`);
     }
   }
 

@@ -879,21 +879,6 @@
 
 /* ===== 以下、page.tsx が参照していたのに未定義だったクラス =====
    レシピ結果カードの見出し・バッジ・展開部分がノースタイルで表示されていたため追加 */
-.settingsBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--gradient-primary);
-  color: #ffffff;
-  border: none;
-  border-radius: 999px;
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
 .cardHeader {
   position: relative;
   display: block;
@@ -955,14 +940,21 @@
 
 .trayDishVisual {
   position: absolute;
-  left: 9.5%;
-  top: 25%;
-  width: 31%;
-  height: 43%;
+  left: 7%;
+  top: 22%;
+  width: 38%;
+  height: 49%;
   display: grid;
   place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: zoom-in;
   animation: dishArrive 520ms var(--ease-out) both;
 }
+
+.trayDishVisual:hover { transform: none; box-shadow: none; }
 
 .trayDishVisual::after {
   content: '';
@@ -983,11 +975,26 @@
   filter: drop-shadow(0 7px 5px rgba(78, 43, 27, 0.16));
 }
 
+.dishZoomHint {
+  position: absolute;
+  z-index: 3;
+  right: 7%;
+  bottom: 7%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 252, 247, 0.92);
+  color: var(--primary-text);
+  box-shadow: 0 4px 12px rgba(78, 43, 27, 0.16);
+}
+
 .titleInfo {
   position: absolute;
-  right: 8%;
-  bottom: 14%;
-  width: 50%;
+  right: 6%;
+  bottom: 12%;
+  width: 56%;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1063,6 +1070,83 @@
   box-shadow: 0 10px 24px rgba(92, 48, 28, 0.1);
 }
 
+.singleCardHeader .trayDishVisual {
+  left: 23%;
+  top: 12%;
+  width: 54%;
+  height: 50%;
+}
+
+.singleCardHeader .trayDishIcon {
+  width: 190px !important;
+  height: 190px !important;
+}
+
+.singleCardHeader .titleInfo {
+  right: 12%;
+  bottom: 7%;
+  width: 76%;
+  align-items: center;
+  text-align: center;
+  border-radius: 18px;
+}
+
+.singleCardHeader .badgeRow { justify-content: center; }
+.singleCardHeader .ingredientIconRow { justify-content: center; }
+
+.ingredientPickerToggle {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 2px 9px;
+  margin-bottom: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.ingredientPickerToggle:hover { transform: none; box-shadow: none; }
+.ingredientPickerCopy { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 7px; text-align: left; }
+.ingredientPickerLabel { font-size: 15px; font-weight: 900; line-height: 1.55; }
+.ingredientPickerHint { font-size: 12px; font-weight: 700; line-height: 1.45; color: var(--text-muted); }
+.ingredientPickerStatus { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; font-weight: 700; }
+.ingredientPickerCount { color: var(--primary-text); font-weight: 800; white-space: nowrap; }
+
+.dishPreviewOverlay {
+  position: fixed;
+  z-index: 10020;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(54, 35, 29, 0.48);
+  backdrop-filter: blur(8px);
+}
+
+.dishPreviewCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(92vw, 420px);
+  padding: 34px 24px 24px;
+  border: 1px solid rgba(126, 75, 43, 0.14);
+  border-radius: 30px;
+  background: #fffaf4;
+  box-shadow: 0 24px 70px rgba(54, 35, 29, 0.28);
+}
+
+.dishPreviewCard h2 { margin: 8px 0 0; text-align: center; color: var(--foreground); font-size: 21px; line-height: 1.45; }
+.dishPreviewImage { width: min(66vw, 280px) !important; height: min(66vw, 280px) !important; object-fit: contain !important; filter: drop-shadow(0 12px 10px rgba(78, 43, 27, 0.16)); }
+.dishPreviewClose { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 50%; background: rgba(113, 78, 56, 0.08); color: var(--text-secondary); box-shadow: none; }
+.dishPreviewClose:hover { transform: none; box-shadow: none; }
+
 @media (max-width: 560px) {
   .cardHeader {
     display: block;
@@ -1073,15 +1157,15 @@
   }
 
   .trayDishVisual {
-    left: 8%;
-    top: 22%;
-    width: 34%;
-    height: 42%;
+    left: 5%;
+    top: 20%;
+    width: 41%;
+    height: 49%;
   }
 
   .trayDishIcon {
-    width: 104px !important;
-    height: 104px !important;
+    width: 132px !important;
+    height: 132px !important;
   }
 
   .headerActions {
@@ -1091,9 +1175,9 @@
   }
 
   .titleInfo {
-    right: 7%;
-    bottom: 11%;
-    width: 61%;
+    right: 5%;
+    bottom: 9%;
+    width: 58%;
     padding: 9px 10px;
     border-radius: 14px 14px 14px 6px;
   }
@@ -1105,6 +1189,13 @@
   .cardContent {
     margin: -14px 10px 0;
   }
+
+  .singleCardHeader .trayDishVisual { left: 20%; top: 10%; width: 60%; height: 49%; }
+  .singleCardHeader .trayDishIcon { width: 158px !important; height: 158px !important; }
+  .singleCardHeader .titleInfo { right: 8%; bottom: 6%; width: 84%; }
+  .dishZoomHint { width: 28px; height: 28px; right: 4%; bottom: 4%; }
+  .ingredientPickerToggle { align-items: flex-start; }
+  .ingredientPickerCopy { flex-direction: column; align-items: flex-start; }
 }
 
 @keyframes dishArrive {
@@ -1218,5 +1309,3 @@
   gap: 5px;
   margin-top: 6px;
 }
-  width: min(100%, 150px) !important;
-  height: min(100%, 150px) !important;

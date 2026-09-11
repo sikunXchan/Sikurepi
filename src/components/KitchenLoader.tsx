@@ -4,9 +4,18 @@ type Props = {
   text: string;
   compact?: boolean;
   className?: string;
+  variant?: "stirring" | "serving" | "delivering" | "reading" | "basket";
 };
 
-export default function KitchenLoader({ text, compact = false, className = "" }: Props) {
+const VARIANT_ASSETS: Record<NonNullable<Props["variant"]>, string> = {
+  stirring: "/animations/chef-bear-stirring.webp",
+  serving: "/mascot/bear_serving.png",
+  delivering: "/mascot/bear_delivering.png",
+  reading: "/mascot/bear_reading.png",
+  basket: "/mascot/bear_basket.png",
+};
+
+export default function KitchenLoader({ text, compact = false, className = "", variant = "stirring" }: Props) {
   return (
     <div
       className={`${styles.loader} ${compact ? styles.compact : ""} ${className}`}
@@ -19,8 +28,8 @@ export default function KitchenLoader({ text, compact = false, className = "" }:
         <span className={`${styles.steam} ${styles.steamThree}`} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          className={styles.bear}
-          src="/animations/chef-bear-stirring.webp"
+          className={`${styles.bear} ${variant !== "stirring" ? styles[`bear_${variant}`] : ""}`}
+          src={VARIANT_ASSETS[variant]}
           alt=""
           width={362}
           height={362}

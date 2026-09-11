@@ -19,6 +19,7 @@ import {
   ValidatedRecipe,
   FeasibilityContext,
 } from '@/lib/recipeValidation';
+import { parseAiJson } from '@/lib/aiJson';
 
 // 判定・分類のような軽いタスク用の安価なモデル(classify-ingredientルートと同じ方針)
 const FEASIBILITY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
@@ -84,11 +85,11 @@ JSON形式のみで回答してください(他のテキストは一切含めな
     );
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
     if (!text) return null;
-    const json = JSON.parse(text);
+    const json = parseAiJson<Record<string, unknown>>(text);
     return {
       feasible: json.feasible !== false,
       reason: typeof json.reason === 'string' ? json.reason : '',
-      missingKeyIngredients: Array.isArray(json.missingKeyIngredients) ? json.missingKeyIngredients : [],
+      missingKeyIngredients: Array.isArray(json.missingKeyIngredients) ? json.missingKeyIngredients as string[] : [],
     };
   } catch (err) {
     // 判定AI自体が失敗した場合は、生成を止めずに素通りさせる
@@ -121,11 +122,27 @@ export async function POST(req: Request) {
     language = body.language === 'en' ? 'en' : 'ja';
 
     const actualProfile = userProfile || profile;
-    const isFreeMode = mode === 'free' || !ingredients || ingredients.length === 0;
+    const isFreeMode = mode === 'free';
     const isSetMeal = mealStyle === 'set';
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
     const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
     const excludedIngredients: string[] = Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : [];
+
+    // 在庫モードを、在庫が空という理由だけで自由作成へ暗黙変換しない。
+    // 先に理由を示して止めることで「在庫から」と指定したユーザーの意図を守る。
+    if (!isFreeMode && (!Array.isArray(ingredients) || ingredients.length === 0)) {
+      return NextResponse.json({
+        recipes: [],
+        cooking_tips: [],
+        feasibility: {
+          feasible: false,
+          reason: language === 'en'
+            ? 'There are no ingredients in stock to build a recipe from. Add at least one main ingredient, or switch to free creation.'
+            : '在庫にレシピの軸になる食材がありません。食材を1つ以上追加するか、自由作成に切り替えてください。',
+          missingKeyIngredients: [],
+        },
+      });
+    }
 
     // --- 生成前の成立可否判定(在庫モードのみ。自由作成は在庫制約が無いため対象外) ---
     if (!isFreeMode) {
@@ -144,7 +161,7 @@ export async function POST(req: Request) {
 
     const ingredientsSection = isFreeMode
       ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
-      : `【現在の在庫食材(これが全てです)】\n${ingredients.join(', ')}\n\n【最優先で厳守：在庫食材だけで完成させる】ユーザーは「今ある食材だけで作れるレシピ」を求めています。上記リストに無い食材を、肉・魚・野菜・主食・卵・乳製品などの主要な具材として勝手に追加するのは絶対にやめてください。品数が少なく見えても、在庫食材の分量調整・切り方・調理法の工夫だけで1品を完成させることを最優先してください。\n・追加してよいのは、下記【調味料・味付けの前提】に記載された家庭に常備されている基本調味料の範囲のみです。それ以外の食材(在庫にない野菜・肉・魚・加工品・トッピングなど)は、彩りや風味付けの目的であっても絶対に追加しないでください。\n・在庫食材だけでは栄養バランス上どうしても不十分で、かつユーザーが常備調味料の追加を許可している場合に限り、ごく少量の例外的な追加も許容されますが、その場合は必ず"tips"にどうしてもその食材が必要だった理由を明記してください。理由なく在庫外の食材が"ingredients"に含まれるのは不可です。\n`;
+      : `【現在の在庫食材(これが全てです)】\n${ingredients.join(', ')}\n\n【最優先で厳守：在庫食材だけで完成させる】ユーザーは「今ある食材だけで作れるレシピ」を求めています。上記リストに無い食材を、肉・魚・野菜・主食・卵・乳製品などの主要な具材として勝手に追加するのは絶対にやめてください。品数が少なく見えても、在庫食材の分量調整・切り方・調理法の工夫だけで1品を完成させてください。\n・追加してよいのは、下記【調味料・味付けの前提】で許可された基本調味料だけです。それ以外の食材(在庫にない野菜・肉・魚・加工品・薬味・トッピングを含む)は、少量・彩り・栄養調整という理由でも一切追加しないでください。成立しない場合は無理に生成せず、検証で不採用になります。\n`;
 
     const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
       ? `\n【ピン留め食材（これらを必ず主役・または必須で使用してください！）】\n${pinnedIngredients.join(', ')}\n`
@@ -249,10 +266,19 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
 
-      const json = JSON.parse(text);
+      let json: Record<string, unknown>;
+      try {
+        json = parseAiJson<Record<string, unknown>>(text);
+      } catch (parseError) {
+        lastErrors = [
+          `response was not valid JSON: ${parseError instanceof Error ? parseError.message : 'unknown parse error'}`,
+        ];
+        continue;
+      }
 
-      const shapeErrors = Array.isArray(json.recipes) && json.recipes.length > 0
-        ? json.recipes.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
+      const recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
+      const shapeErrors = recipeArray.length > 0
+        ? recipeArray.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
         : ['recipes must be a non-empty array'];
 
       if (shapeErrors.length > 0) {
@@ -260,7 +286,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         continue;
       }
 
-      const logicErrors = (json.recipes as ValidatedRecipe[]).flatMap((r) => validateRecipeLogic(r, feasibilityContext));
+      const logicErrors = (recipeArray as ValidatedRecipe[]).flatMap((r) => validateRecipeLogic(r, feasibilityContext));
       if (logicErrors.length > 0) {
         lastErrors = logicErrors;
         continue;
