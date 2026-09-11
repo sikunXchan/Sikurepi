@@ -24,6 +24,7 @@ import {
   isIngredientMissing,
   getLocalLastRecipeGeneration,
   setLocalLastRecipeGeneration,
+  consumePendingDailyPickHandoff,
   DEFAULT_USER_PROFILE,
   CATEGORY_ORDER,
   CATEGORY_ICON_SLUGS,
@@ -153,6 +154,18 @@ export default function RecipePage() {
     setCreationMode('inventory');
     setSelectedIngredientIds([id]);
     setIngredientPickerExpanded(true);
+  }, []);
+
+  // ホームタブの「今日のおすすめ」をタップして遷移してきた場合、専用の簡易表示
+  // ではなく、このタブの通常のレシピカードと全く同じ見た目・機能(材料の不足表示・
+  // クッキングモード・保存・料理完了ボタン等)で開けるようにする。復元したキャッシュ
+  // より優先して表示する。
+  useEffect(() => {
+    const handoff = consumePendingDailyPickHandoff();
+    if (!handoff) return;
+    setRecipes([{ ...handoff, image_url: null, nutrition: null }]);
+    setExpandedIndex(0);
+    setSavedSet(new Set());
   }, []);
 
   const loadLocalData = () => {

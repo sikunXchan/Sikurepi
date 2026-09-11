@@ -18,6 +18,7 @@ import {
   inferIngredientCategory,
   getForgottenIngredients,
   CATEGORY_ORDER,
+  CATEGORY_ICON_SLUGS,
   Ingredient
 } from "@/lib/storage";
 import { matchIngredientSemantic } from "@/lib/embeddingMatch";
@@ -29,27 +30,6 @@ const DOUBLE_TAP_MS = 320;
 
 // AI判定中に毎回違う体勢を見せて飽きさせないためのポーズ一覧
 const JUDGING_POSES = ["bear_reading.png", "bear_running.png", "bear_sleeping.png"];
-
-type ShelfZoneKey = 'vegetable' | 'meatChilled' | 'seasoning';
-
-// 実際の12カテゴリを、冷蔵庫の棚メタファーで使う3ゾーンに割り振る。
-// 「冷凍室」ゾーンは実データに冷凍かどうかのフラグが無く、新規に追加すると
-// 在庫追加フォーム等への実装範囲が広がってしまうため今回は作らず、冷凍食品も
-// 含めて肉・チルドゾーンにまとめている(デザイン仕様書で「要事前確認」とされていた点)。
-const CATEGORY_TO_SHELF_ZONE: Record<string, ShelfZoneKey> = {
-  '野菜': 'vegetable',
-  '果物': 'vegetable',
-  '豆類': 'vegetable',
-  '肉': 'meatChilled',
-  '魚介類': 'meatChilled',
-  '乳製品・卵': 'meatChilled',
-  '穀物・パン': 'meatChilled',
-  '調味料': 'seasoning',
-  '飲み物': 'seasoning',
-  'ナッツ類': 'seasoning',
-  'お菓子・スイーツ': 'seasoning',
-  'その他': 'seasoning',
-};
 
 function computeAgeDays(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -63,16 +43,22 @@ function computeAgeDays(createdAt: string): number {
 // にならないようにする)。ダブルタップ自体も誤操作の入り口になり得るため、実際の
 // 削除は呼び出し元(親)が確認ダイアログを挟んでから行う(onRequestDeleteは
 // 「削除を確認したい」というリクエストであり、即削除ではない)。
+// 単発タップ(ダブルタップが完成しなかった場合)は、名前が省略表示されて判別
+// できない問題の対策として、フルネームをトーストで見せる(onTap)。
 function ShelfItemChip({
   item,
   variant,
+  isForgotten,
   onRequestDelete,
   onTogglePin,
+  onTap,
 }: {
   item: Ingredient;
   variant: 'circle' | 'square';
+  isForgotten?: boolean;
   onRequestDelete: (item: Ingredient) => void;
   onTogglePin: (item: Ingredient) => void;
+  onTap: (item: Ingredient) => void;
 }) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef(false);
@@ -106,6 +92,7 @@ function ShelfItemChip({
       onRequestDelete(item);
     } else {
       lastTapAtRef.current = now;
+      onTap(item);
     }
   };
 
@@ -119,9 +106,12 @@ function ShelfItemChip({
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
     >
-      <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
-        <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
-      </div>
+      <span className={isForgotten ? styles.shelfChipForgottenIconWrap : undefined}>
+        <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
+          <IngredientIcon name={item.name} size={isCircle ? 26 : 22} />
+        </div>
+        {isForgotten && <span className={styles.shelfChipForgottenDot} />}
+      </span>
       <span className={styles.shelfChipName}>
         {item.is_pinned && (
           <Pin size={isCircle ? 10 : 9} fill="#FFD700" color="#FFD700" style={{ marginRight: 2, verticalAlign: -1 }} />
@@ -288,18 +278,16 @@ export default function InventoryPage() {
   const hasIngredients = ingredients.length > 0;
   const forgottenIds = new Set(forgottenItems.map(i => i.id));
 
-  const zoneItems: Record<ShelfZoneKey, Ingredient[]> = { vegetable: [], meatChilled: [], seasoning: [] };
+  // 冷蔵庫の棚の1段 = カテゴリ1つ。以前は12カテゴリを3ゾーンへ圧縮して表示して
+  // いたが、ユーザーの要望でカテゴリ自体を7つへ圧縮し、以降は圧縮なしで
+  // カテゴリごとにそのまま棚を分ける(調味料だけドアポケット風の特別な見た目にする)。
+  const zoneItems: Record<string, Ingredient[]> = {};
+  for (const cat of CATEGORY_ORDER) zoneItems[cat] = [];
   for (const item of ingredients) {
-    const zone = CATEGORY_TO_SHELF_ZONE[item.category || 'その他'] || 'seasoning';
-    zoneItems[zone].push(item);
+    const cat = zoneItems[item.category] ? item.category : 'その他';
+    zoneItems[cat].push(item);
   }
-
-  const ZONE_CONFIG: { key: ShelfZoneKey; icon: string; label: string; note?: string; bandClass: string }[] = [
-    { key: 'vegetable', icon: 'vegetables', label: t.inventory.zoneVegetableLabel, bandClass: styles.zoneVegetable },
-    { key: 'meatChilled', icon: 'meat', label: t.inventory.zoneMeatChilledLabel, bandClass: styles.zoneMeatChilled },
-    { key: 'seasoning', icon: 'seasoning', label: t.inventory.zoneSeasoningLabel, note: t.inventory.zoneSeasoningNote, bandClass: styles.zoneSeasoning },
-  ];
-  const visibleZones = ZONE_CONFIG.filter(z => zoneItems[z.key].length > 0);
+  const visibleCategories = CATEGORY_ORDER.filter(cat => zoneItems[cat].length > 0);
 
   return (
     <div className={styles.container}>
@@ -399,18 +387,25 @@ export default function InventoryPage() {
       {!loading && hasIngredients && (
         <div className={styles.fridgeFrame}>
           <div className={styles.fridgeCard}>
-            {visibleZones.map(zone => {
-              const items = zoneItems[zone.key];
-              const forgottenInZone = items.filter(i => forgottenIds.has(i.id));
-              const normalItems = items.filter(i => !forgottenIds.has(i.id));
-              const isSeasoning = zone.key === 'seasoning';
+            {visibleCategories.map(cat => {
+              const items = zoneItems[cat];
+              const forgottenInZone = items
+                .filter(i => forgottenIds.has(i.id))
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              // ゾーンにつき呼びかけアラートは最も古い1件だけ表示する(要望対応: 該当が
+              // 多いとアラートカードが縦にどこまでも並んでしまいUXが悪化していたため)。
+              // 2件目以降は通常チップへ戻し、控えめな印(ドット+振動)だけ残す。
+              const spotlightForgotten = forgottenInZone[0];
+              const extraForgottenIds = new Set(forgottenInZone.slice(1).map(i => i.id));
+              const normalItems = items.filter(i => i.id !== spotlightForgotten?.id);
+              const isSeasoning = cat === '調味料';
               return (
-                <div key={zone.key} className={`${styles.zoneBand} ${zone.bandClass}`}>
+                <div key={cat} className={`${styles.zoneBand} ${isSeasoning ? styles.zoneSeasoning : ""}`}>
                   <div className={styles.zoneLabelRow}>
-                    <UiIcon slug={zone.icon} size={18} alt={zone.label} />
-                    <span>{zone.label}</span>
-                    {zone.note && <span className={styles.zoneNote}>{zone.note}</span>}
-                    {zone.key === 'vegetable' && <span className={styles.zoneCount}>{items.length}</span>}
+                    <UiIcon slug={CATEGORY_ICON_SLUGS[cat] || 'other'} size={18} alt={cat} />
+                    <span>{t.category[cat] || cat}</span>
+                    {isSeasoning && <span className={styles.zoneNote}>{t.inventory.zoneSeasoningNote}</span>}
+                    <span className={styles.zoneCount}>{items.length}</span>
                   </div>
                   {normalItems.length > 0 && (
                     <div className={styles.zoneChips}>
@@ -419,15 +414,17 @@ export default function InventoryPage() {
                           key={item.id}
                           item={item}
                           variant={isSeasoning ? 'square' : 'circle'}
+                          isForgotten={extraForgottenIds.has(item.id)}
                           onRequestDelete={setConfirmDeleteItem}
                           onTogglePin={handleTogglePin}
+                          onTap={(i) => showToast(i.name)}
                         />
                       ))}
                     </div>
                   )}
-                  {forgottenInZone.map(item => (
-                    <ForgottenShelfAlert key={item.id} item={item} onFindRecipe={handleFindRecipeForForgotten} />
-                  ))}
+                  {spotlightForgotten && (
+                    <ForgottenShelfAlert item={spotlightForgotten} onFindRecipe={handleFindRecipeForForgotten} />
+                  )}
                 </div>
               );
             })}

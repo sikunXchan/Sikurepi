@@ -31,17 +31,12 @@ const ja = {
   // 食材カテゴリの表示名。保存データ自体は常に日本語のキー(「野菜」等)のまま扱い、
   // 表示するときだけこの辞書で変換する(データ構造・CATEGORY_RULES等には影響しない)。
   category: {
-    '野菜': '野菜',
-    '肉': '肉',
-    '魚介類': '魚介類',
+    '野菜・果物': '野菜・果物',
+    '肉・魚介': '肉・魚介',
     '乳製品・卵': '乳製品・卵',
-    '穀物・パン': '穀物・パン',
+    '穀物・豆・ナッツ': '穀物・豆・ナッツ',
     '調味料': '調味料',
-    'お菓子・スイーツ': 'お菓子・スイーツ',
-    '果物': '果物',
-    '豆類': '豆類',
-    'ナッツ類': 'ナッツ類',
-    '飲み物': '飲み物',
+    'お菓子・飲み物': 'お菓子・飲み物',
     'その他': 'その他',
   } as Record<string, string>,
   inventory: {
@@ -57,9 +52,6 @@ const ja = {
     alreadyInStock: "⚠️ その食材はすでに在庫にあります。",
     addedToast: (name: string) => `✨ 「${name}」を冷蔵庫に追加しました！`,
     deletedToast: (name: string) => `🗑️ 「${name}」を削除しました`,
-    zoneVegetableLabel: "野菜",
-    zoneMeatChilledLabel: "肉・チルド",
-    zoneSeasoningLabel: "調味料",
     zoneSeasoningNote: "・ドアポケット",
     forgottenBadge: (ageDays: number) => `${ageDays}日目`,
     forgottenAlertMessages: [
@@ -87,7 +79,6 @@ const ja = {
     todaysPickTitle: "今日のおすすめ",
     todaysPickTagline: "旬の食材でおいしく！",
     todaysPickViewButton: "レシピを見る",
-    todaysPickCloseButton: "閉じる",
     todaysPickLoading: "今日のおすすめを考え中…",
     todaysPickEmpty: "今日のおすすめはまだありません。少ししたらまた見に来てね",
     shoppingTitle: "買い物",

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ai, generateWithRetry } from '@/lib/ai';
+import { CATEGORY_ORDER } from '@/lib/storage';
 
 export async function POST(req: Request) {
   try {
@@ -28,13 +29,13 @@ export async function POST(req: Request) {
 【重要：食材名の正規化】レシートの商品名にはメーカー名・ブランド名・商品シリーズ名（例：「〇〇乳業」「××農園」）、「国産」「産直」「有機栽培」などの産地・栽培方法の表示、内容量・個数などの規格表記（例：「1kg」「6個入」）が含まれることがあります。これらはすべて取り除き、食材そのものを指す一般的な名称だけを"name"に出力してください（例：「〇〇乳業 特濃牛乳1000ml」→「牛乳」、「××農園 国産たまねぎ」→「たまねぎ」、「△△ハム 国産豚バラ肉」→「豚バラ肉」）。
 
 カテゴリは必ず以下のいずれかから選択してください：
-「野菜」「肉」「魚介類」「乳製品・卵」「穀物・パン」「豆類」「果物」「調味料」「その他」
+${CATEGORY_ORDER.map((c) => `「${c}」`).join('')}
 
 必ず以下のJSON形式で結果を返してください。それ以外のテキストは一切含めないでください。
 {
   "ingredients": [
-    { "name": "キャベツ", "category": "野菜" },
-    { "name": "豚バラ肉", "category": "肉" }
+    { "name": "キャベツ", "category": "野菜・果物" },
+    { "name": "豚バラ肉", "category": "肉・魚介" }
   ]
 }`;
 
