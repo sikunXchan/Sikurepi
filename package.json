@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "audit:icons": "node --no-warnings --experimental-strip-types scripts/audit-icon-library.mjs",
+    "qa:dishes:world-02": "node scripts/build-icon-contact-sheet.mjs public/dishes/icons .tmp/world-cuisines-02-contact-sheet.png --manifest-group=world_cuisines_02"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
