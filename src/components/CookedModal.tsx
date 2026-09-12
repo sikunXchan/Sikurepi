@@ -4,12 +4,15 @@ import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Loader2, Trash2 } from "lucide-react";
 import {
-  consumeLocalIngredients,
+  consumeLocalIngredientsDetailed,
+  getIngredientAgeDays,
   getLocalIngredients,
+  getRescueEligibleIngredients,
   isIngredientMissing,
   recordLocalCookingDone,
   FlavorFeedbackTag,
   NutritionData,
+  RescuedIngredientSnapshot,
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import IngredientIcon from "./IngredientIcon";
@@ -58,6 +61,10 @@ export default function CookedModal({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [consumedCount, setConsumedCount] = useState(0);
+  const [rescuedIngredients, setRescuedIngredients] = useState<RescuedIngredientSnapshot[]>([]);
+  // モーダルを開いた時点の対象を固定する。在庫更新後に対象が消えても、完了演出と
+  // 記録へ正しく引き継げるようにする。
+  const [rescueCandidates] = useState(() => getRescueEligibleIngredients());
   const [feedbackTags, setFeedbackTags] = useState<Set<FlavorFeedbackTag>>(new Set());
   const [wouldCookAgain, setWouldCookAgain] = useState(false);
   // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
@@ -107,8 +114,16 @@ export default function CookedModal({
     try {
       const toConsume = consume ? Array.from(selectedItems) : [];
       let nextConsumedCount = 0;
+      let nextRescuedIngredients: RescuedIngredientSnapshot[] = [];
+      let consumedIngredientNames: string[] = [];
       if (toConsume.length > 0) {
-        nextConsumedCount = consumeLocalIngredients(toConsume);
+        const consumedIngredients = consumeLocalIngredientsDetailed(toConsume);
+        const rescueCandidateIds = new Set(rescueCandidates.map((item) => item.id));
+        nextConsumedCount = consumedIngredients.length;
+        consumedIngredientNames = consumedIngredients.map((item) => item.name);
+        nextRescuedIngredients = consumedIngredients
+          .filter((item) => rescueCandidateIds.has(item.id))
+          .map((item) => ({ name: item.name, ageDays: getIngredientAgeDays(item) }));
       }
       const feedback = feedbackTags.size > 0 || wouldCookAgain
         ? { tags: Array.from(feedbackTags), wouldCookAgain }
@@ -119,9 +134,12 @@ export default function CookedModal({
         nutrition || undefined,
         rawIngredients.map((i) => i.name),
         feedback,
+        consumedIngredientNames,
+        nextRescuedIngredients,
       );
 
       setConsumedCount(nextConsumedCount);
+      setRescuedIngredients(nextRescuedIngredients);
       setDone(true);
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
@@ -188,8 +206,21 @@ export default function CookedModal({
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 16 }}
               />
-              <h3>{t.cookingSession.cookedDoneTitle}</h3>
-              <p>{t.cookingSession.cookedDoneMessage(consumedCount)}</p>
+              {rescuedIngredients.length > 0 && (
+                <div className={styles.rescuedIcons} aria-label={t.cookingSession.rescuedLabel}>
+                  {rescuedIngredients.slice(0, 4).map((item) => (
+                    <span key={item.name} className={styles.rescuedIcon}>
+                      <IngredientIcon name={item.name} size={46} />
+                    </span>
+                  ))}
+                </div>
+              )}
+              <h3>{rescuedIngredients.length > 0 ? t.cookingSession.rescuedDoneTitle : t.cookingSession.cookedDoneTitle}</h3>
+              <p>
+                {rescuedIngredients.length > 0
+                  ? t.cookingSession.rescuedDoneMessage(rescuedIngredients.map((item) => item.name))
+                  : t.cookingSession.cookedDoneMessage(consumedCount)}
+              </p>
             </div>
           ) : (
             <>
@@ -248,6 +279,7 @@ export default function CookedModal({
               <div className={styles.itemList}>
                 {rawIngredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
+                  const isRescueCandidate = !isIngredientMissing(item.name, rescueCandidates, false);
                   return (
                     <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.checkedRow : ""}`}>
                       <input
@@ -256,7 +288,10 @@ export default function CookedModal({
                         onChange={() => toggleItem(item.name)}
                         className={styles.checkbox}
                       />
-                      <span className={styles.itemName}>{item.name}</span>
+                      <span className={styles.itemName}>
+                        {item.name}
+                        {isRescueCandidate && <small className={styles.rescueBadge}>{t.cookingSession.rescueCandidate}</small>}
+                      </span>
                       {item.amount && <span className={styles.itemAmount}>{item.amount}</span>}
                     </label>
                   );

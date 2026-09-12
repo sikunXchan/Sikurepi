@@ -122,66 +122,87 @@
 
 /* ===== 冷蔵庫の棚 (フリッジカード) ===== */
 
-/* 冷蔵庫の外扉ではなく、開いた庫内を正面から見たフレーム。青白い庫内灯、
-   奥壁、ガラス棚の縁を重ねて「ここに保管している」ことを一目で伝える。 */
+/* 開いた冷蔵庫を正面から見たフレーム。写実的な金属・ガラス表現ではなく、
+   外枠・縦長ハンドル・棚・野菜室という識別に必要な形だけを残す。 */
 .fridgeFrame {
+  --fridge-line: rgba(91, 141, 153, 0.28);
+  --fridge-frame: #dbeceb;
   position: relative;
   isolation: isolate;
-  border-radius: 30px;
-  padding: 29px 14px 18px;
-  background:
-    linear-gradient(90deg, rgba(179, 204, 216, 0.72), transparent 8%, transparent 92%, rgba(179, 204, 216, 0.72)),
-    linear-gradient(180deg, #edf8fc 0%, #d8e9f0 100%);
-  border: 5px solid #f5fbfd;
-  outline: 1px solid rgba(104, 139, 154, 0.22);
-  box-shadow:
-    inset 14px 0 20px -18px rgba(57, 96, 113, 0.55),
-    inset -14px 0 20px -18px rgba(57, 96, 113, 0.55),
-    inset 0 -16px 24px -18px rgba(57, 96, 113, 0.45),
-    0 16px 34px rgba(58, 86, 98, 0.13);
+  padding: 34px 18px 16px 30px;
+  border: 6px solid #f8fcfb;
+  border-radius: 34px 34px 24px 24px;
+  outline: 2px solid var(--fridge-line);
+  background: var(--fridge-frame);
+  box-shadow: 0 12px 26px rgba(58, 86, 98, 0.12);
 }
 
 .fridgeFrame::before {
-  /* 庫内灯 */
+  /* 上部の庫内灯。小さな一本線に絞り、食材より目立たせない。 */
   content: '';
   position: absolute;
   z-index: 2;
-  top: 9px;
+  top: 12px;
   left: 50%;
-  width: 52%;
-  height: 8px;
+  width: 74px;
+  height: 7px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.2), #ffffff 18%, #f7ffff 82%, rgba(255,255,255,0.2));
-  box-shadow: 0 4px 16px rgba(153, 225, 240, 0.82);
+  background: rgba(255, 255, 255, 0.9);
   transform: translateX(-50%);
 }
 
 .fridgeFrame::after {
-  /* 庫内下部の吸気口 */
+  /* 冷蔵庫だと判断しやすくする縦長ハンドル。 */
   content: '';
   position: absolute;
-  z-index: 2;
-  left: 50%;
-  bottom: 6px;
-  width: 82px;
-  height: 4px;
+  z-index: 4;
+  top: 64px;
+  left: 9px;
+  width: 10px;
+  height: 92px;
+  border: 2px solid rgba(91, 141, 153, 0.22);
   border-radius: 999px;
-  background: repeating-linear-gradient(90deg, #9fb8c3 0 5px, transparent 5px 9px);
-  opacity: 0.62;
-  transform: translateX(-50%);
+  background: #f3fbfa;
 }
 
 .fridgeCard {
   position: relative;
   z-index: 1;
-  background:
-    linear-gradient(90deg, rgba(155, 197, 214, 0.12) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,248,251,0.94));
-  background-size: 62px 100%, 100% 100%;
-  border-radius: 22px;
-  border: 1px solid rgba(119, 158, 175, 0.3);
-  box-shadow: inset 0 8px 18px rgba(80, 127, 146, 0.08);
   overflow: hidden;
+  border: 2px solid rgba(119, 158, 175, 0.24);
+  border-radius: 22px;
+  background: #f6fbfb;
+  box-shadow: inset 0 0 0 8px rgba(220, 237, 238, 0.32);
+}
+
+.fridgeCrisper {
+  position: relative;
+  z-index: 1;
+  min-height: 62px;
+  margin-top: 10px;
+  border: 2px solid rgba(119, 158, 175, 0.28);
+  border-radius: 14px 14px 20px 20px;
+  background: rgba(247, 252, 251, 0.82);
+}
+
+.fridgeCrisper::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(119, 158, 175, 0.16);
+  border-radius: 9px 9px 14px 14px;
+}
+
+.fridgeCrisper span {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 66px;
+  height: 10px;
+  border: 2px solid rgba(119, 158, 175, 0.24);
+  border-top: 0;
+  border-radius: 0 0 999px 999px;
+  transform: translateX(-50%);
 }
 
 .zoneBand {
@@ -197,11 +218,10 @@
   right: 7px;
   bottom: 4px;
   left: 7px;
-  height: 9px;
-  border: 1px solid rgba(126, 174, 192, 0.34);
-  border-radius: 3px 3px 7px 7px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(198,225,235,0.54));
-  box-shadow: 0 4px 7px rgba(69, 113, 132, 0.16);
+  height: 7px;
+  border: 0;
+  border-radius: 3px 3px 6px 6px;
+  background: #d4e6e7;
 }
 
 .zoneSeasoning {
@@ -209,8 +229,8 @@
   padding: 13px 12px 15px;
   border: 1px solid rgba(116, 175, 195, 0.38);
   border-radius: 13px 13px 20px 20px;
-  background: linear-gradient(180deg, rgba(238, 251, 255, 0.5), rgba(191, 226, 238, 0.32));
-  box-shadow: inset 0 -5px 0 rgba(173, 211, 224, 0.28);
+  background: rgba(228, 243, 243, 0.64);
+  box-shadow: inset 0 -4px 0 rgba(173, 211, 214, 0.2);
 }
 
 .zoneLabelRow {
@@ -663,7 +683,9 @@
 }
 
 @media (max-width: 430px) {
-  .fridgeFrame { padding-inline: 10px; border-width: 4px; border-radius: 26px; }
+  .fridgeFrame { padding: 31px 10px 13px 23px; border-width: 4px; border-radius: 28px 28px 21px 21px; }
+  .fridgeFrame::after { top: 59px; left: 6px; width: 8px; height: 80px; }
+  .fridgeCrisper { min-height: 54px; margin-top: 8px; }
   .zoneBand { padding-inline: 10px; }
   .zoneChips { gap: 9px 7px; }
   .itemPreviewCard { grid-template-columns: 62px minmax(0, 1fr) 36px; gap: 10px; min-height: 86px; border-radius: 21px; }
