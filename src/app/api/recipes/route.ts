@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
+import { ThinkingLevel } from '@google/genai';
 import {
   ai,
   generateWithRetry,
+  FAST_AI_MODEL,
+  QUALITY_AI_MODEL,
   buildProfileSection,
   buildClimateSection,
   buildSeasoningSection,
   buildLanguageSection,
   buildTemplateConstraintSection,
-  RECIPE_TEMPLATE_CONSTRAINTS,
   DISH_LOAD_INSTRUCTION,
   FLAVOR_INTENSITY_INSTRUCTION,
   Language,
@@ -24,84 +26,13 @@ import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
 
-// 判定・分類のような軽いタスク用の安価なモデル(classify-ingredientルートと同じ方針)
-const FEASIBILITY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
-const MAX_VALIDATION_ATTEMPTS = 3;
-
-type FeasibilityResult = {
-  feasible: boolean;
-  reason: string;
-  missingKeyIngredients: string[];
-};
-
-// --- レシピ生成前の成立可否判定 (要件8・9) -----------------------------------
-// 在庫からの生成の場合、実際にレシピが成立しそうかを本生成の前に軽量モデルで
-// 判定する。「在庫：魚・野菜」+「スイーツを作りたい」のような、指定カテゴリと
-// 在庫が噛み合わないケースや、在庫の点数が極端に少なく1品として成立しにくい
-// ケースを検出し、無理にレシピ生成を強行しないようにする。
-async function judgeFeasibility(params: {
-  ingredients: string[];
-  templateKey?: string | null;
-  instruction?: string;
-  dietaryRestrictions: string[];
-  assumeSeasoningsAvailable: boolean;
-  language: Language;
-}): Promise<FeasibilityResult | null> {
-  const templateInstruction = params.templateKey ? RECIPE_TEMPLATE_CONSTRAINTS[params.templateKey] : null;
-  const requestSection = [
-    templateInstruction ? `・指定カテゴリ: ${templateInstruction}` : null,
-    params.instruction ? `・ユーザーの追加要望: ${params.instruction}` : null,
-    params.dietaryRestrictions.length > 0 ? `・食事制限: ${params.dietaryRestrictions.join('、')}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  const prompt = `あなたは家庭料理のレシピが実際に成立するかどうかを判定する専門家です。以下の在庫食材とユーザーの希望から、料理として無理なく成立するレシピを提案できそうかを判定してください。
-
-【現在の在庫食材(これが全てです)】
-${params.ingredients.length > 0 ? params.ingredients.join(', ') : '(なし)'}
-
-【常備調味料の前提】
-${buildSeasoningSection(params.assumeSeasoningsAvailable, params.dietaryRestrictions)}
-
-【ユーザーの希望】
-${requestSection || '(特になし。おまかせ)'}
-
-判定基準:
-・在庫食材の系統(魚介・野菜中心 等)と指定カテゴリ(例:スイーツ)が明らかに噛み合わない場合は feasible:false
-・在庫の点数が極端に少なく(常備調味料を除いて実質0〜1品程度)、1品の料理として成立させるのが困難な場合も feasible:false
-・多少の工夫や常備調味料の追加で成立の余地があるなら feasible:true (在庫が完璧に揃っている必要はない)
-・在庫を指定していない(自由作成)場合は判定不要だが、ここでは常に在庫が指定されている前提で判定する
-
-JSON形式のみで回答してください(他のテキストは一切含めない):
-{
-  "feasible": true,
-  "reason": "判定理由を1〜2文の日本語で",
-  "missingKeyIngredients": ["成立のために不足していると考えられる主要食材(あれば。無ければ空配列)"]
-}`;
-
-  try {
-    const response = await generateWithRetry(
-      ai,
-      { contents: [{ role: 'user', parts: [{ text: prompt }] }], config: { responseMimeType: 'application/json' } },
-      FEASIBILITY_MODELS
-    );
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
-    if (!text) return null;
-    const json = parseAiJson<Record<string, unknown>>(text);
-    return {
-      feasible: json.feasible !== false,
-      reason: typeof json.reason === 'string' ? json.reason : '',
-      missingKeyIngredients: Array.isArray(json.missingKeyIngredients) ? json.missingKeyIngredients as string[] : [],
-    };
-  } catch (err) {
-    // 判定AI自体が失敗した場合は、生成を止めずに素通りさせる
-    // (成立可否判定はユーザー体験の保護が目的であり、判定不能を理由に
-    // 本来使えるはずの生成機能をブロックしないため)
-    console.warn('Feasibility check failed, proceeding without it:', err);
-    return null;
-  }
-}
+// 初回生成は低遅延のFlash-Liteを使い、品質検証で不採用になった場合だけ
+// Flashへ昇格する。無条件に重いモデルを複数回呼ばない。
+const RECIPE_MODEL_ORDER = [
+  [FAST_AI_MODEL, QUALITY_AI_MODEL],
+  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+] as const;
+const MAX_VALIDATION_ATTEMPTS = RECIPE_MODEL_ORDER.length;
 
 export async function POST(req: Request) {
   let language: Language = 'ja';
@@ -202,21 +133,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // --- 生成前の成立可否判定(在庫モードのみ。自由作成は在庫制約が無いため対象外) ---
-    if (!isFreeMode) {
-      const feasibility = await judgeFeasibility({
-        ingredients,
-        templateKey,
-        instruction,
-        dietaryRestrictions,
-        assumeSeasoningsAvailable,
-        language,
-      });
-      if (feasibility && !feasibility.feasible) {
-        return NextResponse.json({ recipes: [], cooking_tips: [], feasibility });
-      }
-    }
-
     const ingredientsSection = isFreeMode
       ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
       : `【現在の在庫食材(これが全てです)】\n${ingredients.join(', ')}\n\n【最優先で厳守：在庫食材だけで完成させる】ユーザーは「今ある食材だけで作れるレシピ」を求めています。上記リストに無い食材を、肉・魚・野菜・主食・卵・乳製品などの主要な具材として勝手に追加するのは絶対にやめてください。品数が少なく見えても、在庫食材の分量調整・切り方・調理法の工夫だけで1品を完成させてください。\n・追加してよいのは、下記【調味料・味付けの前提】で許可された基本調味料だけです。それ以外の食材(在庫にない野菜・肉・魚・加工品・薬味・トッピングを含む)は、少量・彩り・栄養調整という理由でも一切追加しないでください。成立しない場合は無理に生成せず、検証で不採用になります。\n`;
@@ -260,13 +176,16 @@ export async function POST(req: Request) {
       : null;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
+    const feasibilityLanguageSection = language === 'en'
+      ? '\n【成立可否の出力言語】"feasibility.reason"と"feasibility.missingKeyIngredients"も自然な英語で出力してください。\n'
+      : '';
     const mealStyleSection = isSetMeal
       ? `\n【重要：定食セット構成】\n単品の料理候補を複数出すのではなく、主菜1品・副菜1〜2品・汁物1品（和食以外のジャンルなら、それに相当する主菜・副菜・スープ等の構成でよい）からなる、レストランの定食のような統一感のある「1組のセット」を提案してください。全体で1食分として栄養バランスが良くなるよう調整してください。各レシピの"course"には「主菜」「副菜」「汁物」「ご飯・主食」のいずれかを必ず指定してください${language === 'en' ? '（courseの値は必ずこの日本語表記のまま出力し、翻訳しないでください。表示側で翻訳します）' : ''}。\n【最優先で厳守：セット内の変化・メリハリ】「統一感」は食卓としての相性の良さを指すのであって、似た味・似た食材を繰り返すことではありません。以下を必ず守ってください。\n・主菜で使うメインの調味料・味の系統（醤油ベース、味噌ベース、塩・酸味系、スパイシー系など）を、副菜・汁物ではそのまま繰り返さず、意図的に変えてください（例：主菜が醤油だれの照り焼きなら、副菜は塩味や酢の物、汁物は味噌汁ではなく澄まし汁や別の出汁にするなど）。\n・主菜で使うメイン食材（肉・魚など）を副菜・汁物でそのまま主役として重複させないでください。食感も、主菜がジューシー・こってり系なら副菜はシャキシャキ・さっぱり系にするなど、セット全体で単調にならないようにしてください。\n・こうすることで、一口ごとに違う美味しさが感じられる「メリハリのある定食」に仕上げてください。\n`
       : '';
 
     const basePrompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${mealStyleSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
 
 【重要・厳守事項】
 ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいのは、在庫食材リストにある食材と、常備調味料の前提で許可されている基本調味料だけです。在庫にない主要な具材(肉・魚・野菜・主食・卵・乳製品など)を1つでも追加した場合、それはユーザーの意図に反する失敗作とみなされます。\n'}1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -279,9 +198,15 @@ ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいの�
 8. 【提出前の自己監査】材料の全てが手順内で使われているか、人数分の分量が具体的か、調理時間と各工程の時間が矛盾しないか、PFCから計算される熱量とcaloriesが大きく矛盾しないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含めてください。味は塩分量だけに頼らず、旨味・酸味・香り・食感を確認してからJSONを確定してください。
 9. ${isSetMeal
         ? '以下のJSON構造で、"recipes"配列の中に定食セットを構成する各品(主菜・副菜・汁物など、通常3〜4品)のレシピデータを格納して返してください。'
-        : '以下のJSON構造で、"recipes"配列の中に複数の独立した料理の候補データを格納して返してください。'
-      }"climate_badge"には気候マッチ度を示す文字だけの短いタグ（例：「猛暑に最適」「体ポカポカ」など）を記載してください。"climate_badge"と"dish_badge"には絵文字や装飾記号を含めないでください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
+        : '以下のJSON構造で、"recipes"配列の中に最もおすすめする料理を1品だけ格納して返してください。候補を複数生成しないでください。'
+      }"climate_badge"には気候マッチ度を示す文字だけの短いタグ（例：「猛暑に最適」「体ポカポカ」など）を記載してください。"climate_badge"と"dish_badge"には絵文字や装飾記号を含めないでください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。
+10. 【成立可否も同時判定】在庫モードで、在庫食材の系統と指定カテゴリが明らかに噛み合わない、または主要食材が足りず条件どおりの料理が成立しない場合は、無理なレシピを作らず"feasibility.feasible"をfalse、"recipes"と"cooking_tips"を空配列にしてください。成立する場合と自由作成モードでは"feasibility.feasible"をtrueにしてください。これ以外のテキストは一切含めないでください。
 {
+  "feasibility": {
+    "feasible": true,
+    "reason": "作れない場合だけ理由を1〜2文で記載。作れる場合は空文字",
+    "missingKeyIngredients": ["成立に不足する主要食材。作れる場合は空配列"]
+  },
   "recipes": [
     {
       "title": "料理名",
@@ -319,14 +244,15 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
       const prompt = attempt === 0 ? basePrompt : `${basePrompt}\n${buildValidationRetryNote(lastErrors)}`;
 
+      const models = [...RECIPE_MODEL_ORDER[attempt]];
+      const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
-          // 「本当に美味しい一皿」への工夫を考えさせる分、思考の余地を少し広げる
-          thinkingConfig: { thinkingBudget: 6000 },
+          thinkingConfig: { thinkingLevel },
         }
-      });
+      }, models, 2);
 
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
@@ -341,6 +267,28 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         continue;
       }
 
+      const rawFeasibility = json.feasibility;
+      if (
+        !isFreeMode
+        && rawFeasibility
+        && typeof rawFeasibility === 'object'
+        && !Array.isArray(rawFeasibility)
+        && (rawFeasibility as Record<string, unknown>).feasible === false
+      ) {
+        const feasibility = rawFeasibility as Record<string, unknown>;
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: typeof feasibility.reason === 'string' ? feasibility.reason : '',
+            missingKeyIngredients: Array.isArray(feasibility.missingKeyIngredients)
+              ? feasibility.missingKeyIngredients.filter((name): name is string => typeof name === 'string')
+              : [],
+          },
+        });
+      }
+
       const recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
       const shapeErrors = recipeArray.length > 0
         ? recipeArray.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
@@ -349,8 +297,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       if (isSetMeal && (recipeArray.length < 3 || recipeArray.length > 4)) {
         shapeErrors.push('set meal recipes must contain 3 or 4 dishes');
       }
-      if (!isSetMeal && recipeArray.length > 3) {
-        shapeErrors.push('single-dish suggestions must contain at most 3 candidates');
+      if (!isSetMeal && recipeArray.length !== 1) {
+        shapeErrors.push('single-dish suggestions must contain exactly 1 recipe');
       }
       if (!Array.isArray(json.cooking_tips) || json.cooking_tips.length !== 3) {
         shapeErrors.push('cooking_tips must contain exactly 3 items');

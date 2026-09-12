@@ -9,7 +9,9 @@ export { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
 
 export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export const DEFAULT_AI_MODELS = ['models/gemini-2.5-flash', 'models/gemini-3.5-flash'];
+export const FAST_AI_MODEL = 'models/gemini-3.5-flash-lite';
+export const QUALITY_AI_MODEL = 'models/gemini-3.5-flash';
+export const DEFAULT_AI_MODELS = [FAST_AI_MODEL, QUALITY_AI_MODEL];
 
 const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または一般的にどの家庭にもある可能性が高い最小限のもの（塩・こしょう程度）に留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
 

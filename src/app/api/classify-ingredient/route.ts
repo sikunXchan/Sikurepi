@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry } from '@/lib/ai';
+import { ThinkingLevel } from '@google/genai';
+import { ai, DEFAULT_AI_MODELS, generateWithRetry } from '@/lib/ai';
 import { CATEGORY_RULES } from '@/lib/storage';
 import { ICON_SLUGS } from '@/lib/ingredientIcons';
 
@@ -14,10 +15,9 @@ import { ICON_SLUGS } from '@/lib/ingredientIcons';
 // 不足でタブがクラッシュする不具合が発生したため撤回し、軽量・低コストなAPI呼び出し
 // (Gemini Flash)方式に切り替えた。
 //
-// 分類だけの軽いタスクなので、最安のgemini-1.5-flash-8b($0.0375/$0.15 per 1M
-// tokens、2.5-flash-liteの約1/3)を優先的に使い、旧世代モデルで将来提供終了に
-// なる可能性も考慮して2.5-flash-lite→2.5-flashへ自動フォールバックする。
-const CLASSIFY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
+// 分類だけの軽いタスクなので、低遅延の3.5 Flash-Liteを優先する。
+// Liteが一時的に利用できない場合だけ3.5 Flashへフォールバックする。
+const CLASSIFY_MODELS = DEFAULT_AI_MODELS;
 
 const CATEGORY_OPTIONS = [...new Set(CATEGORY_RULES.map((r) => r.category))].concat('その他');
 
@@ -44,14 +44,13 @@ export async function POST(req: Request) {
       ai,
       {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        // thinkingConfigは付けない: gemini-1.5-flash-8bのような旧世代モデルは
-        // 「thinking」機能自体が無くこのパラメータを認識できないため、付けると
-        // リクエストごと拒否されてしまう(単純な分類タスクなので無しでも問題ない)。
         config: {
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       },
-      CLASSIFY_MODELS
+      CLASSIFY_MODELS,
+      2,
     );
 
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
@@ -63,8 +62,9 @@ export async function POST(req: Request) {
     const isStaple = json.isStaple === true;
 
     return NextResponse.json({ category, iconSlug, isStaple });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Ingredient Classify Error:', error);
-    return NextResponse.json({ error: `食材の判定に失敗しました: ${error.message}` }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: `食材の判定に失敗しました: ${message}` }, { status: 500 });
   }
 }

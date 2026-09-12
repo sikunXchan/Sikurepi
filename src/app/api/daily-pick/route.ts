@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, FLAVOR_INTENSITY_INSTRUCTION } from '@/lib/ai';
+import { ThinkingLevel } from '@google/genai';
+import {
+  ai,
+  generateWithRetry,
+  FAST_AI_MODEL,
+  QUALITY_AI_MODEL,
+  FLAVOR_INTENSITY_INSTRUCTION,
+} from '@/lib/ai';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { parseAiJson } from '@/lib/aiJson';
 import {
@@ -54,7 +61,11 @@ type DailyPickPersonalization = {
   flavorFeedback: FlavorFeedbackSummary[];
 };
 
-const MAX_VALIDATION_ATTEMPTS = 3;
+const DAILY_PICK_MODEL_ORDER = [
+  [FAST_AI_MODEL, QUALITY_AI_MODEL],
+  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+] as const;
+const MAX_VALIDATION_ATTEMPTS = DAILY_PICK_MODEL_ORDER.length;
 
 function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -220,10 +231,16 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     const retryNote = lastErrors.length > 0
       ? `\n前回の出力は次の理由で不採用です。すべて修正してください:\n${lastErrors.map((error) => `- ${error}`).join('\n')}\n`
       : '';
+    const models = [...DAILY_PICK_MODEL_ORDER[attempt]];
+    const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: `${prompt}${retryNote}` }] }],
-      config: { responseMimeType: 'application/json', seed: seedFromDate(date) + attempt },
-    });
+      config: {
+        responseMimeType: 'application/json',
+        seed: seedFromDate(date) + attempt,
+        thinkingConfig: { thinkingLevel },
+      },
+    }, models, 2);
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
     if (!text) {
       lastErrors = ['AI output was empty'];
