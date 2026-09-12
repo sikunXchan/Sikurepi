@@ -13,6 +13,25 @@ export const FAST_AI_MODEL = 'models/gemini-3.5-flash-lite';
 export const QUALITY_AI_MODEL = 'models/gemini-3.5-flash';
 export const DEFAULT_AI_MODELS = [FAST_AI_MODEL, QUALITY_AI_MODEL];
 
+export type AiCallTelemetry = {
+  model: string;
+  durationMs: number;
+  modelIndex: number;
+  attempt: number;
+  failedAttempts: Array<{
+    model: string;
+    durationMs: number;
+    reason: string;
+    retryable: boolean;
+  }>;
+};
+
+const aiCallTelemetry = new WeakMap<object, AiCallTelemetry>();
+
+export function getAiCallTelemetry(response: GenerateContentResponse): AiCallTelemetry | null {
+  return aiCallTelemetry.get(response) || null;
+}
+
 const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または一般的にどの家庭にもある可能性が高い最小限のもの（塩・こしょう程度）に留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
 
 // ユーザーが「調味料は常備している」を前提にするかどうかで文面を切り替える。
@@ -181,10 +200,27 @@ export async function generateWithRetry(
   models: string[] = DEFAULT_AI_MODELS,
   maxRetries = 3
 ): Promise<GenerateContentResponse> {
-  for (const model of models) {
+  const callStartedAt = Date.now();
+  const failedAttempts: AiCallTelemetry['failedAttempts'] = [];
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+    const model = models[modelIndex];
     for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const attemptStartedAt = Date.now();
       try {
         const response = await aiInstance.models.generateContent({ ...config, model });
+        const telemetry: AiCallTelemetry = {
+          model,
+          durationMs: Date.now() - callStartedAt,
+          modelIndex,
+          attempt: attempt + 1,
+          failedAttempts: [...failedAttempts],
+        };
+        aiCallTelemetry.set(response, telemetry);
+        console.info('[AI_CALL]', JSON.stringify({
+          outcome: 'success',
+          ...telemetry,
+          failedAttempts: telemetry.failedAttempts.length,
+        }));
         return response;
       } catch (err: unknown) {
         const details = typeof err === 'object' && err !== null
@@ -194,6 +230,12 @@ export async function generateWithRetry(
         const code = details.code;
         const reason = status ?? code ?? details.message ?? 'unknown error';
         const retryable = status === 503 || status === 429 || code === 'UNAVAILABLE' || code === 'RESOURCE_EXHAUSTED';
+        failedAttempts.push({
+          model,
+          durationMs: Date.now() - attemptStartedAt,
+          reason: String(reason).slice(0, 160),
+          retryable,
+        });
         if (retryable) {
           if (attempt < maxRetries - 1) {
             const delay = Math.pow(2, attempt) * 1000;
@@ -215,5 +257,10 @@ export async function generateWithRetry(
       }
     }
   }
+  console.error('[AI_CALL]', JSON.stringify({
+    outcome: 'failed',
+    durationMs: Date.now() - callStartedAt,
+    failedAttempts,
+  }));
   throw new Error('すべてのAIモデルが一時的に利用不可です。しばらく時間をおいてお試しください。');
 }
