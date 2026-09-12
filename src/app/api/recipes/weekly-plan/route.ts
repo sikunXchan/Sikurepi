@@ -1,5 +1,19 @@
 import { NextResponse } from 'next/server';
-import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
+import { ThinkingLevel } from '@google/genai';
+import {
+  ai,
+  generateWithRetry,
+  FAST_AI_MODEL,
+  QUALITY_AI_MODEL,
+  buildProfileSection,
+  buildClimateSection,
+  buildSeasoningSection,
+  buildLanguageSection,
+  DISH_LOAD_INSTRUCTION,
+  FLAVOR_INTENSITY_INSTRUCTION,
+  RecipeProfile,
+  Language,
+} from '@/lib/ai';
 import { validateRecipeShape, validateRecipeLogic, buildValidationRetryNote, ValidatedRecipe, FeasibilityContext } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
@@ -13,7 +27,11 @@ import {
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
-const MAX_VALIDATION_ATTEMPTS = 3;
+const WEEKLY_PLAN_MODEL_ORDER = [
+  [FAST_AI_MODEL, QUALITY_AI_MODEL],
+  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+] as const;
+const MAX_VALIDATION_ATTEMPTS = WEEKLY_PLAN_MODEL_ORDER.length;
 
 // 厚生労働省「日本人の食事摂取基準」の目安（たんぱく質エネルギー比13〜20%中央値15%、脂質20〜30%中央値25%、
 // 炭水化物は残り約60%）を用いて、目標値未設定時のデフォルトPFCを算出する。
@@ -189,13 +207,15 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
       const attemptPrompt = attempt === 0 ? prompt : `${prompt}\n${buildValidationRetryNote(lastErrors)}`;
 
+      const models = [...WEEKLY_PLAN_MODEL_ORDER[attempt]];
+      const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: attemptPrompt }] }],
         config: {
           responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 6000 },
+          thinkingConfig: { thinkingLevel },
         }
-      });
+      }, models, 2);
 
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
