@@ -1109,8 +1109,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 184px !important;
-  height: 184px !important;
+  width: clamp(240px, 32vw, 320px) !important;
+  height: clamp(240px, 32vw, 320px) !important;
   object-fit: contain !important;
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
   transform: translate(-50%, -50%);
@@ -1203,7 +1203,12 @@
   .recipeDetailTopbar .savedBtn { min-height: 42px; padding: 8px 12px; }
   .recipeDetailScroll { padding-inline: 8px; }
   .recipeDetailHero { aspect-ratio: 1.33 / 1; background-size: 108% 100%; }
-  .recipeDetailDishIcon { left: 50%; top: 50%; width: 148px !important; height: 148px !important; }
+  .recipeDetailDishIcon {
+    left: 50%;
+    top: 50%;
+    width: clamp(220px, 62vw, 248px) !important;
+    height: clamp(220px, 62vw, 248px) !important;
+  }
   .recipeDetailSummary { width: calc(100% - 12px); padding: 14px 16px; border-radius: 18px; }
   .recipeDetailContent { width: calc(100% - 12px); padding: 16px; border-radius: 20px; }
   .detailSectionHeading { align-items: flex-start; flex-direction: column; gap: 2px; }

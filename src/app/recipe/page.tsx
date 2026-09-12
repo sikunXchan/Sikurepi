@@ -827,7 +827,7 @@ export default function RecipePage() {
                 <RecipeThumbnail
                   genre={detailRecipe.genre}
                   fallbackIngredientName={detailRecipe.title}
-                  size={184}
+                  size={320}
                   className={styles.recipeDetailDishIcon}
                 />
               </div>
