@@ -18,8 +18,11 @@ import {
   buildValidationRetryNote,
   ValidatedRecipe,
   FeasibilityContext,
+  summarizeInventoryForFeasibility,
 } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
+import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
+import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
 
 // 判定・分類のような軽いタスク用の安価なモデル(classify-ingredientルートと同じ方針)
 const FEASIBILITY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
@@ -59,7 +62,7 @@ async function judgeFeasibility(params: {
 ${params.ingredients.length > 0 ? params.ingredients.join(', ') : '(なし)'}
 
 【常備調味料の前提】
-${params.assumeSeasoningsAvailable ? '塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・油・だし・バター等の基本調味料は常備している前提でよい' : '調味料も在庫にあるものしか使えない前提'}
+${buildSeasoningSection(params.assumeSeasoningsAvailable, params.dietaryRestrictions)}
 
 【ユーザーの希望】
 ${requestSection || '(特になし。おまかせ)'}
@@ -126,7 +129,45 @@ export async function POST(req: Request) {
     const isSetMeal = mealStyle === 'set';
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
     const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
-    const excludedIngredients: string[] = Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : [];
+    const excludedIngredients: string[] = [...new Set([
+      ...(Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : []),
+      ...(Array.isArray(actualProfile?.allergies) ? actualProfile.allergies : []),
+    ])];
+
+    if (templateKey === 'meaty' && dietaryRestrictions.some((value) => value === 'ベジタリアン' || value === 'ヴィーガン')) {
+      return NextResponse.json({
+        recipes: [],
+        cooking_tips: [],
+        feasibility: {
+          feasible: false,
+          reason: language === 'en'
+            ? 'The meat-focused template conflicts with your vegetarian or vegan restriction.'
+            : '「ガッツリ肉」テンプレートは、選択中のベジタリアン／ヴィーガン設定と両立しません。',
+          missingKeyIngredients: [],
+        },
+      });
+    }
+
+    if (Array.isArray(pinnedIngredients) && pinnedIngredients.length > 0) {
+      const pinnedRecipe = { ingredients: pinnedIngredients.map((name: string) => ({ name, amount: '' })) };
+      const pinnedViolations = [
+        ...validateDietaryRestrictions(pinnedRecipe, dietaryRestrictions),
+        ...validateExcludedIngredients(pinnedRecipe, excludedIngredients),
+      ];
+      if (pinnedViolations.length > 0) {
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: language === 'en'
+              ? 'A selected ingredient conflicts with your dietary restrictions or excluded ingredients.'
+              : '使いたい食材に、食事制限または除外食材と両立しないものが含まれています。',
+            missingKeyIngredients: [],
+          },
+        });
+      }
+    }
 
     // 在庫モードを、在庫が空という理由だけで自由作成へ暗黙変換しない。
     // 先に理由を示して止めることで「在庫から」と指定したユーザーの意図を守る。
@@ -142,6 +183,23 @@ export async function POST(req: Request) {
           missingKeyIngredients: [],
         },
       });
+    }
+
+    if (!isFreeMode) {
+      const inventorySummary = summarizeInventoryForFeasibility(ingredients, true);
+      if (inventorySummary.nonStapleCount === 0) {
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: language === 'en'
+              ? 'Only seasonings are available. Add at least one substantive ingredient before generating from your pantry.'
+              : '在庫が調味料だけのため料理として成立しません。肉・魚・野菜・卵・主食など、軸になる食材を1つ以上追加してください。',
+            missingKeyIngredients: [],
+          },
+        });
+      }
     }
 
     // --- 生成前の成立可否判定(在庫モードのみ。自由作成は在庫制約が無いため対象外) ---
@@ -178,7 +236,7 @@ export async function POST(req: Request) {
 
     // ユーザープロファイル（マイ一括設定）セクション
     const profileSection = buildProfileSection(actualProfile);
-    const seasoningSection = buildSeasoningSection(assumeSeasoningsAvailable);
+    const seasoningSection = buildSeasoningSection(assumeSeasoningsAvailable, dietaryRestrictions);
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
@@ -193,7 +251,13 @@ export async function POST(req: Request) {
           .join('\n')}\nこれらから読み取れる味付け・ジャンル・食材選びの傾向をくみ取り、同じ料理を繰り返すのではなく「この人がきっと美味しいと感じるであろう」新しい一皿の精度を高めるための参考にしてください。\n`
       : '';
 
-    const targetServings = servings || 2;
+    const targetServings = sanitizeServings(servings ?? actualProfile?.servings, 2);
+    const targetCaloriesPerMeal = typeof actualProfile?.targetCalories === 'number' && actualProfile.targetCalories > 0
+      ? actualProfile.targetCalories / 3
+      : null;
+    const targetProteinPerMeal = typeof actualProfile?.targetProtein === 'number' && actualProfile.targetProtein > 0
+      ? actualProfile.targetProtein / 3
+      : null;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
     const mealStyleSection = isSetMeal
@@ -212,7 +276,8 @@ ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいの�
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
 6. 【本当に美味しい仕上がりへのこだわり】提案する前に、実際に味見したときの味を頭の中で具体的に想像してください。甘味・塩味・酸味・苦味・旨味のバランス、香りの立たせ方（仕上げのひと振り・香味油・薬味など）、食感のコントラスト（カリカリ×とろとろ等）のうち最低1つは意識的に取り入れ、単に食材を組み合わせただけの平凡な一皿ではなく「これは美味しそう」と一目で伝わる工夫を必ず盛り込んでください。
 7. ${DISH_LOAD_INSTRUCTION}
-8. ${isSetMeal
+8. 【提出前の自己監査】材料の全てが手順内で使われているか、人数分の分量が具体的か、調理時間と各工程の時間が矛盾しないか、PFCから計算される熱量とcaloriesが大きく矛盾しないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含めてください。味は塩分量だけに頼らず、旨味・酸味・香り・食感を確認してからJSONを確定してください。
+9. ${isSetMeal
         ? '以下のJSON構造で、"recipes"配列の中に定食セットを構成する各品(主菜・副菜・汁物など、通常3〜4品)のレシピデータを格納して返してください。'
         : '以下のJSON構造で、"recipes"配列の中に複数の独立した料理の候補データを格納して返してください。'
       }"climate_badge"には気候マッチ度を示す文字だけの短いタグ（例：「猛暑に最適」「体ポカポカ」など）を記載してください。"climate_badge"と"dish_badge"には絵文字や装飾記号を含めないでください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
@@ -281,12 +346,57 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         ? recipeArray.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
         : ['recipes must be a non-empty array'];
 
+      if (isSetMeal && (recipeArray.length < 3 || recipeArray.length > 4)) {
+        shapeErrors.push('set meal recipes must contain 3 or 4 dishes');
+      }
+      if (!isSetMeal && recipeArray.length > 3) {
+        shapeErrors.push('single-dish suggestions must contain at most 3 candidates');
+      }
+      if (!Array.isArray(json.cooking_tips) || json.cooking_tips.length !== 3) {
+        shapeErrors.push('cooking_tips must contain exactly 3 items');
+      } else {
+        json.cooking_tips.forEach((tip, index) => {
+          if (!tip || typeof tip !== 'object') {
+            shapeErrors.push(`cooking_tips[${index}] must be an object`);
+            return;
+          }
+          const entry = tip as Record<string, unknown>;
+          if (typeof entry.category !== 'string' || !entry.category.trim()) {
+            shapeErrors.push(`cooking_tips[${index}].category is missing`);
+          }
+          if (typeof entry.tip !== 'string' || !entry.tip.trim()) {
+            shapeErrors.push(`cooking_tips[${index}].tip is missing`);
+          }
+          if (/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/u.test(`${entry.category || ''} ${entry.tip || ''}`)) {
+            shapeErrors.push(`cooking_tips[${index}] must not contain emoji`);
+          }
+        });
+      }
+
       if (shapeErrors.length > 0) {
         lastErrors = shapeErrors;
         continue;
       }
 
       const logicErrors = (recipeArray as ValidatedRecipe[]).flatMap((r) => validateRecipeLogic(r, feasibilityContext));
+      logicErrors.push(...(recipeArray as ValidatedRecipe[]).flatMap((recipe, index) =>
+        qualityGateErrors(recipe, {
+          servings: targetServings,
+          mealStyle: isSetMeal ? 'set' : 'single',
+          targetCaloriesPerServing: isSetMeal ? null : targetCaloriesPerMeal,
+          targetProteinPerServing: isSetMeal ? null : targetProteinPerMeal,
+        }, `recipes[${index}]`)
+      ));
+      logicErrors.push(...validateRequiredIngredients(
+        recipeArray as ValidatedRecipe[],
+        Array.isArray(pinnedIngredients) ? pinnedIngredients : [],
+        !isSetMeal,
+      ));
+      if (isSetMeal) logicErrors.push(...validateSetMeal(
+        recipeArray as ValidatedRecipe[],
+        targetCaloriesPerMeal,
+        targetProteinPerMeal,
+      ));
       if (logicErrors.length > 0) {
         lastErrors = logicErrors;
         continue;

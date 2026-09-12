@@ -20,10 +20,12 @@ import {
   getTodayLocalDateKey,
   setCachedDailyPick,
   setPendingDailyPickHandoff,
+  getRecentFlavorFeedbackSummary,
   ShoppingItem,
   SavedRecipe,
 } from "@/lib/storage";
 import styles from "./Home.module.css";
+import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -35,6 +37,7 @@ type DailyPickRecipe = {
   ingredients: { name: BilingualText; amount: BilingualText }[];
   steps: BilingualText[];
   tips: BilingualText;
+  nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
 };
 
 type CommunityRecipeRow = {
@@ -59,16 +62,33 @@ export default function HomePage() {
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
 
-  const [dailyPick, setDailyPick] = useState<DailyPickRecipe | null>(null);
-  const [dailyPickLoading, setDailyPickLoading] = useState(true);
+  const [dailyPickResult, setDailyPickResult] = useState<{
+    constraintKey: string;
+    recipe: DailyPickRecipe;
+  } | null>(null);
+  const [dailyPickSettledKey, setDailyPickSettledKey] = useState<string | null>(null);
   const isHydrated = useSyncExternalStore(
     subscribeToHydration,
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
   );
   const todayDate = getTodayLocalDateKey();
-  const cachedDailyPick = isHydrated ? getCachedDailyPick<DailyPickRecipe>(todayDate) : null;
-  const visibleDailyPick = dailyPick ?? cachedDailyPick;
+  const currentProfile = isHydrated ? getLocalUserProfile() : null;
+  const dailyPickConstraintKey = currentProfile
+    ? buildDietaryConstraintKey(
+        currentProfile.dietaryRestrictions,
+        currentProfile.excludedIngredients,
+        currentProfile.allergies,
+      )
+    : '';
+  const cachedDailyPick = isHydrated
+    ? getCachedDailyPick<DailyPickRecipe>(todayDate, dailyPickConstraintKey)
+    : null;
+  const generatedDailyPick = dailyPickResult?.constraintKey === dailyPickConstraintKey
+    ? dailyPickResult.recipe
+    : null;
+  const visibleDailyPick = generatedDailyPick ?? cachedDailyPick;
+  const dailyPickLoading = !visibleDailyPick && dailyPickSettledKey !== dailyPickConstraintKey;
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -87,10 +107,13 @@ export default function HomePage() {
     if (!isHydrated) return;
 
     // 今日のパーソナライズ結果が端末にあれば通信もローディング表示も発生させない。
-    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
+    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate, dailyPickConstraintKey);
     if (cached) return;
 
     const profile = getLocalUserProfile();
+    const hasHardConstraints = Boolean(
+      profile.dietaryRestrictions?.length || profile.excludedIngredients?.length || profile.allergies?.length
+    );
     const controller = new AbortController();
     let cancelled = false;
     fetch("/api/daily-pick", {
@@ -109,34 +132,39 @@ export default function HomePage() {
           preferredGenres: profile.preferredGenres,
           kitchenAppliances: profile.kitchenAppliances,
           targetCalories: profile.targetCalories,
+          targetProtein: profile.targetProtein,
+          flavorFeedback: getRecentFlavorFeedbackSummary(12),
         },
       }),
     })
       .then(async res => {
         if (res.ok) return res.json();
-        // パーソナライズ生成が一時的に失敗しても、Supabaseにその日の共通枠が
-        // あれば表示できるようにフォールバックする。
+        // 食事制限・アレルギー・除外食材がある場合、条件未検証の共通枠へは
+        // フォールバックしない。安全性を優先して明示的に空のままにする。
+        if (hasHardConstraints) return null;
         const fallback = await fetch("/api/daily-pick", { signal: controller.signal });
         return fallback.ok ? fallback.json() : null;
       })
       .then(data => {
         if (cancelled) return;
         const recipe = data?.recipe || null;
-        setDailyPick(recipe);
-        if (recipe) setCachedDailyPick(todayDate, recipe);
+        if (recipe) setDailyPickResult({ constraintKey: dailyPickConstraintKey, recipe });
+        if (recipe) setCachedDailyPick(todayDate, recipe, dailyPickConstraintKey);
       })
       .catch(error => {
-        if (!cancelled && error?.name !== "AbortError") setDailyPick(null);
+        if (!cancelled && error?.name !== "AbortError") {
+          setDailyPickSettledKey(dailyPickConstraintKey);
+        }
       })
       .finally(() => {
-        if (!cancelled) setDailyPickLoading(false);
+        if (!cancelled) setDailyPickSettledKey(dailyPickConstraintKey);
       });
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [isHydrated, todayDate]);
+  }, [dailyPickConstraintKey, isHydrated, todayDate]);
 
   useEffect(() => {
     fetch("/api/community-recipes")
@@ -165,6 +193,7 @@ export default function HomePage() {
       })),
       steps: visibleDailyPick.steps.map(step => pickText(step, language)),
       tips: pickText(visibleDailyPick.tips, language),
+      nutrition: visibleDailyPick.nutrition,
     });
     router.push("/recipe");
   };

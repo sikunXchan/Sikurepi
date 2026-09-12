@@ -2472,9 +2472,9 @@
             ],
             "content_bbox": [
               46,
-              48,
+              84,
               466,
-              463
+              428
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2495,9 +2495,9 @@
             ],
             "content_bbox": [
               46,
-              65,
+              103,
               466,
-              447
+              409
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2518,9 +2518,9 @@
             ],
             "content_bbox": [
               46,
-              58,
+              78,
               466,
-              453
+              434
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2541,9 +2541,9 @@
             ],
             "content_bbox": [
               46,
-              70,
+              107,
               466,
-              442
+              404
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2564,9 +2564,9 @@
             ],
             "content_bbox": [
               46,
-              57,
+              91,
               466,
-              455
+              420
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2609,10 +2609,10 @@
               255
             ],
             "content_bbox": [
+              58,
               46,
-              65,
-              466,
-              447
+              453,
+              466
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2633,9 +2633,9 @@
             ],
             "content_bbox": [
               46,
-              78,
+              108,
               466,
-              434
+              403
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2656,9 +2656,9 @@
             ],
             "content_bbox": [
               46,
-              110,
+              89,
               466,
-              401
+              423
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2725,9 +2725,9 @@
             ],
             "content_bbox": [
               46,
-              72,
+              64,
               466,
-              440
+              447
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2771,9 +2771,9 @@
             ],
             "content_bbox": [
               46,
-              82,
+              99,
               466,
-              430
+              412
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -2840,9 +2840,9 @@
             ],
             "content_bbox": [
               46,
-              87,
+              73,
               466,
-              424
+              439
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -3007,9 +3007,9 @@
             ],
             "content_bbox": [
               46,
-              87,
+              63,
               466,
-              424
+              449
             ],
             "minimum_margin": 46,
             "edge_clear": true
@@ -3145,9 +3145,9 @@
             ],
             "content_bbox": [
               46,
-              111,
+              121,
               466,
-              400
+              391
             ],
             "minimum_margin": 46,
             "edge_clear": true

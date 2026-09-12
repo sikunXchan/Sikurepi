@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { ai, generateWithRetry, buildProfileSection, buildClimateSection, buildSeasoningSection, buildLanguageSection, DISH_LOAD_INSTRUCTION, FLAVOR_INTENSITY_INSTRUCTION, RecipeProfile, Language } from '@/lib/ai';
 import { validateRecipeShape, validateRecipeLogic, buildValidationRetryNote, ValidatedRecipe, FeasibilityContext } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
+import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
+import {
+  qualityGateErrors,
+  sanitizeServings,
+  validateWeeklyPlan,
+  WeeklyRecipe,
+  WeeklySlot,
+} from '@/lib/recipeQuality';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -44,6 +52,21 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
+    const requestedSlots: WeeklySlot[] = slots
+      .filter((slot): slot is { date: string; mealSlot: 'lunch' | 'dinner' } =>
+        Boolean(slot)
+        && typeof slot.date === 'string'
+        && /^\d{4}-\d{2}-\d{2}$/.test(slot.date)
+        && (slot.mealSlot === 'lunch' || slot.mealSlot === 'dinner'))
+      .map((slot) => ({ date: slot.date, mealSlot: slot.mealSlot }));
+    if (requestedSlots.length !== slots.length || new Set(requestedSlots.map((slot) => `${slot.date}:${slot.mealSlot}`)).size !== requestedSlots.length) {
+      return NextResponse.json({
+        error: language === 'en'
+          ? 'The requested meal slots are invalid or duplicated.'
+          : '献立の日付・食事枠に不正または重複があります。',
+      }, { status: 400 });
+    }
+
     const actualProfile = userProfile || profile;
     const isFreeMode = mode === 'free' || !ingredients || ingredients.length === 0;
 
@@ -57,9 +80,31 @@ export async function POST(req: Request) {
 
     const climateSection = buildClimateSection(climate);
     const profileSection = buildProfileSection(actualProfile);
-    const seasoningSection = buildSeasoningSection(actualProfile?.assumeSeasoningsAvailable !== false);
+    const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
+    const excludedIngredients: string[] = [...new Set([
+      ...(Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : []),
+      ...(Array.isArray(actualProfile?.allergies) ? actualProfile.allergies : []),
+    ])];
+    if (Array.isArray(pinnedIngredients) && pinnedIngredients.length > 0) {
+      const pinnedContent = { ingredients: pinnedIngredients.map((name: string) => ({ name, amount: '' })) };
+      const pinnedViolations = [
+        ...validateDietaryRestrictions(pinnedContent, dietaryRestrictions),
+        ...validateExcludedIngredients(pinnedContent, excludedIngredients),
+      ];
+      if (pinnedViolations.length > 0) {
+        return NextResponse.json({
+          error: language === 'en'
+            ? 'A pinned ingredient conflicts with your dietary restrictions or excluded ingredients.'
+            : 'ピン留め食材に、食事制限または除外食材と両立しないものが含まれています。',
+        }, { status: 400 });
+      }
+    }
+    const seasoningSection = buildSeasoningSection(
+      actualProfile?.assumeSeasoningsAvailable !== false,
+      dietaryRestrictions,
+    );
 
-    const targetServings = 2;
+    const targetServings = sanitizeServings(actualProfile?.servings, 2);
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
@@ -71,12 +116,12 @@ export async function POST(req: Request) {
     const perMealProtein = Math.round(dailyProtein / 3);
     const perMealFat = Math.round(dailyFat / 3);
     const perMealCarbs = Math.round(dailyCarbs / 3);
-    const weeklyCalories = perMealCalories * slots.length;
-    const weeklyProtein = perMealProtein * slots.length;
-    const weeklyFat = perMealFat * slots.length;
-    const weeklyCarbs = perMealCarbs * slots.length;
+    const weeklyCalories = perMealCalories * requestedSlots.length;
+    const weeklyProtein = perMealProtein * requestedSlots.length;
+    const weeklyFat = perMealFat * requestedSlots.length;
+    const weeklyCarbs = perMealCarbs * requestedSlots.length;
 
-    const slotLines = slots.map((s: { date: string; mealSlot: string }) => {
+    const slotLines = requestedSlots.map((s) => {
       const d = new Date(s.date);
       const weekday = WEEKDAY_LABEL[d.getDay()];
       const slotLabel = SLOT_LABEL[s.mealSlot] || s.mealSlot;
@@ -85,13 +130,13 @@ export async function POST(req: Request) {
 
     const pfcSection = `\n【週間PFCバランス目標（最重要）】
 1食あたりの目安: カロリー約${perMealCalories}kcal、タンパク質約${perMealProtein}g、脂質約${perMealFat}g、炭水化物約${perMealCarbs}g
-今回生成する${slots.length}食の合計目安: カロリー約${weeklyCalories}kcal、タンパク質約${weeklyProtein}g、脂質約${weeklyFat}g、炭水化物約${weeklyCarbs}g
+今回生成する${requestedSlots.length}食の合計目安: カロリー約${weeklyCalories}kcal、タンパク質約${weeklyProtein}g、脂質約${weeklyFat}g、炭水化物約${weeklyCarbs}g
 ※ 個々のレシピは目安から前後してよいですが、指定された全レシピの栄養価の合計が、この週間合計目安のプラスマイナス15%程度に収まるように、各食の分量・内容を調整してください。夕食はやや多め、昼食はやや控えめ、など常識的な配分は問題ありません。\n`;
     const languageSection = buildLanguageSection(language);
 
     const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに1品ずつ、家庭で再現できる料理を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
 
-【生成が必要な日付・食事枠一覧（合計${slots.length}件）】
+【生成が必要な日付・食事枠一覧（合計${requestedSlots.length}件）】
 ${slotLines}
 
 ${ingredientsSection}
@@ -105,7 +150,8 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 6. 【栄養バランス】各レシピでPFCバランスを計算し、1人分あたりの推定栄養価を算出してください。
 7. 【手順の具体性】各ステップには温度・火加減・時間・視覚的なキューを含めてください。
 8. ${DISH_LOAD_INSTRUCTION}
-9. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
+9. 【提出前の自己監査】各材料が手順内で使われているか、分量・所要時間・PFCとcaloriesが矛盾していないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含め、味は塩分だけでなく旨味・酸味・香り・食感の組み合わせを確認してください。
+10. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
 {
   "plan": [
     {
@@ -130,8 +176,6 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     // 週間献立は「在庫だけで完成させる」ことを強制していないため(在庫は優先的に
     // 使う程度の位置づけ)、在庫限定チェックとテンプレートのカテゴリチェックは
     // ここでは適用しない(単発レシピ生成/api/recipesとの差)。
-    const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
-    const excludedIngredients: string[] = Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : [];
     const feasibilityContext: FeasibilityContext = {
       mode: 'free',
       inventoryNames: [],
@@ -185,6 +229,19 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       }
 
       const logicErrors = (planArray as ValidatedRecipe[]).flatMap((item) => validateRecipeLogic(item, feasibilityContext));
+      logicErrors.push(...(planArray as ValidatedRecipe[]).flatMap((item, index) =>
+        qualityGateErrors(item, {
+          servings: targetServings,
+          targetCaloriesPerServing: perMealCalories,
+          targetProteinPerServing: perMealProtein,
+        }, `plan[${index}]`)
+      ));
+      logicErrors.push(...validateWeeklyPlan(
+        planArray as WeeklyRecipe[],
+        requestedSlots,
+        Array.isArray(pinnedIngredients) ? pinnedIngredients : [],
+        { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
+      ));
       if (logicErrors.length > 0) {
         lastErrors = logicErrors;
         continue;
@@ -203,9 +260,13 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         : '条件を満たす献立をAIが生成できませんでした。もう一度お試しください。',
     }, { status: 422 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Weekly Plan Gen Error:', error);
-    const status = error?.status || error?.httpStatusCode || error?.code;
+    const details = typeof error === 'object' && error !== null
+      ? error as { status?: unknown; httpStatusCode?: unknown; code?: unknown }
+      : {};
+    const status = details.status || details.httpStatusCode || details.code;
+    const message = error instanceof Error ? error.message : String(error);
     if (status === 429 || status === 503 || status === 'UNAVAILABLE') {
       return NextResponse.json({
         error: language === 'en'
@@ -215,8 +276,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     }
     return NextResponse.json({
       error: language === 'en'
-        ? `Failed to generate weekly plan: ${error.message}`
-        : `週間献立の生成に失敗しました: ${error.message}`,
+        ? `Failed to generate weekly plan: ${message}`
+        : `週間献立の生成に失敗しました: ${message}`,
     }, { status: 500 });
   }
 }

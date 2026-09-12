@@ -21,6 +21,7 @@ import {
   saveLocalRecipe,
   addLocalShoppingItem,
   getRecentLocalRecipeNames,
+  getRecentFlavorFeedbackSummary,
   saveLocalTip,
   isIngredientMissing,
   getLocalLastRecipeGeneration,
@@ -178,7 +179,7 @@ export default function RecipePage() {
   useEffect(() => {
     const handoff = consumePendingDailyPickHandoff();
     if (!handoff) return;
-    setRecipes([{ ...handoff, image_url: null, nutrition: null }]);
+    setRecipes([{ ...handoff, image_url: null, nutrition: handoff.nutrition || null }]);
     setExpandedIndex(0);
     setSavedSet(new Set());
   }, []);
@@ -233,6 +234,11 @@ export default function RecipePage() {
 
       const payload = {
         ingredients: selectedNames,
+        pinnedIngredients: creationMode === 'inventory'
+          ? (validSelectedIngredientIds.length > 0
+              ? selectedNames
+              : ingredients.filter((item) => item.is_pinned).map((item) => item.name))
+          : [],
         instruction: instruction.trim() || undefined,
         templateKey: activeTemplate?.key,
         servings: sessionServings,
@@ -243,6 +249,7 @@ export default function RecipePage() {
           cookingStyles: userProfile.cookingStyles || [],
           dietaryRestrictions: userProfile.dietaryRestrictions || [],
           preferredGenres: userProfile.preferredGenres || [],
+          flavorFeedback: getRecentFlavorFeedbackSummary(12),
         },
         climate: userProfile.enableClimate !== false ? currentClimate : undefined,
         // 旧実装ではサーバー側が読む項目名(recentHistory)と送信側の項目名

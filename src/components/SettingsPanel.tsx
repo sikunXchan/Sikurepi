@@ -29,6 +29,7 @@ import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { TRAY_THEMES, TrayThemeId } from "@/lib/trayThemes";
+import { DIETARY_RESTRICTION_OPTIONS } from "@/lib/dietaryRules";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -105,16 +106,6 @@ const TASTE_OPTIONS = [
   "酸味が苦手",
   "子供が喜ぶ味付け",
   "お酒のおつまみ風",
-];
-
-const DIETARY_OPTIONS = [
-  "ベジタリアン",
-  "ヴィーガン",
-  "ハラール（イスラム教）",
-  "コーシャ（ユダヤ教）",
-  "豚肉不可",
-  "牛肉不可",
-  "アルコール不可",
 ];
 
 const STYLE_OPTIONS = [
@@ -500,7 +491,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           <div className={styles.section}>
             <label className={styles.sectionLabel}>{t.settings.dietaryLabel}</label>
             <div className={styles.tagGrid}>
-              {DIETARY_OPTIONS.map(option => {
+              {DIETARY_RESTRICTION_OPTIONS.map(option => {
                 const active = (profile.dietaryRestrictions || []).includes(option);
                 const label = t.tagLabel[option] || option;
                 return (

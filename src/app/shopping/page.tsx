@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, Check } from "lucide-react";
-import { motion, AnimatePresence, animate } from "framer-motion";
+import Image from "next/image";
+import { Plus, Trash2, Check, ShoppingCart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getLocalShoppingItems,
   addLocalShoppingItem,
@@ -29,7 +30,16 @@ export default function ShoppingPage() {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [flyingItem, setFlyingItem] = useState<{
+    key: number;
+    name: string;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const animationKeyRef = useRef(0);
 
   function loadItems() {
     setItems(getLocalShoppingItems());
@@ -63,7 +73,10 @@ export default function ShoppingPage() {
   };
 
   const handleComplete = (item: ShoppingItem, e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const itemIcon = (e.currentTarget as HTMLElement)
+      .closest('li')
+      ?.querySelector('[data-shopping-item-icon]') as HTMLElement | null;
+    const rect = (itemIcon || e.currentTarget as HTMLElement).getBoundingClientRect();
     const startX = rect.left + rect.width / 2;
     const startY = rect.top + rect.height / 2;
 
@@ -77,47 +90,19 @@ export default function ShoppingPage() {
     const endX = targetRect.left + targetRect.width / 2;
     const endY = targetRect.top + targetRect.height / 2;
 
-    createFlyingEffect(item.name, startX, startY, endX, endY);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      animationKeyRef.current += 1;
+      setFlyingItem({
+        key: animationKeyRef.current,
+        name: item.name,
+        startX,
+        startY,
+        endX,
+        endY,
+      });
+    }
     toggleLocalShoppingItem(item.id);
     loadItems();
-  };
-
-  const createFlyingEffect = (name: string, startX: number, startY: number, endX: number, endY: number) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const el = document.createElement("div");
-    el.innerText = name;
-    el.style.position = "fixed";
-    el.style.left = `${startX}px`;
-    el.style.top = `${startY}px`;
-    el.style.padding = "8px 16px";
-    el.style.background = "var(--primary)";
-    el.style.color = "white";
-    el.style.borderRadius = "20px";
-    el.style.fontSize = "14px";
-    el.style.fontWeight = "bold";
-    el.style.zIndex = "10000";
-    el.style.pointerEvents = "none";
-    el.style.boxShadow = "0 10px 25px rgba(255, 111, 145, 0.4)";
-    document.body.appendChild(el);
-
-    const controlX = (startX + endX) / 2;
-    const controlY = Math.min(startY, endY) - 150;
-
-    animate(0, 1, {
-      duration: 0.8,
-      ease: [0.45, 0, 0.55, 1],
-      onUpdate: (t) => {
-        const x = (1 - t) ** 2 * startX + 2 * (1 - t) * t * controlX + t ** 2 * endX;
-        const y = (1 - t) ** 2 * startY + 2 * (1 - t) * t * controlY + t ** 2 * endY;
-        const scale = 1 - 0.5 * t;
-        const opacity = 1 - 0.2 * t;
-        el.style.transform = `translate(-50%, -50%) translate(${x - startX}px, ${y - startY}px) scale(${scale})`;
-        el.style.opacity = opacity.toString();
-      },
-      onComplete: () => {
-        el.remove();
-      }
-    });
   };
 
   // 在庫と同じカテゴリ別にアイテムを自動グルーピング
@@ -167,69 +152,128 @@ export default function ShoppingPage() {
 
       {!loading && (
         <>
-          {Object.keys(groupedItems).length > 0 ? (
-            <div className={styles.categoryStack}>
-              {CATEGORY_ORDER.map(category => {
-                const categoryItems = groupedItems[category];
-                if (!categoryItems || categoryItems.length === 0) return null;
-
-                return (
-                  <section key={category} className={styles.categoryCard}>
-                    <div className={styles.categoryHeader}>
-                      <span className={styles.categoryIcon}>
-                        <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={24} alt="" />
-                      </span>
-                      <span>{t.category[category] || category}</span>
-                      <span className={styles.categoryCount}>{t.shopping.itemCount(categoryItems.length)}</span>
-                    </div>
-
-                    <ul className={styles.list}>
-                      <AnimatePresence mode="popLayout">
-                        {categoryItems.map((item) => (
-                          <motion.li
-                            key={item.id}
-                            className={styles.listItem}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            layout
-                          >
-                            <div className={styles.itemInfo}>
-                              <button
-                                type="button"
-                                className={styles.checkbox}
-                                onClick={(e) => handleComplete(item, e)}
-                                title={t.shopping.checkboxTitle}
-                                aria-label={`${item.name}: ${t.shopping.checkboxTitle}`}
-                              >
-                                <Check size={16} />
-                              </button>
-                              <span className={styles.itemIcon}>
-                                <IngredientIcon name={item.name} size={38} />
-                              </span>
-                              <span className={styles.itemName}>{item.name}</span>
-                            </div>
-                            <button
-                              className={styles.deleteBtn}
-                              onClick={() => handleDelete(item.id)}
-                              aria-label={t.shopping.deleteAriaLabel}
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </motion.li>
-                        ))}
-                      </AnimatePresence>
-                    </ul>
-                  </section>
-                );
-              })}
+          <div className={styles.cartScene} aria-label={t.shopping.cartLabel}>
+            <div className={styles.cartHandle} aria-hidden="true">
+              <span />
             </div>
-          ) : (
-            <div className={styles.emptyState}>
-              <img src="/mascot/bear_basket.png" alt="" width={112} height={112} />
-              <p>{t.shopping.emptyState}</p>
+            <div className={styles.cartBasket}>
+              <div className={styles.cartGrid} aria-hidden="true" />
+              <div className={styles.cartContents}>
+                <div className={styles.cartSummary}>
+                  <span className={styles.cartSummaryIcon}>
+                    <ShoppingCart size={24} strokeWidth={2.2} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong>{t.shopping.cartLabel}</strong>
+                    <small>{items.length > 0 ? t.shopping.cartHint : t.shopping.emptyState}</small>
+                  </span>
+                  {items.length > 0 && (
+                    <span className={styles.totalCount}>{t.shopping.itemCount(items.length)}</span>
+                  )}
+                </div>
+
+                {Object.keys(groupedItems).length > 0 ? (
+                  <div className={styles.categoryStack}>
+                    {CATEGORY_ORDER.map(category => {
+                      const categoryItems = groupedItems[category];
+                      if (!categoryItems || categoryItems.length === 0) return null;
+
+                      return (
+                        <section key={category} className={styles.categoryCard}>
+                          <div className={styles.categoryHeader}>
+                            <span className={styles.categoryIcon}>
+                              <UiIcon slug={CATEGORY_ICON_SLUGS[category] || 'other'} size={22} alt="" />
+                            </span>
+                            <span>{t.category[category] || category}</span>
+                            <span className={styles.categoryCount}>{t.shopping.itemCount(categoryItems.length)}</span>
+                          </div>
+
+                          <ul className={styles.list}>
+                            <AnimatePresence mode="popLayout">
+                              {categoryItems.map((item) => (
+                                <motion.li
+                                  key={item.id}
+                                  className={styles.listItem}
+                                  initial={{ opacity: 0, y: -14, scale: 0.94 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: -24, scale: 0.72 }}
+                                  transition={{ type: 'spring', stiffness: 340, damping: 25 }}
+                                  layout
+                                >
+                                  <span className={styles.itemIcon} data-shopping-item-icon>
+                                    <IngredientIcon name={item.name} size={46} />
+                                  </span>
+                                  <span className={styles.itemName}>{item.name}</span>
+                                  <div className={styles.itemActions}>
+                                    <button
+                                      type="button"
+                                      className={styles.checkbox}
+                                      onClick={(e) => handleComplete(item, e)}
+                                      title={t.shopping.checkboxTitle}
+                                      aria-label={`${item.name}: ${t.shopping.checkboxTitle}`}
+                                    >
+                                      <Check size={17} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.deleteBtn}
+                                      onClick={() => handleDelete(item.id)}
+                                      aria-label={`${item.name}: ${t.shopping.deleteAriaLabel}`}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </motion.li>
+                              ))}
+                            </AnimatePresence>
+                          </ul>
+                        </section>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={styles.emptyState}>
+                    <Image src="/mascot/bear_wave.png" alt="" width={112} height={112} />
+                    <p>{t.shopping.emptyState}</p>
+                    <span>{t.shopping.emptyHint}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+            <div className={styles.cartChassis} aria-hidden="true" />
+            <div className={`${styles.cartWheel} ${styles.cartWheelLeft}`} aria-hidden="true"><span /></div>
+            <div className={`${styles.cartWheel} ${styles.cartWheelRight}`} aria-hidden="true"><span /></div>
+          </div>
+
+          <AnimatePresence>
+            {flyingItem && (
+              <motion.div
+                key={flyingItem.key}
+                className={styles.flyingIngredient}
+                style={{ left: flyingItem.startX, top: flyingItem.startY }}
+                initial={{ x: -35, y: -35, scale: 1, opacity: 1, rotate: 0 }}
+                animate={{
+                  x: [
+                    -35,
+                    flyingItem.endX - flyingItem.startX - 30,
+                    flyingItem.endX - flyingItem.startX - 35,
+                  ],
+                  y: [
+                    -35,
+                    Math.min(-150, (flyingItem.endY - flyingItem.startY) * 0.35 - 120),
+                    flyingItem.endY - flyingItem.startY - 35,
+                  ],
+                  scale: [1, 1.15, 0.45],
+                  opacity: [1, 1, 0.2],
+                  rotate: [0, -8, 12],
+                }}
+                transition={{ duration: 0.85, ease: [0.45, 0, 0.55, 1] }}
+                onAnimationComplete={() => setFlyingItem(null)}
+              >
+                <IngredientIcon name={flyingItem.name} size={58} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>

@@ -301,6 +301,9 @@ const ja = {
     checkboxTitle: "購入完了（冷蔵庫へ送る）",
     deleteAriaLabel: "削除",
     emptyState: "買い物リストは空です",
+    emptyHint: "上の入力欄から買うものを追加できます",
+    cartLabel: "お買い物カート",
+    cartHint: "買えた食材はチェックして冷蔵庫へ",
   },
   receipt: {
     title: "食材スキャン",
@@ -373,7 +376,8 @@ const ja = {
     // 食事制限・宗教上の配慮
     'ベジタリアン': 'ベジタリアン', 'ヴィーガン': 'ヴィーガン', 'ハラール（イスラム教）': 'ハラール（イスラム教）',
     'コーシャ（ユダヤ教）': 'コーシャ（ユダヤ教）', '豚肉不可': '豚肉不可', '牛肉不可': '牛肉不可',
-    'アルコール不可': 'アルコール不可',
+      'アルコール不可': 'アルコール不可', 'グルテンフリー': 'グルテンフリー', '乳製品不使用': '乳製品不使用',
+      '卵不使用': '卵不使用', '魚介類不使用': '魚介類不使用', 'ナッツ不使用': 'ナッツ不使用', '大豆不使用': '大豆不使用',
   } as Record<string, string>,
   cookingSession: {
     imagePreparing: (done: number, total: number) => `工程画像を準備中 ${done}/${total}`,
@@ -393,6 +397,14 @@ const ja = {
     cookedDefaultTitle: "料理",
     cookedTitle: (title: string) => `「${title}」を調理しました！`,
     cookedDescription: "使い切った食材にチェックを入れてください。在庫にある食材だけが初めから選択されています。",
+    feedbackTitle: "味はどうでしたか？",
+    feedbackHint: "任意・次の提案に反映します",
+    feedbackDelicious: "おいしい",
+    feedbackBland: "味が薄い",
+    feedbackSalty: "塩辛い",
+    feedbackTooSweet: "甘すぎる",
+    feedbackHeavy: "重い",
+    feedbackCookAgain: "また作りたい",
     cookedDoneTitle: "調理完了！お疲れさまでした！",
     cookedDoneMessage: (n: number) => n > 0
       ? `自炊記録を保存し、在庫を${n}件更新しました`
@@ -424,10 +436,10 @@ const ja = {
     tasteLabel: "味・栄養のこだわり",
     styleLabel: "調理スタイル",
     dietaryLabel: "食事制限・宗教上の配慮",
-    dietaryHint: "※ 選択すると、アレルギーと同じく絶対に破らない制約としてAIに伝わります（例: ヴィーガンなら肉・魚・卵・乳製品を一切提案しません）",
+      dietaryHint: "※ AIへの指示に加え、生成後も料理名・材料・工程をプログラムで検査し、違反する提案は表示しません。商品の原材料表示、製造時の混入、宗教認証、調理環境までは保証できないため、最終確認はご自身で行ってください。",
     excludedLabel: "苦手・アレルギー・除外食材",
     excludedPlaceholder: "例: エビ, パクチー, 辛いもの (カンマ区切り)",
-    excludedHint: "※ AIがこれらの食材を含まないレシピを考案します",
+      excludedHint: "※ 表記ゆれや英語名、工程内の記載もプログラムで検査します。重いアレルギーでは必ず商品表示と調理環境も確認してください",
     statsDescription: "「この料理を作った！」ボタンを押すことで自炊実績が、食材を使い切ることで食品ロス削減の記録がここに自動蓄積されます。",
     statTotalCooked: "累計自炊",
     statTotalCookedUnit: (n: number) => `${n}回`,

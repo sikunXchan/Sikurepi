@@ -26,6 +26,13 @@ export type NutritionData = {
   fat_g: number;
 };
 
+export type FlavorFeedbackTag = 'delicious' | 'bland' | 'salty' | 'too_sweet' | 'heavy';
+
+export type CookingFeedback = {
+  tags: FlavorFeedbackTag[];
+  wouldCookAgain: boolean;
+};
+
 export type SavedRecipe = {
   id: number;
   title: string;
@@ -51,6 +58,7 @@ export type CookedRecord = {
   // 使った材料名を全て記録しておく（在庫にずっと残っている食材が、直近の
   // 料理で本当に使われていないかを判定するために使う）
   ingredientNames?: string[];
+  feedback?: CookingFeedback;
 };
 
 export type UserStats = {
@@ -417,7 +425,7 @@ export function getOrCreateDeviceId(): string {
 // 同じ日はタブを開き直しても通信・再生成せず、日付が変わった時だけ更新する。
 // scopeは旧「全ユーザー共通」キャッシュを一度だけ無効化するためのバージョン。
 const DAILY_PICK_CACHE_KEY = 'lily_app_daily_pick_cache';
-const DAILY_PICK_CACHE_SCOPE = 'personalized-v1';
+const DAILY_PICK_CACHE_SCOPE = 'personalized-v3-quality';
 
 export function getTodayLocalDateKey(date = new Date()): string {
   const year = date.getFullYear();
@@ -426,25 +434,30 @@ export function getTodayLocalDateKey(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getCachedDailyPick<T>(todayDate: string): T | null {
+export function getCachedDailyPick<T>(todayDate: string, constraintKey = ''): T | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(DAILY_PICK_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.scope !== DAILY_PICK_CACHE_SCOPE || parsed?.date !== todayDate) return null;
+    if (
+      parsed?.scope !== DAILY_PICK_CACHE_SCOPE ||
+      parsed?.date !== todayDate ||
+      parsed?.constraintKey !== constraintKey
+    ) return null;
     return parsed.recipe ?? null;
   } catch {
     return null;
   }
 }
 
-export function setCachedDailyPick<T>(todayDate: string, recipe: T): void {
+export function setCachedDailyPick<T>(todayDate: string, recipe: T, constraintKey = ''): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(DAILY_PICK_CACHE_KEY, JSON.stringify({
       scope: DAILY_PICK_CACHE_SCOPE,
       date: todayDate,
+      constraintKey,
       recipe,
     }));
   } catch {
@@ -467,6 +480,7 @@ export type DailyPickHandoffRecipe = {
   ingredients: { name: string; amount: string }[];
   steps: string[];
   tips: string;
+  nutrition?: NutritionData | null;
 };
 
 export function setPendingDailyPickHandoff(recipe: DailyPickHandoffRecipe): void {
@@ -711,7 +725,13 @@ export function getChefLevelProgress(totalCooked: number): { level: number; curr
   return { level, currentThreshold, nextThreshold };
 }
 
-export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null, ingredientNames: string[] = []): UserStats {
+export function recordLocalCookingDone(
+  consumedCount = 0,
+  recipeTitle = '手作り料理',
+  nutrition?: NutritionData | null,
+  ingredientNames: string[] = [],
+  feedback?: CookingFeedback,
+): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
   let newStreak = stats.streak_days;
@@ -743,6 +763,7 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
     fat_g: addFat,
     carbs_g: addCarbs,
     ingredientNames,
+    feedback,
   };
 
   const updated: UserStats = {
@@ -759,6 +780,24 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
   };
   setStorage(KEYS.STATS, updated);
   return updated;
+}
+
+export function getRecentFlavorFeedbackSummary(limit = 12): {
+  recipeTitle: string;
+  tags: FlavorFeedbackTag[];
+  wouldCookAgain: boolean;
+}[] {
+  return getLocalUserStats().cooked_records
+    .filter((record) => record.feedback && (
+      (Array.isArray(record.feedback.tags) && record.feedback.tags.length > 0)
+      || record.feedback.wouldCookAgain === true
+    ))
+    .slice(0, Math.max(0, limit))
+    .map((record) => ({
+      recipeTitle: record.recipeTitle,
+      tags: Array.isArray(record.feedback?.tags) ? record.feedback.tags : [],
+      wouldCookAgain: record.feedback?.wouldCookAgain === true,
+    }));
 }
 
 // 自炊記録(cooked_records)から誤って記録された1件を削除する(履歴の横スライド削除用)。

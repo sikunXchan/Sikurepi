@@ -8,6 +8,7 @@ import {
   getLocalIngredients,
   isIngredientMissing,
   recordLocalCookingDone,
+  FlavorFeedbackTag,
   NutritionData,
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -57,6 +58,8 @@ export default function CookedModal({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [consumedCount, setConsumedCount] = useState(0);
+  const [feedbackTags, setFeedbackTags] = useState<Set<FlavorFeedbackTag>>(new Set());
+  const [wouldCookAgain, setWouldCookAgain] = useState(false);
   // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
   // 同じJSタスク内で完結してしまい、Reactの再レンダーを待たずに終わる。
   // そのためstateのdisabled表示だけでは、素早い連打(ダブルタップ)で
@@ -88,6 +91,15 @@ export default function CookedModal({
     });
   };
 
+  const toggleFeedback = (tag: FlavorFeedbackTag) => {
+    setFeedbackTags((previous) => {
+      const next = new Set(previous);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  };
+
   const handleConfirm = (consume: boolean) => {
     if (submittedRef.current) return;
     submittedRef.current = true;
@@ -98,7 +110,16 @@ export default function CookedModal({
       if (toConsume.length > 0) {
         nextConsumedCount = consumeLocalIngredients(toConsume);
       }
-      recordLocalCookingDone(nextConsumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
+      const feedback = feedbackTags.size > 0 || wouldCookAgain
+        ? { tags: Array.from(feedbackTags), wouldCookAgain }
+        : undefined;
+      recordLocalCookingDone(
+        nextConsumedCount,
+        title,
+        nutrition || undefined,
+        rawIngredients.map((i) => i.name),
+        feedback,
+      );
 
       setConsumedCount(nextConsumedCount);
       setDone(true);
@@ -189,6 +210,40 @@ export default function CookedModal({
               <p className={styles.desc}>
                 {t.cookingSession.cookedDescription}
               </p>
+
+              <div className={styles.feedbackSection}>
+                <div className={styles.feedbackHeading}>
+                  <strong>{t.cookingSession.feedbackTitle}</strong>
+                  <span>{t.cookingSession.feedbackHint}</span>
+                </div>
+                <div className={styles.feedbackChips}>
+                  {([
+                    ['delicious', t.cookingSession.feedbackDelicious],
+                    ['bland', t.cookingSession.feedbackBland],
+                    ['salty', t.cookingSession.feedbackSalty],
+                    ['too_sweet', t.cookingSession.feedbackTooSweet],
+                    ['heavy', t.cookingSession.feedbackHeavy],
+                  ] as [FlavorFeedbackTag, string][]).map(([tag, label]) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`${styles.feedbackChip} ${feedbackTags.has(tag) ? styles.feedbackChipActive : ''}`}
+                      aria-pressed={feedbackTags.has(tag)}
+                      onClick={() => toggleFeedback(tag)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`${styles.feedbackChip} ${wouldCookAgain ? styles.feedbackChipActive : ''}`}
+                    aria-pressed={wouldCookAgain}
+                    onClick={() => setWouldCookAgain((value) => !value)}
+                  >
+                    {t.cookingSession.feedbackCookAgain}
+                  </button>
+                </div>
+              </div>
 
               <div className={styles.itemList}>
                 {rawIngredients.map((item, idx) => {
