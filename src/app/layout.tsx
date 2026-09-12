@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import LanguageToggle from "@/components/LanguageToggle";
 import CookingCheerBear from "@/components/CookingCheerBear";
 import SyncManager from "@/components/SyncManager";
+import ImageInteractionGuard from "@/components/ImageInteractionGuard";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
             <BottomNav />
             <CookingCheerBear />
             <SyncManager />
+            <ImageInteractionGuard />
           </LanguageProvider>
         </AuthProvider>
       </body>

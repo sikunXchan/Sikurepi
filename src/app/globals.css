@@ -181,6 +181,15 @@ input::placeholder, textarea::placeholder {
   padding-bottom: 116px;
 }
 
+/* アプリ内素材は操作用UIの一部。長押し時にOSの画像プレビュー・保存メニューや
+   ドラッグ中の半透明画像が重ならないようにする。クリック操作は維持する。 */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--line-soft);
