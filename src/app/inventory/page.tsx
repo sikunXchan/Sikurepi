@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus, Pin, Settings, X } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -173,7 +174,7 @@ function ForgottenShelfAlert({
           <span className={styles.forgottenAlertBadge}>{t.inventory.forgottenBadge(ageDays)}</span>
         </div>
         <div className={styles.forgottenAlertTextSide}>
-          <img className={styles.forgottenAlertMascot} src="/mascot/bear_sleeping.png" alt="" width={30} height={30} />
+          <Image className={styles.forgottenAlertMascot} src="/mascot/bear_sleeping.png" alt="" width={30} height={30} />
           <span className={styles.forgottenAlertText}>{message}</span>
         </div>
       </div>
@@ -453,18 +454,24 @@ export default function InventoryPage() {
               );
             })}
           </div>
+          <div className={styles.fridgeCrisper} aria-hidden="true">
+            <span />
+          </div>
         </div>
       )}
 
       {!loading && !hasIngredients && (
         <div className={styles.fridgeFrame}>
           <div className={styles.emptyStateCard}>
-            <img src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
+            <Image src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
             <p className={styles.emptyStateTitle}>{t.inventory.emptyTitle}</p>
             <p className={styles.emptyStateBody}>{t.inventory.emptyBody}</p>
             <button type="button" className={styles.emptyStateCta} onClick={() => router.push('/receipt')}>
               {t.inventory.emptyCta}
             </button>
+          </div>
+          <div className={styles.fridgeCrisper} aria-hidden="true">
+            <span />
           </div>
         </div>
       )}

@@ -33,6 +33,11 @@ export type CookingFeedback = {
   wouldCookAgain: boolean;
 };
 
+export type RescuedIngredientSnapshot = {
+  name: string;
+  ageDays: number;
+};
+
 export type SavedRecipe = {
   id: number;
   title: string;
@@ -58,6 +63,11 @@ export type CookedRecord = {
   // 使った材料名を全て記録しておく（在庫にずっと残っている食材が、直近の
   // 料理で本当に使われていないかを判定するために使う）
   ingredientNames?: string[];
+  // 実際に在庫から減らした食材と、そのうち「使い時」を迎えていた食材を分けて
+  // 保存する。従来データとの互換性のため任意項目にしている。
+  consumedCount?: number;
+  consumedIngredientNames?: string[];
+  rescuedIngredients?: RescuedIngredientSnapshot[];
   feedback?: CookingFeedback;
 };
 
@@ -270,6 +280,28 @@ function forgottenThresholdDays(item: Ingredient): number {
   }
 }
 
+export function getIngredientAgeDays(item: Ingredient, now = Date.now()): number {
+  const createdAt = new Date(item.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return 0;
+  return Math.max(0, Math.floor((now - createdAt) / MS_PER_DAY));
+}
+
+function isRescueEligibleIngredient(item: Ingredient, now: number, minDays?: number): boolean {
+  if ((item.category || '') === '調味料' || isPantryStaple(item.name)) return false;
+  const createdAt = new Date(item.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return false;
+  return (now - createdAt) / MS_PER_DAY >= (minDays ?? forgottenThresholdDays(item));
+}
+
+// 呼びかけを非表示にしていても、実際に使い切れた時は成果として記録できるよう、
+// ignored設定や最近の使用履歴には左右されない「救済対象」だけを返す。
+export function getRescueEligibleIngredients(minDays?: number): Ingredient[] {
+  const now = Date.now();
+  return getLocalIngredients()
+    .filter(item => isRescueEligibleIngredient(item, now, minDays))
+    .sort((a, b) => getIngredientAgeDays(b, now) - getIngredientAgeDays(a, now));
+}
+
 export function getIgnoredForgottenIngredientIds(): number[] {
   return getLocalUserProfile().ignoredForgottenIngredientIds || [];
 }
@@ -304,20 +336,13 @@ export function getForgottenIngredients(minDays?: number): Ingredient[] {
     .filter(Boolean);
 
   return inventory.filter(item => {
-    if ((item.category || '') === '調味料') return false;
-    if (isPantryStaple(item.name)) return false;
     if (ignoredIds.has(item.id)) return false;
-
-    const createdAt = new Date(item.created_at).getTime();
-    if (!Number.isFinite(createdAt)) return false;
-    const ageDays = (now - createdAt) / MS_PER_DAY;
-    const threshold = minDays ?? forgottenThresholdDays(item);
-    if (ageDays < threshold) return false;
+    if (!isRescueEligibleIngredient(item, now, minDays)) return false;
 
     const target = item.name.trim().toLowerCase();
     const wasUsedRecently = usedNames.some(used => used.includes(target) || target.includes(used));
     return !wasUsedRecently;
-  });
+  }).sort((a, b) => getIngredientAgeDays(b, now) - getIngredientAgeDays(a, now));
 }
 
 // --- 週間献立プラン (Weekly Meal Plan) ---
@@ -549,7 +574,7 @@ export function updateLocalIngredientCategory(id: number, category: string): voi
   setStorage(KEYS.INVENTORY, updated);
 }
 
-export function consumeLocalIngredients(ingredientNames: string[]): number {
+export function consumeLocalIngredientsDetailed(ingredientNames: string[]): Ingredient[] {
   const list = getLocalIngredients();
   const idsToRemove = new Set<number>();
 
@@ -574,10 +599,14 @@ export function consumeLocalIngredients(ingredientNames: string[]): number {
     if (partial.length === 1) idsToRemove.add(partial[0].id);
   }
 
+  const consumed = list.filter(item => idsToRemove.has(item.id));
   const remaining = list.filter(item => !idsToRemove.has(item.id));
-  const consumedCount = idsToRemove.size;
   setStorage(KEYS.INVENTORY, remaining);
-  return consumedCount;
+  return consumed;
+}
+
+export function consumeLocalIngredients(ingredientNames: string[]): number {
+  return consumeLocalIngredientsDetailed(ingredientNames).length;
 }
 
 // --- 買い物リスト (Shopping) ---
@@ -731,6 +760,8 @@ export function recordLocalCookingDone(
   nutrition?: NutritionData | null,
   ingredientNames: string[] = [],
   feedback?: CookingFeedback,
+  consumedIngredientNames: string[] = [],
+  rescuedIngredients: RescuedIngredientSnapshot[] = [],
 ): UserStats {
   const stats = getLocalUserStats();
   const today = new Date().toISOString().split('T')[0];
@@ -747,7 +778,9 @@ export function recordLocalCookingDone(
   }
 
   const newTotal = stats.total_cooked + 1;
-  const newSavedFood = stats.saved_food_count + consumedCount;
+  // 「救済した食材」は単なる在庫消費数ではなく、保管日数が食材別のしきい値を
+  // 超えてから実際に使い切れた件数だけを数える。
+  const newSavedFood = stats.saved_food_count + rescuedIngredients.length;
   const newLevel = computeChefLevel(newTotal);
 
   const addCals = nutrition?.calories || 0;
@@ -763,6 +796,9 @@ export function recordLocalCookingDone(
     fat_g: addFat,
     carbs_g: addCarbs,
     ingredientNames,
+    consumedCount,
+    consumedIngredientNames,
+    rescuedIngredients,
     feedback,
   };
 
@@ -805,8 +841,8 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
 // - streak_days/last_cooked_dateは「記録の有無」から都度導出しているのではなく、
 //   記録した日付を比較するだけの単純なカウンタのため、後から特定の1件を除いても
 //   正しく巻き戻す方法がない(どの記録が連続日数に影響したかを遡れない)。
-// - saved_food_count(食品ロス削減数)は、その記録作成時に実際に消費した食材数
-//   (consumedCount)を保存していないため、正確に差し引けない。
+// - 新しい記録にはconsumedCountとrescuedIngredientsを保存しているが、旧記録には
+//   どちらも存在しないため、saved_food_countを全期間で正確に巻き戻せない。
 // そのため、ここでは「ログの一覧から消す」ことだけを行い、チェフレベル等の
 // ゲーミフィケーション要素には手を加えない(中途半端な補正で別の不整合を生むよりも、
 // 一覧に出さないことを優先する)。

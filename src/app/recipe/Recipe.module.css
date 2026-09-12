@@ -879,6 +879,48 @@
 .mealTabs { background: rgba(236, 248, 244, 0.8); }
 .mealTabActive { background: var(--gradient-cool); color: #fff; box-shadow: 0 5px 14px rgba(23,148,141,0.18); }
 
+.rescueModeBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  margin-bottom: 10px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(202, 151, 69, 0.24);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff9e9, #f6fbf6);
+}
+
+.rescueModeIcon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.rescueModeCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rescueModeCopy strong {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.rescueModeCopy small {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .requestCard {
   position: relative;
   margin-bottom: 16px;

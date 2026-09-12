@@ -21,6 +21,8 @@ import {
   isIngredientMissing,
   computeIngredientFulfillment,
   getLocalUserProfile,
+  getLocalUserStats,
+  CookedRecord,
   SavedRecipe,
   Ingredient,
   UserProfile
@@ -44,6 +46,7 @@ export default function HistoryPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
+  const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -56,6 +59,11 @@ export default function HistoryPage() {
     setAllRecipes(getLocalSavedRecipes());
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
+    setRescueRecords(
+      getLocalUserStats().cooked_records
+        .filter((record) => (record.rescuedIngredients?.length || 0) > 0)
+        .slice(0, 8)
+    );
     setLoading(false);
   }
 
@@ -183,6 +191,36 @@ export default function HistoryPage() {
         subtitle={t.history.subtitle}
         mascot="bear_reading"
       />
+
+      {!loading && rescueRecords.length > 0 && (
+        <section className={styles.rescueShelf}>
+          <div className={styles.rescueShelfHeader}>
+            <div>
+              <h2>{t.history.rescueShelfTitle}</h2>
+              <p>{t.history.rescueShelfSubtitle}</p>
+            </div>
+          </div>
+          <div className={styles.rescueRecordScroll}>
+            {rescueRecords.map((record, recordIndex) => {
+              const rescued = record.rescuedIngredients || [];
+              return (
+                <article key={`${record.date}-${recordIndex}`} className={styles.rescueRecord}>
+                  <div className={styles.rescueRecordIcons}>
+                    {rescued.slice(0, 3).map((item) => (
+                      <span key={item.name}><IngredientIcon name={item.name} size={48} /></span>
+                    ))}
+                  </div>
+                  <strong>{rescued.map((item) => item.name).join("・")}</strong>
+                  <span className={styles.rescueRecordRecipe}>{t.history.rescueRecordRecipe(record.recipeTitle)}</span>
+                  <span className={styles.rescueRecordMeta}>
+                    {t.history.rescueRecordCount(rescued.length)} · {formatDate(record.date)}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Search & Filter */}
       {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>

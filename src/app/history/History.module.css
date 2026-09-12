@@ -28,6 +28,95 @@
   color: var(--text-muted);
 }
 
+.rescueShelf {
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid rgba(38, 150, 122, 0.16);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #f5fbf7, #fff8e9);
+  box-shadow: var(--shadow-soft);
+}
+
+.rescueShelfHeader h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.rescueShelfHeader p {
+  margin: 2px 0 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rescueRecordScroll {
+  display: flex;
+  gap: 10px;
+  margin: 0 -3px;
+  padding: 0 3px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.rescueRecord {
+  display: flex;
+  width: 184px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px solid rgba(38, 150, 122, 0.1);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.78);
+  scroll-snap-align: start;
+}
+
+.rescueRecordIcons {
+  display: flex;
+  height: 54px;
+  margin-bottom: 6px;
+}
+
+.rescueRecordIcons span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-left: -8px;
+  border: 2px solid #fff;
+  border-radius: 17px;
+  background: #fff9e9;
+}
+
+.rescueRecordIcons span:first-child { margin-left: 0; }
+
+.rescueRecord > strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rescueRecordRecipe {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rescueRecordMeta {
+  margin-top: 7px;
+  color: var(--secondary);
+  font-size: 9px;
+  font-weight: 900;
+}
+
 .emptyState p {
   position: relative;
   z-index: 2;

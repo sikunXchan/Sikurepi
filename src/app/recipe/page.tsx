@@ -111,6 +111,7 @@ export default function RecipePage() {
   const [mealStyle, setMealStyle] = useState<'single' | 'set'>('single');
   const [instruction, setInstruction] = useState("");
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>([]);
+  const [rescueIngredientName, setRescueIngredientName] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
@@ -167,9 +168,13 @@ export default function RecipePage() {
     if (!idParam) return;
     const id = Number(idParam);
     if (!Number.isFinite(id)) return;
+    const targetIngredient = getLocalIngredients().find((item) => item.id === id);
     setCreationMode('inventory');
     setSelectedIngredientIds([id]);
     setIngredientPickerExpanded(true);
+    if (new URLSearchParams(window.location.search).get("rescue") === "1" && targetIngredient) {
+      setRescueIngredientName(targetIngredient.name);
+    }
   }, []);
 
   // ホームタブの「今日のおすすめ」をタップして遷移してきた場合、専用の簡易表示
@@ -444,6 +449,18 @@ export default function RecipePage() {
           {t.recipe.modeFree}
         </button>
       </div>
+
+      {creationMode === 'inventory' && rescueIngredientName && (
+        <div className={styles.rescueModeBanner}>
+          <span className={styles.rescueModeIcon}>
+            <IngredientIcon name={rescueIngredientName} size={52} />
+          </span>
+          <span className={styles.rescueModeCopy}>
+            <strong>{t.recipe.rescueModeTitle}</strong>
+            <small>{t.recipe.rescueModeBody(rescueIngredientName)}</small>
+          </span>
+        </div>
+      )}
 
       {/* 単品の候補を複数出す ⇄ 主菜・副菜・汁物からなる定食セットを1組出す */}
       <div className={`${styles.modeTabs} ${styles.mealTabs}`}>

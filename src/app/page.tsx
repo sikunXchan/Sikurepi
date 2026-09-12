@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Settings, Heart, ChevronRight } from "lucide-react";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
+import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
@@ -21,6 +22,12 @@ import {
   setCachedDailyPick,
   setPendingDailyPickHandoff,
   getRecentFlavorFeedbackSummary,
+  getForgottenIngredients,
+  getIngredientAgeDays,
+  getLocalUserStats,
+  ignoreForgottenIngredient,
+  CookedRecord,
+  Ingredient,
   ShoppingItem,
   SavedRecipe,
 } from "@/lib/storage";
@@ -61,6 +68,8 @@ export default function HomePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
+  const [rescueTarget, setRescueTarget] = useState<Ingredient | null>(null);
+  const [latestRescue, setLatestRescue] = useState<CookedRecord | null>(null);
 
   const [dailyPickResult, setDailyPickResult] = useState<{
     constraintKey: string;
@@ -97,6 +106,10 @@ export default function HomePage() {
     const loadLocal = () => {
       setShoppingItems(getLocalShoppingItems().filter(i => !i.is_completed));
       setRecentRecipes([...getLocalSavedRecipes()].sort((a, b) => new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()).slice(0, 6));
+      setRescueTarget(getForgottenIngredients()[0] || null);
+      setLatestRescue(
+        getLocalUserStats().cooked_records.find((record) => (record.rescuedIngredients?.length || 0) > 0) || null
+      );
     };
     loadLocal();
     window.addEventListener("storage-updated", loadLocal);
@@ -222,6 +235,12 @@ export default function HomePage() {
     }
   };
 
+  const handleDismissRescue = () => {
+    if (!rescueTarget) return;
+    ignoreForgottenIngredient(rescueTarget.id);
+    setRescueTarget(getForgottenIngredients()[0] || null);
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.greeting}>
@@ -250,6 +269,47 @@ export default function HomePage() {
           <span><strong>{t.home.quickAddIngredient}</strong><small>STOCK</small></span>
         </Link>
       </div>
+
+      {rescueTarget ? (
+        <section className={`${styles.card} ${styles.cardRescue}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>{t.home.rescueTitle}</span>
+            <span className={styles.rescueEyebrow}>{t.home.rescueEyebrow}</span>
+          </div>
+          <div className={styles.rescueBody}>
+            <span className={styles.rescueIngredientIcon}>
+              <IngredientIcon name={rescueTarget.name} size={76} />
+            </span>
+            <div className={styles.rescueCopy}>
+              <strong>{rescueTarget.name}</strong>
+              <p>{t.home.rescueCandidate(rescueTarget.name, getIngredientAgeDays(rescueTarget))}</p>
+              <div className={styles.rescueActions}>
+                <Link href={`/recipe?ingredient=${rescueTarget.id}&rescue=1`} className={styles.rescueCta}>
+                  {t.home.rescueCta}<ChevronRight size={15} />
+                </Link>
+                <button type="button" className={styles.rescueDismiss} onClick={handleDismissRescue}>
+                  {t.home.rescueDismiss}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : latestRescue?.rescuedIngredients?.length ? (
+        <section className={`${styles.card} ${styles.cardRescue} ${styles.cardRescueDone}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>{t.home.rescueLatestTitle}</span>
+            <Link href="/history" className={styles.cardSeeAll}>{t.home.rescueHistoryCta}<ChevronRight size={14} /></Link>
+          </div>
+          <div className={styles.latestRescueBody}>
+            <div className={styles.latestRescueIcons}>
+              {latestRescue.rescuedIngredients.slice(0, 3).map((item) => (
+                <span key={item.name}><IngredientIcon name={item.name} size={54} /></span>
+              ))}
+            </div>
+            <p>{t.home.rescueLatestMessage(latestRescue.rescuedIngredients.map((item) => item.name), latestRescue.recipeTitle)}</p>
+          </div>
+        </section>
+      ) : null}
 
       <div className={`${styles.card} ${styles.cardPick}`}>
         <div className={styles.cardHeader}>
