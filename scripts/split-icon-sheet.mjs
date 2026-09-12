@@ -10,10 +10,16 @@ const option = (name, fallback) => {
 const slugs = remainingArgs.filter((arg) => !arg.startsWith("--"));
 const skipManifest = remainingArgs.includes("--no-manifest");
 const largestOnly = remainingArgs.includes("--largest-only");
+const clearRegions = remainingArgs
+  .filter((arg) => arg.startsWith("--clear-region="))
+  .map((arg) => {
+    const [slug, x, y, width, height] = arg.slice("--clear-region=".length).split(":");
+    return { slug, x: Number(x), y: Number(y), width: Number(width), height: Number(height) };
+  });
 
 if (!sourcePath || !outputDir || !groupKey || slugs.length !== 25) {
   console.error(
-    "Usage: node scripts/split-icon-sheet.mjs <sheet.png> <output-dir> <group-key> [--size=N] [--content=N] [--no-manifest] [--largest-only] <25 slugs>"
+    "Usage: node scripts/split-icon-sheet.mjs <sheet.png> <output-dir> <group-key> [--size=N] [--content=N] [--edge-inset=N] [--clear-region=slug:x:y:w:h] [--no-manifest] [--largest-only] <25 slugs>"
   );
   process.exit(1);
 }
@@ -21,7 +27,19 @@ if (!sourcePath || !outputDir || !groupKey || slugs.length !== 25) {
 const GRID_SIZE = 5;
 const OUTPUT_SIZE = option("size", 512);
 const CONTENT_SIZE = option("content", 420);
+const EDGE_INSET = option("edge-inset", 0);
 const ALPHA_THRESHOLD = 8;
+
+function clearEdgeBand(data, width, height, channels, inset) {
+  if (inset <= 0) return;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (x >= inset && x < width - inset && y >= inset && y < height - inset) continue;
+      data[(y * width + x) * channels + 3] = 0;
+    }
+  }
+}
 
 function findComponents(data, width, height, channels) {
   const visited = new Uint8Array(width * height);
@@ -141,8 +159,9 @@ for (let row = 0; row < GRID_SIZE; row += 1) {
       .raw()
       .toBuffer({ resolveWithObject: true });
 
+    clearEdgeBand(data, info.width, info.height, info.channels, EDGE_INSET);
     const bounds = removeSpeckles(data, info.width, info.height, info.channels, largestOnly);
-    const normalized = await sharp(data, {
+    let normalized = await sharp(data, {
       raw: { width: info.width, height: info.height, channels: info.channels },
     })
       .extract(bounds)
@@ -160,6 +179,26 @@ for (let row = 0; row < GRID_SIZE; row += 1) {
       })
       .png({ compressionLevel: 9, palette: false })
       .toBuffer();
+
+    const regionsForIcon = clearRegions.filter((region) => region.slug === slug);
+    if (regionsForIcon.length > 0) {
+      normalized = await sharp(normalized)
+        .composite(regionsForIcon.map((region) => ({
+          input: {
+            create: {
+              width: region.width,
+              height: region.height,
+              channels: 4,
+              background: { r: 255, g: 255, b: 255, alpha: 1 },
+            },
+          },
+          left: region.x,
+          top: region.y,
+          blend: "dest-out",
+        })))
+        .png({ compressionLevel: 9, palette: false })
+        .toBuffer();
+    }
 
     const destination = path.join(outputDir, `${slug}.png`);
     await fs.writeFile(destination, normalized);
