@@ -13,7 +13,6 @@ import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
-import KitchenFlowBar from "@/components/KitchenFlowBar";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -416,8 +415,6 @@ export default function RecipePage() {
         mascot="bear_hero"
       />
 
-      <KitchenFlowBar active="recipe" />
-
       <ClimateBar />
 
       {/* AI生成中は下のフォーム一式を操作不可にし、リクエスト内容が生成中に
@@ -713,7 +710,7 @@ export default function RecipePage() {
                   <RecipeThumbnail
                     genre={recipe.genre}
                     fallbackIngredientName={recipe.title}
-                    size={mealStyle === 'single' ? (recipes.length === 1 ? 204 : 184) : 168}
+                    size={mealStyle === 'single' ? (recipes.length === 1 ? 248 : 216) : 176}
                     className={styles.recipeDishChoiceIcon}
                   />
                   <span className={styles.recipeDishChoiceName}>{recipe.title}</span>

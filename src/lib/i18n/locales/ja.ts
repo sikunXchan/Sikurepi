@@ -11,14 +11,6 @@ const ja = {
     myPage: "マイページ",
     forgottenBadgeTitle: (count: number) => `${count}個の食材が呼びかけています`,
   },
-  kitchenFlow: {
-    ariaLabel: "自炊の流れ",
-    inventory: "在庫",
-    recipe: "作る",
-    mealPlan: "献立",
-    history: "保存",
-    itemLabel: (label: string, value: string) => `${label} ${value}`,
-  },
   climateBar: {
     conditions: {
       "猛暑・晴れ": "猛暑・晴れ",
