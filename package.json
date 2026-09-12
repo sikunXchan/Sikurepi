@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "audit:icons": "node --no-warnings --experimental-strip-types scripts/audit-icon-library.mjs",
+    "test:dietary": "node --no-warnings --experimental-strip-types scripts/test-dietary-rules.mjs",
+    "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
     "qa:dishes:world-02": "node scripts/build-icon-contact-sheet.mjs public/dishes/icons .tmp/world-cuisines-02-contact-sheet.png --manifest-group=world_cuisines_02"
   },
   "dependencies": {

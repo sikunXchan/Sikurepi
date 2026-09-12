@@ -1,29 +1,71 @@
-import { GoogleGenAI } from '@google/genai';
+import {
+  GoogleGenAI,
+  type GenerateContentParameters,
+  type GenerateContentResponse,
+} from '@google/genai';
+import { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
+
+export { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
 
 export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const DEFAULT_AI_MODELS = ['models/gemini-2.5-flash', 'models/gemini-3.5-flash'];
 
-const SEASONING_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・サラダ油・ごま油・バター・だし（顆粒和風だし/コンソメ/鶏がらスープの素）・ケチャップ・マヨネーズ・にんにく・しょうがなどの基本的な調味料は「常備されている」前提で自由に使用してください。\n`;
-
 const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または一般的にどの家庭にもある可能性が高い最小限のもの（塩・こしょう程度）に留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
 
 // ユーザーが「調味料は常備している」を前提にするかどうかで文面を切り替える。
 // falseの場合、常備調味料も通常の食材と同じくAIに明示させる。
-export function buildSeasoningSection(assumeSeasoningsAvailable: boolean = true): string {
-  return assumeSeasoningsAvailable ? SEASONING_ASSUMED_SECTION : SEASONING_NOT_ASSUMED_SECTION;
+export function buildSeasoningSection(
+  assumeSeasoningsAvailable: boolean = true,
+  dietaryRestrictions: string[] = [],
+): string {
+  if (!assumeSeasoningsAvailable) return SEASONING_NOT_ASSUMED_SECTION;
+
+  const restricted = new Set(dietaryRestrictions);
+  const seasonings = ['塩', 'こしょう', '砂糖', '酢', 'サラダ油', 'ケチャップ', 'にんにく', 'しょうが'];
+  if (!restricted.has('大豆不使用')) {
+    seasonings.push(restricted.has('グルテンフリー') ? 'グルテンフリー醤油・小麦不使用の味噌' : '醤油・味噌');
+  }
+  // ごまは種子でありナッツではない。個別に除外指定された場合は生成後の
+  // 除外食材検証が止めるため、ナッツ不使用だけを理由には外さない。
+  seasonings.push('ごま油');
+  if (!restricted.has('アルコール不可') && !restricted.has('ハラール（イスラム教）')) {
+    seasonings.push('みりん・料理酒');
+  }
+  if (!restricted.has('ヴィーガン') && !restricted.has('乳製品不使用') && !restricted.has('コーシャ（ユダヤ教）')) {
+    seasonings.push('バター');
+  }
+  if (!restricted.has('ヴィーガン') && !restricted.has('卵不使用')) {
+    seasonings.push('マヨネーズ');
+  } else {
+    seasonings.push('卵不使用マヨネーズ');
+  }
+  if (restricted.has('ヴィーガン') || restricted.has('ベジタリアン')) {
+    seasonings.push('昆布だし・野菜だし');
+  } else if (!restricted.has('魚介類不使用')) {
+    seasonings.push('和風だし');
+  }
+
+  return `\n【調味料・味付けの前提】\n${seasonings.join('・')}は「常備されている」前提で使用できます。食事制限で禁止される通常品や動物性のだし・エキスへ置き換えないでください。使用する調味料は少量でも必ず材料リストに明記してください。\n`;
 }
 
 export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に文字だけの短いタグで示してください（例：「洗い物少なめ（2点）」「洗い物やや多め（5点）」）。絵文字や装飾記号は含めないでください。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
 
-// ユーザーから「AIのレシピは味が薄い」という強い不満が寄せられたための、
-// 最優先厳守の味付け指示。「うす味・減塩」等をユーザー自身が明示的に
-// 希望している場合はそちらを優先させる(ハードコードで薄味を潰さないため)。
-export const FLAVOR_INTENSITY_INSTRUCTION = `\n【最優先で厳守：味の濃さ】これまでのAI提案は味が薄すぎるという強い指摘を受けています。一口食べて「はっきり美味しい」と感じる、しっかり濃いめの味付けを基準にしてください。塩・醤油・味噌・だし・にんにく・しょうがなどの分量は控えめにせず、家庭料理として成立する範囲で強気に(やや多め)設定し、「ぼんやり」「物足りない」と感じる薄味には絶対にしないでください。ただし、ユーザーが「うす味・減塩」など薄味を明示的に希望している場合は、その指示を最優先してください。\n`;
+// 「味を濃くする = 塩分を増やす」にならないよう、味の輪郭を旨味・酸味・香り・
+// 食感まで含めて組み立てる。最後に少量ずつ調整する手順も必須にし、家庭での
+// 再現性とおいしさを両立する。
+export const FLAVOR_INTENSITY_INSTRUCTION = `\n【最優先で厳守：味の設計】一口目から味の輪郭が分かる家庭料理にしてください。ただし、塩・醤油・味噌を単純に増やして濃くするのは禁止です。主となる塩味・旨味を1つ決め、酸味または自然な甘味、にんにく・しょうが・香辛料・ハーブ等の香り、食感の対比を料理に合う範囲で重ねてください。調味料は人数に合わせた再現可能な数値で示し、仕上げ前に味見して、塩味は小さじ1/8程度ずつ、酸味や香りも少量ずつ調整する手順またはコツを含めてください。ユーザーが「うす味・減塩」等を指定した場合はそれを最優先し、香り・酸味・旨味で満足感を補ってください。\n`;
+
+export type FlavorFeedbackSummary = {
+  recipeTitle: string;
+  tags: string[];
+  wouldCookAgain?: boolean;
+};
 
 export type RecipeProfile = {
   tastePreferences?: string[];
   excludedIngredients?: string[];
+  allergies?: string[];
   cookingStyles?: string[];
   servings?: number;
   targetCalories?: number | null;
@@ -31,18 +73,7 @@ export type RecipeProfile = {
   assumeSeasoningsAvailable?: boolean;
   dietaryRestrictions?: string[];
   preferredGenres?: string[];
-};
-
-// 各食事制限が具体的に何を禁じるかをAIに誤解なく伝えるための説明文。
-// ラベルだけだと解釈がぶれるため、宗教・ライフスタイルごとの制約を明記する。
-export const DIETARY_RESTRICTION_INSTRUCTIONS: Record<string, string> = {
-  'ベジタリアン': '肉・魚・魚介類（だし・エキス類も含む）を一切使用しない。卵・乳製品は使用可',
-  'ヴィーガン': '肉・魚・魚介類・卵・乳製品・はちみつなど、動物由来の食材を一切使用しない',
-  'ハラール（イスラム教）': '豚肉・豚由来の成分（ゼラチン等）、みりん・料理酒・ワイン等のアルコールを一切使用しない',
-  'コーシャ（ユダヤ教）': '豚肉、えび・かに・貝等の甲殻類/軟体動物を一切使用しない。また肉料理と乳製品を同じ一皿で組み合わせない',
-  '豚肉不可': '豚肉・豚肉加工品（ベーコン・ハム・ソーセージ等）を一切使用しない',
-  '牛肉不可': '牛肉・牛肉加工品を一切使用しない',
-  'アルコール不可': 'みりん・料理酒・ワイン・ビール等、調理用も含めアルコールを含む食材を一切使用しない',
+  flavorFeedback?: FlavorFeedbackSummary[];
 };
 
 // レシピ生成画面の「テンプレート」ボタンは、単なる参考キーワードではなく
@@ -90,8 +121,9 @@ export function buildProfileSection(profile: RecipeProfile | null | undefined): 
   const taste = profile.tastePreferences && profile.tastePreferences.length > 0
     ? `・味の好み/栄養方針: ${profile.tastePreferences.join('、')}\n`
     : '';
-  const excluded = profile.excludedIngredients && profile.excludedIngredients.length > 0
-    ? `・【絶対除外（アレルギー・苦手）】: ${profile.excludedIngredients.join('、')} ※これらの食材は絶対に提案レシピに含めないでください！\n`
+  const excludedItems = [...new Set([...(profile.excludedIngredients || []), ...(profile.allergies || [])])];
+  const excluded = excludedItems.length > 0
+    ? `・【絶対除外（アレルギー・苦手）】: ${excludedItems.join('、')} ※表記・言語が違う同一食材、だし、エキス、加工品も含めて絶対に提案レシピに含めないでください！\n`
     : '';
   const dietary = profile.dietaryRestrictions && profile.dietaryRestrictions.length > 0
     ? `・【絶対厳守（食事制限・宗教上の理由）】: ${profile.dietaryRestrictions
@@ -106,8 +138,25 @@ export function buildProfileSection(profile: RecipeProfile | null | undefined): 
   const preferredGenre = profile.preferredGenres && profile.preferredGenres.length > 0
     ? `・優先したい料理ジャンル: ${profile.preferredGenres.join('、')} ※必須ではありませんが、できるだけこれらのジャンルから提案してください\n`
     : '';
-  if (!taste && !excluded && !dietary && !styles && !preferredGenre) return '';
-  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${dietary}${styles}${preferredGenre}`;
+  const nutritionGoals = [
+    typeof profile.targetCalories === 'number' && profile.targetCalories > 0
+      ? `1日${Math.round(profile.targetCalories)}kcal（1食は約${Math.round(profile.targetCalories / 3)}kcalを目安）`
+      : null,
+    typeof profile.targetProtein === 'number' && profile.targetProtein > 0
+      ? `1日たんぱく質${Math.round(profile.targetProtein)}g（1食は約${Math.round(profile.targetProtein / 3)}gを目安）`
+      : null,
+  ].filter(Boolean);
+  const nutrition = nutritionGoals.length > 0
+    ? `・栄養目標: ${nutritionGoals.join('、')}\n`
+    : '';
+  const feedback = profile.flavorFeedback && profile.flavorFeedback.length > 0
+    ? `・直近の実食フィードバック: ${profile.flavorFeedback
+        .slice(0, 12)
+        .map(item => `${item.recipeTitle}=[${item.tags.join('、')}]${item.wouldCookAgain ? '（また作りたい）' : ''}`)
+        .join(' / ')}\n  「薄い」は塩だけを増やさず旨味・香り・酸味を先に補い、「塩辛い」は塩分、「甘すぎる」は糖分、「重い」は油脂を控えてください。「おいしい」「また作りたい」の味の系統は、新しい料理にも応用してください。\n`
+    : '';
+  if (!taste && !excluded && !dietary && !styles && !preferredGenre && !nutrition && !feedback) return '';
+  return `\n【ユーザーのマイ設定（クッキングプロファイル）】\n${taste}${excluded}${dietary}${styles}${preferredGenre}${nutrition}${feedback}`;
 }
 
 // 気候・環境連動セクションを組み立てる
@@ -125,24 +174,28 @@ export function buildClimateSection(climate: ClimateInfo | null | undefined): st
 }
 
 export async function generateWithRetry(
-  aiInstance: any,
-  config: any,
+  aiInstance: GoogleGenAI,
+  config: Omit<GenerateContentParameters, 'model'>,
   models: string[] = DEFAULT_AI_MODELS,
   maxRetries = 3
-): Promise<any> {
+): Promise<GenerateContentResponse> {
   for (const model of models) {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const response = await aiInstance.models.generateContent({ ...config, model });
         return response;
-      } catch (err: any) {
-        const status = err?.status ?? err?.httpStatusCode;
-        const code = err?.code;
+      } catch (err: unknown) {
+        const details = typeof err === 'object' && err !== null
+          ? err as { status?: unknown; httpStatusCode?: unknown; code?: unknown; message?: unknown }
+          : {};
+        const status = details.status ?? details.httpStatusCode;
+        const code = details.code;
+        const reason = status ?? code ?? details.message ?? 'unknown error';
         const retryable = status === 503 || status === 429 || code === 'UNAVAILABLE' || code === 'RESOURCE_EXHAUSTED';
         if (retryable) {
           if (attempt < maxRetries - 1) {
             const delay = Math.pow(2, attempt) * 1000;
-            console.warn(`Model ${model} attempt ${attempt + 1} failed (${status || code}), retrying in ${delay}ms...`);
+            console.warn(`Model ${model} attempt ${attempt + 1} failed (${String(reason)}), retrying in ${delay}ms...`);
             await new Promise((r) => setTimeout(r, delay));
           } else {
             console.warn(`All retries exhausted for model ${model}, trying next model...`);
@@ -154,7 +207,7 @@ export async function generateWithRetry(
           // パラメータを受け付けない、といったモデル固有の非互換を吸収する)、
           // ここでは即座に諦めず次のモデルに進む。全モデルを使い切った時だけ
           // 最終的にエラーを投げる。
-          console.warn(`Model ${model} failed with non-retryable error (${status || code || err?.message}), trying next model...`);
+          console.warn(`Model ${model} failed with non-retryable error (${String(reason)}), trying next model...`);
           break;
         }
       }
