@@ -413,12 +413,18 @@ export function getOrCreateDeviceId(): string {
 }
 
 // --- 今日のおすすめ (ホームタブ) のクライアント側キャッシュ ---
-// Supabase未設定、またはdaily_picksテーブル未作成の環境では、サーバー側で
-// 日付キャッシュができず/api/daily-pickが毎回新しいレシピを生成してしまう
-// (タブを切り替える度に「今日のおすすめ」が変わって見える不具合の原因)。
-// サーバー側キャッシュの有無に関わらず、同じ端末では同じ日は同じ結果を見せる
-// ことを保証するため、端末側でも日付をキーに1件だけキャッシュしておく。
+// 在庫・好みから生成した端末ごとのおすすめを、ローカル日付をキーに1件保存する。
+// 同じ日はタブを開き直しても通信・再生成せず、日付が変わった時だけ更新する。
+// scopeは旧「全ユーザー共通」キャッシュを一度だけ無効化するためのバージョン。
 const DAILY_PICK_CACHE_KEY = 'lily_app_daily_pick_cache';
+const DAILY_PICK_CACHE_SCOPE = 'personalized-v1';
+
+export function getTodayLocalDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function getCachedDailyPick<T>(todayDate: string): T | null {
   if (typeof window === 'undefined') return null;
@@ -426,7 +432,7 @@ export function getCachedDailyPick<T>(todayDate: string): T | null {
     const raw = localStorage.getItem(DAILY_PICK_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.date !== todayDate) return null;
+    if (parsed?.scope !== DAILY_PICK_CACHE_SCOPE || parsed?.date !== todayDate) return null;
     return parsed.recipe ?? null;
   } catch {
     return null;
@@ -436,7 +442,11 @@ export function getCachedDailyPick<T>(todayDate: string): T | null {
 export function setCachedDailyPick<T>(todayDate: string, recipe: T): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(DAILY_PICK_CACHE_KEY, JSON.stringify({ date: todayDate, recipe }));
+    localStorage.setItem(DAILY_PICK_CACHE_KEY, JSON.stringify({
+      scope: DAILY_PICK_CACHE_SCOPE,
+      date: todayDate,
+      recipe,
+    }));
   } catch {
     // 保存に失敗しても致命的ではない(次回また生成し直すだけ)ので無視する
   }

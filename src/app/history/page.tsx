@@ -12,7 +12,6 @@ import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
-import KitchenFlowBar from "@/components/KitchenFlowBar";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalSavedRecipes,
@@ -184,8 +183,6 @@ export default function HistoryPage() {
         subtitle={t.history.subtitle}
         mascot="bear_reading"
       />
-
-      <KitchenFlowBar active="history" />
 
       {/* Search & Filter */}
       {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>

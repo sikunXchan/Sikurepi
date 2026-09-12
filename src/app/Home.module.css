@@ -258,6 +258,10 @@
 .emptyRow img { flex-shrink: 0; object-fit: contain; }
 
 /* 今日のおすすめ */
+.pickHydrationPlaceholder {
+  min-height: 118px;
+}
+
 .pickBody {
   display: flex;
   gap: 15px;

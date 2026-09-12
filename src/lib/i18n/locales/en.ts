@@ -13,14 +13,6 @@ const en: typeof ja = {
     myPage: "My Page",
     forgottenBadgeTitle: (count: number) => `${count} ingredient${count === 1 ? "" : "s"} calling out to you`,
   },
-  kitchenFlow: {
-    ariaLabel: "Cooking flow",
-    inventory: "Pantry",
-    recipe: "Create",
-    mealPlan: "Plan",
-    history: "Saved",
-    itemLabel: (label: string, value: string) => `${label}: ${value}`,
-  },
   climateBar: {
     conditions: {
       "猛暑・晴れ": "Hot & sunny",

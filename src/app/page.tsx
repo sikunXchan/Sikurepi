@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Settings, Heart, ChevronRight } from "lucide-react";
@@ -9,13 +9,15 @@ import ChefProfileBadge from "@/components/ChefProfileBadge";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
-import KitchenFlowBar from "@/components/KitchenFlowBar";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalShoppingItems,
   getLocalSavedRecipes,
+  getLocalIngredients,
+  getLocalUserProfile,
   getOrCreateDeviceId,
   getCachedDailyPick,
+  getTodayLocalDateKey,
   setCachedDailyPick,
   setPendingDailyPickHandoff,
   ShoppingItem,
@@ -46,6 +48,10 @@ function pickText(value: BilingualText | undefined, language: "ja" | "en"): stri
   return (language === "en" ? value.en : value.ja) || value.ja || value.en || "";
 }
 
+const subscribeToHydration = () => () => {};
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
+
 export default function HomePage() {
   const { t, language } = useLanguage();
   const router = useRouter();
@@ -55,6 +61,14 @@ export default function HomePage() {
 
   const [dailyPick, setDailyPick] = useState<DailyPickRecipe | null>(null);
   const [dailyPickLoading, setDailyPickLoading] = useState(true);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+  const todayDate = getTodayLocalDateKey();
+  const cachedDailyPick = isHydrated ? getCachedDailyPick<DailyPickRecipe>(todayDate) : null;
+  const visibleDailyPick = dailyPick ?? cachedDailyPick;
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -70,29 +84,59 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // サーバー側(Supabase)のキャッシュが無い/未設定の環境でも、同じ端末では
-    // 同じ日は同じ「今日のおすすめ」を見せるよう、まず端末側キャッシュを確認する。
-    // (キャッシュが無ければAPIを呼び、結果を端末側にも保存する)
-    const todayDate = new Date().toISOString().slice(0, 10);
-    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
-    if (cached) {
-      queueMicrotask(() => {
-        setDailyPick(cached);
-        setDailyPickLoading(false);
-      });
-      return;
-    }
+    if (!isHydrated) return;
 
-    fetch("/api/daily-pick")
-      .then(res => res.ok ? res.json() : null)
+    // 今日のパーソナライズ結果が端末にあれば通信もローディング表示も発生させない。
+    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
+    if (cached) return;
+
+    const profile = getLocalUserProfile();
+    const controller = new AbortController();
+    let cancelled = false;
+    fetch("/api/daily-pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        date: todayDate,
+        personalization: {
+          inventory: getLocalIngredients().map(item => item.name),
+          tastePreferences: profile.tastePreferences,
+          excludedIngredients: profile.excludedIngredients,
+          allergies: profile.allergies,
+          cookingStyles: profile.cookingStyles,
+          dietaryRestrictions: profile.dietaryRestrictions,
+          preferredGenres: profile.preferredGenres,
+          kitchenAppliances: profile.kitchenAppliances,
+          targetCalories: profile.targetCalories,
+        },
+      }),
+    })
+      .then(async res => {
+        if (res.ok) return res.json();
+        // パーソナライズ生成が一時的に失敗しても、Supabaseにその日の共通枠が
+        // あれば表示できるようにフォールバックする。
+        const fallback = await fetch("/api/daily-pick", { signal: controller.signal });
+        return fallback.ok ? fallback.json() : null;
+      })
       .then(data => {
+        if (cancelled) return;
         const recipe = data?.recipe || null;
         setDailyPick(recipe);
-        if (recipe) setCachedDailyPick(data?.date || todayDate, recipe);
+        if (recipe) setCachedDailyPick(todayDate, recipe);
       })
-      .catch(() => setDailyPick(null))
-      .finally(() => setDailyPickLoading(false));
-  }, []);
+      .catch(error => {
+        if (!cancelled && error?.name !== "AbortError") setDailyPick(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDailyPickLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isHydrated, todayDate]);
 
   useEffect(() => {
     fetch("/api/community-recipes")
@@ -109,18 +153,18 @@ export default function HomePage() {
   // 料理完了ボタン等)で開けるようにする。言語に応じた文言をここで確定させてから
   // レシピタブへ1回きりの受け渡しをし、遷移する。
   const handleOpenDailyPick = () => {
-    if (!dailyPick) return;
+    if (!visibleDailyPick) return;
     setPendingDailyPickHandoff({
-      title: pickText(dailyPick.title, language),
-      time: dailyPick.time,
-      genre: dailyPick.genre,
-      dish_badge: dailyPick.dish_badge,
-      ingredients: dailyPick.ingredients.map(ing => ({
+      title: pickText(visibleDailyPick.title, language),
+      time: visibleDailyPick.time,
+      genre: visibleDailyPick.genre,
+      dish_badge: visibleDailyPick.dish_badge,
+      ingredients: visibleDailyPick.ingredients.map(ing => ({
         name: pickText(ing.name, language),
         amount: pickText(ing.amount, language),
       })),
-      steps: dailyPick.steps.map(step => pickText(step, language)),
-      tips: pickText(dailyPick.tips, language),
+      steps: visibleDailyPick.steps.map(step => pickText(step, language)),
+      tips: pickText(visibleDailyPick.tips, language),
     });
     router.push("/recipe");
   };
@@ -167,8 +211,6 @@ export default function HomePage() {
 
       <ChefProfileBadge />
 
-      <KitchenFlowBar />
-
       <div className={styles.quickActions}>
         <Link href="/receipt" className={styles.quickActionBtn}>
           <span className={`${styles.quickIcon} ${styles.quickIconWarm}`}><UiIcon slug="receipt" collection="core" size={28} alt="" /></span>
@@ -185,26 +227,28 @@ export default function HomePage() {
           <span className={styles.cardTitle}><UiIcon slug="cooking_pot" size={25} alt="" />{t.home.todaysPickTitle}</span>
           <span className={styles.todayBadge}>TODAY</span>
         </div>
-        {dailyPickLoading ? (
-          <KitchenLoader compact variant="cooking" text={t.home.todaysPickLoading} />
-        ) : !dailyPick ? (
-          <div className={styles.emptyKitchen}>
-            <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
-            <p>{t.home.todaysPickEmpty}</p>
-          </div>
-        ) : (
+        {!isHydrated ? (
+          <div className={styles.pickHydrationPlaceholder} aria-hidden="true" />
+        ) : visibleDailyPick ? (
           <div className={styles.pickBody}>
             <div className={styles.pickThumb}>
-              <RecipeThumbnail genre={dailyPick.genre} fallbackIngredientName={pickText(dailyPick.title, language)} size={64} />
+              <RecipeThumbnail genre={visibleDailyPick.genre} fallbackIngredientName={pickText(visibleDailyPick.title, language)} size={64} />
             </div>
             <div className={styles.pickTextCol}>
-              <p className={styles.pickTagline}>{pickText(dailyPick.tagline, language)}</p>
-              <p className={styles.pickTitle}>{pickText(dailyPick.title, language)}</p>
-              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{dailyPick.time}</p>
+              <p className={styles.pickTagline}>{pickText(visibleDailyPick.tagline, language)}</p>
+              <p className={styles.pickTitle}>{pickText(visibleDailyPick.title, language)}</p>
+              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{visibleDailyPick.time}</p>
             </div>
             <button type="button" className={styles.pickViewBtn} onClick={handleOpenDailyPick}>
               {t.home.todaysPickViewButton}
             </button>
+          </div>
+        ) : dailyPickLoading ? (
+          <KitchenLoader compact variant="cooking" text={t.home.todaysPickLoading} />
+        ) : (
+          <div className={styles.emptyKitchen}>
+            <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
+            <p>{t.home.todaysPickEmpty}</p>
           </div>
         )}
       </div>
