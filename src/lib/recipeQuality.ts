@@ -37,7 +37,7 @@ const normalize = (value: string) => toHiragana(value.normalize('NFKC').trim().t
 const DESSERT = /スイーツ|デザート|菓子|ケーキ|プリン|ゼリー|クッキー|タルト|パイ|アイス|パフェ|団子|だんご|餅|大福|どら焼き|マフィン|ドーナツ|ワッフル|ムース|チョコ|クレープ|パンケーキ|ホットケーキ|dessert|cake|pudding|cookie|tart|pie|ice cream|muffin|donut|waffle|chocolate/i;
 const SEASONING = /塩|しお|胡椒|こしょう|醤油|しょうゆ|味噌|みそ|砂糖|糖|酢|油|オイル|だし|出汁|コンソメ|ソース|ケチャップ|マヨ|みりん|酒|ワイン|にんにく|生姜|しょうが|ねぎ|葱|ハーブ|バジル|パセリ|レモン|ライム|酢|スパイス|カレー粉|唐辛子|ごま|胡麻|バター|クリーム|チーズ|はちみつ|蜂蜜|シロップ|salt|pepper|soy|miso|sugar|vinegar|oil|stock|broth|sauce|ketchup|mayonnaise|mirin|sake|wine|garlic|ginger|herb|basil|parsley|lemon|lime|spice|chili|sesame|butter|cream|cheese|honey|syrup/i;
 const AUXILIARY = /水|湯|氷|片栗粉|小麦粉|薄力粉|強力粉|パン粉|粉|でんぷん|starch|flour|water|ice/i;
-const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|(?:ひと|ふた|みっ|[一二三四五六七八九十])つまみ|少々|適量|お好み|\b(?:one|half|quarter|pinch|handful|to taste|as needed)\b/i;
+const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|(?:ひと|ふた|みっ|[一二三四五六七八九十])(?:つまみ|振り)|少々|適量|お好み|\b(?:one|half|quarter|pinch|handful|to taste|as needed)\b/i;
 const VAGUE_ONLY = /^(適量|少々|お好みで?|必要量|ひとつまみ|一つまみ|to taste|as needed|some|a little)$/i;
 const HEAT_ACTION = /焼|炒|煮|茹|ゆで|蒸|揚|炊|加熱|火にかけ|電子レンジ|レンジ|オーブン|トースター|沸騰|温め|sear|saute|sauté|fry|boil|simmer|steam|bake|roast|grill|microwave|heat|cook/i;
 const TIME_OR_CUE = /\d+\s*(秒|分|時間|sec|second|min|minute|hour)|弱火|中火|強火|予熱|沸騰|きつね色|透明|しんなり|とろみ|香り|焼き色|火が通|中心まで|泡立|固ま|soft|tender|golden|bubbl|fragrant|translucent|cooked through|no longer pink|until set|low heat|medium heat|high heat/i;
@@ -101,6 +101,19 @@ function stepDurationMinutes(steps: string[]): { sum: number; longest: number } 
   return { sum, longest };
 }
 
+export function reconcileRecipeTime(recipe: ValidatedRecipe): ValidatedRecipe {
+  const declaredMinutes = parseRecipeMinutes(recipe.time);
+  if (declaredMinutes === null) return recipe;
+  const duration = stepDurationMinutes(recipe.steps);
+  const minimumForSum = Math.max(0, Math.ceil((duration.sum - 10) / 1.65));
+  const requiredMinutes = Math.max(declaredMinutes, Math.ceil(duration.longest), minimumForSum);
+  if (requiredMinutes <= declaredMinutes + 2) return recipe;
+  return {
+    ...recipe,
+    time: /分|時間/.test(recipe.time) ? `${requiredMinutes}分` : `${requiredMinutes} minutes`,
+  };
+}
+
 function ingredientMentioned(name: string, stepsText: string): boolean {
   const englishTokens = name
     .normalize('NFKC')
@@ -108,11 +121,38 @@ function ingredientMentioned(name: string, stepsText: string): boolean {
     .match(/[a-z]{3,}/g)
     ?.filter((token) => !['fresh', 'frozen', 'optional', 'finely', 'sliced', 'chopped'].includes(token));
   if (englishTokens?.some((token) => stepsText.includes(token))) return true;
-  const target = normalize(name)
-    .replace(/^(生|冷凍|新鮮な|fresh|frozen)/, '')
-    .replace(/(薄切り|みじん切り|角切り|一口大|切り身|缶詰|適量|お好み).*$/, '');
-  if (target.length < 2) return true;
-  return stepsText.includes(target) || target.split(/[・\/]/).some((part) => part.length >= 2 && stepsText.includes(part));
+  const source = name.normalize('NFKC').toLowerCase();
+  const withoutNotes = source.replace(/[（(【\[].*?[）)】\]]/g, '');
+  const rawVariants = new Set([
+    source,
+    withoutNotes,
+    ...source.split(/[・\/／、,，]/),
+    ...withoutNotes.split(/[・\/／、,，]/),
+  ]);
+  const variants = [...rawVariants]
+    .map((value) => normalize(value)
+      .replace(/^(生|冷凍|新鮮な|無塩|有塩|fresh|frozen|unsalted|salted)/, '')
+      .replace(/(薄切り|みじん切り|角切り|一口大|切り身|缶詰|皮なし|骨なし|水切り|解凍済み|下処理済み|適量|お好み).*$/, ''))
+    .filter((value) => value.length >= 2);
+
+  const generalized = variants.flatMap((value) => [
+    value,
+    value.replace(/鶏(?:もも|むね|胸|ささみ|手羽)?肉/, '鶏肉'),
+    value.replace(/豚(?:ばら|ロース|こま切れ|もも|ひき)?肉/, '豚肉'),
+    value.replace(/牛(?:ばら|ロース|こま切れ|もも|ひき)?肉/, '牛肉'),
+    value.replace(/^(木綿|絹ごし)(?=豆腐)/, ''),
+  ]).filter((value) => value.length >= 2);
+  if (generalized.some((target) => stepsText.includes(target))) return true;
+
+  // 「野菜を加える」「きのこを炒める」のように、直前に個々の材料を
+  // 下処理したうえで料理上自然な総称を使う手順も同一食材の使用とみなす。
+  if (/野菜/.test(stepsText) && /玉ねぎ|にんじん|人参|きゃべつ|れたす|ぴーまん|ぱぷりか|なす|茄子|とまと|きゅうり|だいこん|大根|ごぼう|れんこん|ほうれん草|小松菜|白菜|ぶろっこりー|かぼちゃ|ずっきーに/.test(normalize(withoutNotes))) {
+    return true;
+  }
+  if (/きのこ|茸/.test(stepsText) && /しめじ|しいたけ|椎茸|えのき|まいたけ|舞茸|まっしゅるーむ|きのこ/.test(normalize(withoutNotes))) {
+    return true;
+  }
+  return variants.length === 0;
 }
 
 function energyDifference(recipe: ValidatedRecipe): number | null {
@@ -299,9 +339,14 @@ export function qualityGateErrors(
 }
 
 function dominantProtein(recipe: ValidatedRecipe): string | null {
-  const text = recipe.ingredients.map((item) => normalize(item.name)).join(' ');
+  const text = recipe.ingredients
+    .filter((item) => !SEASONING.test(item.name) && !AUXILIARY.test(item.name))
+    .map((item) => normalize(item.name))
+    .join(' ');
   const groups: [string, RegExp][] = [
-    ['chicken', /鶏|ちきん/], ['pork', /豚|ぽーく/], ['beef', /牛|びーふ/],
+    ['chicken', /鶏(?:肉|もも|むね|胸|ささみ|手羽|ひき|挽)|ちきん/],
+    ['pork', /豚(?:肉|ばら|ろーす|こま|もも|ひき|挽)|ぽーく/],
+    ['beef', /牛(?:肉|ばら|ろーす|こま|もも|ひき|挽)|びーふ/],
     ['fish', /魚|鮭|さけ|さば|鯖|たら|鯛|まぐろ|つな|えび|いか|たこ/],
     ['egg', /卵|たまご|玉子/], ['soy', /豆腐|大豆|厚揚げ|油揚げ/],
   ];
