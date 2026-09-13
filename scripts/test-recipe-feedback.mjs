@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import {
   isCommunityRecipe,
+  localizeCommunityRecipe,
   sanitizeCommunityRecipe,
   serializeCommunityRecipeIdentity,
 } from '../src/lib/communityRecipeSchema.ts';
+import { COMMUNITY_RECIPE_SEEDS } from '../src/lib/communityRecipeSeeds.ts';
+import { qualityGateErrors } from '../src/lib/recipeQuality.ts';
 
 const recipe = {
   title: '  彩り野菜と鮭の香味焼き  ',
@@ -23,6 +26,7 @@ const sanitized = sanitizeCommunityRecipe(recipe);
 assert.equal(sanitized.title, '彩り野菜と鮭の香味焼き');
 assert.equal(sanitized.ingredients[0].name, '鮭');
 assert.equal(sanitized.steps[0], '鮭と野菜を焼く。');
+assert.doesNotThrow(() => sanitizeCommunityRecipe({ ...recipe, translations: { en: 42 } }));
 
 const sameRecipe = {
   ...sanitized,
@@ -36,5 +40,14 @@ assert.notEqual(
   serializeCommunityRecipeIdentity(recipe),
   serializeCommunityRecipeIdentity({ ...sanitized, steps: ['鮭を煮る。'] }),
 );
+
+assert.equal(COMMUNITY_RECIPE_SEEDS.length, 8);
+assert.equal(new Set(COMMUNITY_RECIPE_SEEDS.map((seed) => seed.id)).size, COMMUNITY_RECIPE_SEEDS.length);
+for (const seed of COMMUNITY_RECIPE_SEEDS) {
+  assert.deepEqual(qualityGateErrors(seed.recipe, { servings: 2 }), [], `${seed.recipe.title} failed quality checks`);
+  const english = localizeCommunityRecipe(seed.recipe, 'en');
+  assert.notEqual(english.title, seed.recipe.title, `${seed.recipe.title} is missing its English version`);
+  assert.deepEqual(qualityGateErrors(english, { servings: 2 }), [], `${english.title} failed quality checks`);
+}
 
 console.log('Recipe feedback identity tests passed.');

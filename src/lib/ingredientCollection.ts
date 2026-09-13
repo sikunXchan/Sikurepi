@@ -1,4 +1,11 @@
-import { ICON_BASE_PATH, ICON_SLUGS, getIngredientIconSlug } from './ingredientIcons';
+import {
+  ICON_BASE_PATH,
+  ICON_SLUGS,
+  getIngredientIconCategory,
+  getIngredientIconDisplayName,
+  getIngredientIconSlug,
+  type IngredientIconCategory,
+} from './ingredientIcons';
 import type { CookedRecord } from './storage';
 
 export const INGREDIENT_MASTERY_THRESHOLDS = [1, 5, 15] as const;
@@ -17,6 +24,7 @@ export type IngredientCollectionEntry = {
   slug: string | null;
   imageUrl: string | null;
   displayName: string;
+  category: IngredientIconCategory;
   unlocked: boolean;
   usageCount: number;
   rescueCount: number;
@@ -86,12 +94,13 @@ export function calculateBestCookingStreak(records: CookedRecord[]): number {
   return best;
 }
 
-function createMutableEntry(slug: string | null, key: string): MutableEntry {
+function createMutableEntry(slug: string | null, key: string, language: 'ja' | 'en'): MutableEntry {
   return {
     key,
     slug,
     imageUrl: slug ? `${ICON_BASE_PATH}${slug}.png` : null,
-    displayName: '',
+    displayName: slug ? getIngredientIconDisplayName(slug, language) : '',
+    category: slug ? getIngredientIconCategory(slug) : 'other',
     unlocked: false,
     usageCount: 0,
     rescueCount: 0,
@@ -104,9 +113,12 @@ function createMutableEntry(slug: string | null, key: string): MutableEntry {
   };
 }
 
-export function buildIngredientCollection(records: CookedRecord[]): IngredientCollectionSummary {
+export function buildIngredientCollection(
+  records: CookedRecord[],
+  language: 'ja' | 'en' = 'ja',
+): IngredientCollectionSummary {
   const entries = new Map<string, MutableEntry>();
-  for (const slug of ICON_SLUGS) entries.set(`slug:${slug}`, createMutableEntry(slug, `slug:${slug}`));
+  for (const slug of ICON_SLUGS) entries.set(`slug:${slug}`, createMutableEntry(slug, `slug:${slug}`, language));
 
   for (const record of records) {
     const recordIngredients = new Map<string, { name: string; rescued: boolean }>();
@@ -132,7 +144,7 @@ export function buildIngredientCollection(records: CookedRecord[]): IngredientCo
 
     for (const [key, occurrence] of recordIngredients) {
       const slug = key.startsWith('slug:') ? key.slice(5) : null;
-      const entry = entries.get(key) || createMutableEntry(slug, key);
+      const entry = entries.get(key) || createMutableEntry(slug, key, language);
       const timestamp = toTimestamp(record.date);
       entry.unlocked = true;
       entry.usageCount += 1;
@@ -147,12 +159,13 @@ export function buildIngredientCollection(records: CookedRecord[]): IngredientCo
 
   const finalized = Array.from(entries.values()).map((entry): IngredientCollectionEntry => {
     const displayName = Array.from(entry.seenNames.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || '';
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || entry.displayName;
     return {
       key: entry.key,
       slug: entry.slug,
       imageUrl: entry.imageUrl,
       displayName,
+      category: entry.category,
       unlocked: entry.unlocked,
       usageCount: entry.usageCount,
       rescueCount: entry.rescueCount,

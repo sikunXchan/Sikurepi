@@ -172,6 +172,46 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "meat_stir_fry", keywords: ["肉炒め", "豚バラ炒め", "豚肉炒め", "牛肉炒め", "回鍋肉", "青椒肉絲", "生姜焼き", "しょうが焼き", "stir-fried meat", "meat stir-fry"] },
 ];
 
+export type DishIconCategory =
+  | "rice"
+  | "noodle"
+  | "soup_stew"
+  | "meat"
+  | "seafood"
+  | "egg_bean"
+  | "vegetable"
+  | "bread_snack"
+  | "dessert_drink"
+  | "other";
+
+export const DISH_ICON_SLUGS = Array.from(new Set(DISH_ICON_RULES.map((rule) => rule.slug)));
+
+function containsJapanese(value: string): boolean {
+  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(value);
+}
+
+export function getDishIconDisplayName(slug: string, language: "ja" | "en" = "ja"): string {
+  const rule = DISH_ICON_RULES.find((candidate) => candidate.slug === slug);
+  const keywords = rule?.keywords || [];
+  if (language === "ja") return keywords.find(containsJapanese) || keywords[0] || slug;
+  const english = keywords.find((keyword) => /[a-z]/i.test(keyword) && !containsJapanese(keyword));
+  if (english) return english.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return slug.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function getDishIconCategory(slug: string): DishIconCategory {
+  if (/(cake|tart|pie_slice|pancake|waffle|crepe|donut|cupcake|cookie|brownie|pudding|custard|ice_cream|popsicle|shaved_ice|fruit_bowl|mochi|sweet_bun|chocolate|parfait|smoothie|hot_drink)/.test(slug)) return "dessert_drink";
+  if (/(ramen|pho|udon|soba|yakisoba|tteokbokki|japchae|laksa|pad_thai|pasta|gnocchi|noodle)/.test(slug)) return "noodle";
+  if (/(rice|don$|donburi|bibimbap|poke_bowl|nasi_goreng|jollof|pilaf|biryani|risotto|paella|sushi)/.test(slug)) return "rice";
+  if (/(soup|stew|hotpot|jjigae|tom_yum|tagine|borscht|gazpacho|curry|masala|shakshuka|feijoada|fondue|casserole|baked_dish)/.test(slug)) return "soup_stew";
+  if (/(fish|seafood|shellfish|ceviche)/.test(slug)) return "seafood";
+  if (/(chicken|meat|steak|bulgogi|pork|sausage|shawarma|kebab|cutlet|meatball|burger|shepherd)/.test(slug)) return "meat";
+  if (/(egg|omelet|tofu|lentil|bean|mapo)/.test(slug)) return "egg_bean";
+  if (/(vegetable|salad|ratatouille|tabbouleh|pickled|dip_spread|falafel)/.test(slug)) return "vegetable";
+  if (/(bread|toast|sandwich|pizza|wrap|taco|arepa|dosa|dumpling|dim_sum|spring_roll|tamale|pastry|savory|steamed_bun|pierogi|injera)/.test(slug)) return "bread_snack";
+  return "other";
+}
+
 function normalizeDishName(name: string): string {
   return name.normalize("NFKC").toLocaleLowerCase().replace(/[‐‑‒–—―]/g, "-");
 }

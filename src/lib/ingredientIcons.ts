@@ -470,6 +470,47 @@ export const ICON_SLUGS: string[] = Object.keys(ICON_KEYWORDS);
 
 export const ICON_BASE_PATH = "/ingredients/";
 
+export type IngredientIconCategory =
+  | 'vegetable'
+  | 'mushroom_seaweed'
+  | 'meat'
+  | 'seafood'
+  | 'egg_dairy_soy'
+  | 'grain'
+  | 'fruit_nut'
+  | 'seasoning'
+  | 'sweet'
+  | 'drink'
+  | 'other';
+
+function containsJapanese(value: string): boolean {
+  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(value);
+}
+
+export function getIngredientIconDisplayName(slug: string, language: 'ja' | 'en' = 'ja'): string {
+  const keywords = ICON_KEYWORDS[slug] || [];
+  if (language === 'ja') return keywords.find(containsJapanese) || keywords[0] || slug;
+  const english = keywords.find((keyword) => /[a-z]/i.test(keyword) && !containsJapanese(keyword));
+  if (english) return english.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const readableSlug = slug.replace(/\d+$/, '').replace(/[_-]+/g, ' ');
+  return readableSlug.charAt(0).toUpperCase() + readableSlug.slice(1);
+}
+
+export function getIngredientIconCategory(slug: string): IngredientIconCategory {
+  const terms = `${slug} ${(ICON_KEYWORDS[slug] || []).join(' ')}`.toLocaleLowerCase();
+  if (/水|コーヒー|茶|ワイン|ビール|酒|ジュース|coffee|tea|wine|beer|juice|water/.test(terms)) return 'drink';
+  if (/ケーキ|菓子|クッキー|チョコ|アイス|プリン|キャンディ|飴|グミ|大福|団子|どら焼|たい焼|ジャム|クリーム|cake|cookie|candy|chocolate|icecream|pudding|gummy|daifuku|dorayaki|taiyaki/.test(terms)) return 'sweet';
+  if (/塩|砂糖|酢|醤油|しょうゆ|味噌|みそ|油|ソース|だし|こしょう|胡椒|スパイス|カレー粉|マスタード|ケチャップ|マヨ|みりん|ペースト|サフラン|クミン|ターメリック|シナモン|バニラ|麹|片栗粉|コーンスターチ|salt|sugar|vinegar|sauce|oil|spice|mustard|ketchup|mayonnaise|seasoning|starch/.test(terms)) return 'seasoning';
+  if (/豚|鶏|牛|肉|ベーコン|ハム|ソーセージ|ラム|マトン|鴨|七面鳥|ヤギ|レバー|ホルモン|pork|chicken|beef|meat|bacon|ham|sausage|lamb|duck|turkey|goat/.test(terms)) return 'meat';
+  if (/魚|鮭|まぐろ|ツナ|えび|海老|いか|たこ|鯖|さば|アジ|イワシ|サンマ|タラ|鯛|あさり|しじみ|かつお|かまぼこ|ちくわ|牡蠣|かに|ホタテ|しらす|たらこ|いくら|ぶり|うなぎ|fish|salmon|tuna|shrimp|squid|octopus|mackerel|oyster|crab|scallop|seafood/.test(terms)) return 'seafood';
+  if (/卵|牛乳|ミルク|チーズ|ヨーグルト|バター|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|おから|湯葉|egg|milk|cheese|yogurt|butter|tofu|natto|tempeh/.test(terms)) return 'egg_dairy_soy';
+  if (/米|ご飯|パン|うどん|そば|パスタ|マカロニ|春雨|麺|小麦|粉|餅|そうめん|キヌア|クスクス|トルティーヤ|ピタ|ナン|オートミール|シリアル|イースト|rice|bread|pasta|noodle|flour|quinoa|couscous|tortilla|oat|cereal|yeast|bulgur/.test(terms)) return 'grain';
+  if (/りんご|バナナ|レモン|オレンジ|みかん|いちご|ぶどう|パイン|すいか|メロン|マンゴー|キウイ|桃|チェリー|梨|ベリー|柿|アーモンド|ピーナッツ|くるみ|ナッツ|栗|種|レーズン|ライム|フルーツ|ざくろ|いちじく|ゆず|梅|ライチ|パパイヤ|プラム|apple|banana|lemon|orange|fruit|berry|nut|almond|peanut|walnut|seed|lime|coconut|dates/.test(terms)) return 'fruit_nut';
+  if (/しいたけ|えのき|しめじ|エリンギ|舞茸|マッシュルーム|なめこ|きくらげ|わかめ|もずく|めかぶ|ひじき|昆布|こんぶ|海苔|のり|mushroom|wakame|kombu|nori|seaweed/.test(terms)) return 'mushroom_seaweed';
+  if (/野菜|いも|芋|豆|玉ねぎ|にんじん|トマト|きゅうり|キャベツ|大根|なす|ピーマン|パプリカ|ブロッコリー|葉|ねぎ|にんにく|しょうが|ハーブ|バジル|パセリ|ミント|plantain|cassava|taro|vegetable|onion|carrot|tomato|cucumber|cabbage|pepper|broccoli|herb/.test(terms)) return 'vegetable';
+  return 'other';
+}
+
 export function getIngredientIconSlug(ingredientName: string): string | null {
   const name = ingredientName.trim();
   if (!name) return null;
