@@ -46,9 +46,9 @@
 .progressTrack { display: block; overflow: hidden; height: 7px; border-radius: 999px; background: rgba(143, 112, 105, 0.12); }
 .progressTrack > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: linear-gradient(90deg, #2da89f, #72d4c7); transition: width 360ms var(--ease-out); }
 
-.previewGrid { display: grid; grid-template-columns: repeat(4, 1fr); align-content: center; gap: 7px; }
-.previewGrid > span { position: relative; display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid rgba(130, 92, 58, 0.1); border-radius: 12px; background: rgba(255,255,255,.82); }
-.previewGrid img { max-width: 43px; max-height: 43px; object-fit: contain; }
+.previewGrid { z-index: 1; display: grid; grid-template-columns: repeat(4, 39px); align-self: center; justify-self: end; align-content: center; justify-content: end; gap: 7px; }
+.previewGrid > span { position: relative; display: grid; place-items: center; width: 39px; height: 39px; overflow: hidden; border: 1px solid rgba(130, 92, 58, 0.1); border-radius: 12px; background: rgba(255,255,255,.88); }
+.previewGrid img { display: block; width: 31px; height: 31px; max-width: 31px; max-height: 31px; object-fit: contain; object-position: center; transform: none; }
 .previewGrid i { position: absolute; right: -3px; bottom: -2px; display: grid; place-items: center; width: 16px; height: 16px; border: 2px solid #fff; border-radius: 50%; color: #167f62; background: #dff6e9; }
 .previewLocked img { filter: grayscale(1) brightness(0); opacity: .09; }
 .previewUnlocked { box-shadow: 0 5px 12px rgba(115, 74, 43, .08); }
