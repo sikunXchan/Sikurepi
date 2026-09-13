@@ -231,4 +231,25 @@ assert.equal(validateWeeklyPlan(
   weeklyTargets,
 ).length > 0, true);
 
+// AI推定値として現実的な誤差は許容するが、30%を超える週間PFCの逸脱は
+// 引き続き不採用にする。
+assert.deepEqual(validateWeeklyPlan(
+  weeklyPlan,
+  [
+    { date: '2026-09-12', mealSlot: 'lunch' },
+    { date: '2026-09-12', mealSlot: 'dinner' },
+  ],
+  [],
+  { calories: 1050, protein_g: 64, fat_g: 28, carbs_g: 73 },
+), []);
+assert.equal(validateWeeklyPlan(
+  weeklyPlan,
+  [
+    { date: '2026-09-12', mealSlot: 'lunch' },
+    { date: '2026-09-12', mealSlot: 'dinner' },
+  ],
+  [],
+  { calories: 1200, protein_g: 64, fat_g: 28, carbs_g: 73 },
+).some((error) => error.includes('weekly calories')), true);
+
 console.log('Recipe quality gate: all tests passed.');

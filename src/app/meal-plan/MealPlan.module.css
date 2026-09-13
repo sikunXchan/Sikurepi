@@ -80,6 +80,41 @@
   line-height: 1.55;
 }
 
+.modePicker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 13px;
+  padding: 5px;
+  border: 1px solid rgba(111, 78, 59, 0.09);
+  border-radius: 18px;
+  background: rgba(255,255,255,.58);
+}
+
+.modePicker button {
+  display: flex;
+  min-width: 0;
+  min-height: 54px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--text-secondary);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.modePicker button:hover { transform: none; box-shadow: none; }
+.modePicker strong { font-size: 12px; }
+.modePicker small { font-size: 9px; font-weight: 700; line-height: 1.35; }
+.modePicker .modeActive { border-color: rgba(23,148,141,.2); color: var(--secondary); background: #fff; box-shadow: 0 6px 16px rgba(69,54,43,.07); }
+
 .dayRail {
   position: relative;
   z-index: 1;
@@ -232,8 +267,30 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
-  text-align: center;
+  text-align: left;
 }
+
+.errorHeading { display: flex; align-items: center; gap: 10px; }
+.errorHeading > svg { flex: 0 0 auto; }
+.errorHeading span { display: flex; flex-direction: column; gap: 2px; }
+.errorHeading strong { color: #a72d40; font-size: 14px; }
+.errorHeading small { color: #9b5a63; font-size: 10px; }
+.errorCard > p { margin: 10px 0; padding: 9px 11px; border-radius: 11px; background: rgba(255,255,255,.62); font-size: 11px; }
+.errorActions, .feasibilityActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.errorActions button, .feasibilityActions button { min-height: 40px; padding: 8px 10px; border: 1px solid rgba(200,56,77,.18); border-radius: 12px; color: #a72d40; background: #fff; box-shadow: none; font-size: 10px; }
+.errorActions button { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.errorFreeAction { width: 100%; margin-top: 7px; padding: 5px; border: 0; color: #9b5a63; background: transparent; box-shadow: none; font-size: 10px; text-decoration: underline; text-underline-offset: 2px; }
+
+.feasibilityCard { padding: 14px 15px; border: 1px solid rgba(215,152,63,.28); border-radius: 18px; background: #fff8e9; box-shadow: var(--shadow-soft); }
+.feasibilityHeading { display: flex; align-items: center; gap: 10px; }
+.feasibilityHeading img { flex: 0 0 auto; object-fit: contain; }
+.feasibilityHeading strong { color: #83551b; font-size: 13px; }
+.feasibilityHeading p { margin-top: 3px; color: #926a3c; font-size: 11px; font-weight: 700; line-height: 1.5; }
+.missingList { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.missingList span { padding: 4px 8px; border-radius: 999px; color: #83551b; background: rgba(215,152,63,.14); font-size: 10px; font-weight: 800; }
+.feasibilityActions { margin-top: 10px; }
+.feasibilityActions button { border-color: rgba(178,119,40,.24); color: #83551b; }
+.feasibilityActions button:last-child { display: flex; align-items: center; justify-content: center; gap: 5px; color: #fff; background: linear-gradient(135deg, #17948d, #54c8bf); }
 
 .summaryCard {
   padding: 18px;
@@ -390,6 +447,8 @@
   .selectionCount { min-height: 38px; padding-right: 8px; font-size: 10px; }
   .selectionCount img { width: 29px !important; height: 29px !important; }
   .plannerHint { margin-top: 12px; }
+  .modePicker { grid-template-columns: 1fr; }
+  .modePicker button { min-height: 48px; }
   .dayRail { margin-inline: -14px; padding-inline: 14px; grid-template-columns: repeat(7, minmax(116px, 1fr)); }
   .planDish { width: 58px; height: 58px; border-radius: 18px; }
   .planDish img { width: 54px !important; height: 54px !important; }

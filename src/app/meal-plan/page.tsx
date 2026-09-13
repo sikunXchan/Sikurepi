@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus, AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -82,6 +82,9 @@ export default function MealPlanPage() {
   // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
   const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [creationMode, setCreationMode] = useState<'inventory' | 'free'>('inventory');
+  const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
+  const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -127,7 +130,9 @@ export default function MealPlanPage() {
     return {
       slots,
       ingredients: ingredients.map(i => i.name),
-      pinnedIngredients: ingredients.filter(i => i.is_pinned).map(i => i.name),
+      pinnedIngredients: creationMode === 'inventory'
+        ? ingredients.filter(i => i.is_pinned).map(i => i.name)
+        : [],
       userProfile: {
         ...profile,
         tastePreferences: profile.tastePreferences || [],
@@ -139,7 +144,7 @@ export default function MealPlanPage() {
       },
       climate: profile.enableClimate !== false ? currentClimate : undefined,
       recentHistory,
-      mode: ingredients.length > 0 ? 'inventory' : 'free',
+      mode: creationMode,
       language,
     };
   };
@@ -184,6 +189,7 @@ export default function MealPlanPage() {
     }
     setGenerating(true);
     setErrorMsg("");
+    setFeasibilityWarning(null);
     try {
       const res = await fetch("/api/recipes/weekly-plan", {
         method: "POST",
@@ -193,7 +199,18 @@ export default function MealPlanPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorGenerateFailed);
 
+      if (data.feasibility?.feasible === false) {
+        setFeasibilityWarning({
+          reason: typeof data.feasibility.reason === 'string' ? data.feasibility.reason : '',
+          missingKeyIngredients: Array.isArray(data.feasibility.missingKeyIngredients)
+            ? data.feasibility.missingKeyIngredients.filter((name: unknown): name is string => typeof name === 'string')
+            : [],
+        });
+        return;
+      }
+
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
+      if (entries.length === 0) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
       if (!isPremium) incrementFreeGenerationsUsed();
@@ -217,6 +234,7 @@ export default function MealPlanPage() {
     const key = `${date}_${mealSlot}`;
     setRegeneratingKey(key);
     setErrorMsg("");
+    setFeasibilityWarning(null);
     try {
       const res = await fetch("/api/recipes/weekly-plan", {
         method: "POST",
@@ -225,6 +243,15 @@ export default function MealPlanPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorRegenFailed);
+      if (data.feasibility?.feasible === false) {
+        setFeasibilityWarning({
+          reason: typeof data.feasibility.reason === 'string' ? data.feasibility.reason : '',
+          missingKeyIngredients: Array.isArray(data.feasibility.missingKeyIngredients)
+            ? data.feasibility.missingKeyIngredients.filter((name: unknown): name is string => typeof name === 'string')
+            : [],
+        });
+        return;
+      }
       const r = (data.plan || [])[0];
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
       const entry = mapPlanItem(r);
@@ -287,6 +314,18 @@ export default function MealPlanPage() {
 
   const selectedMealCount = activeSlots().length;
 
+  const reviewMealSlots = () => {
+    setErrorMsg("");
+    plannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const switchToFreeMode = () => {
+    setCreationMode('free');
+    setErrorMsg("");
+    setFeasibilityWarning(null);
+    plannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className={styles.container}>
       {toastMessage && (
@@ -305,7 +344,7 @@ export default function MealPlanPage() {
         subtitle={t.mealPlan.subtitle}
         mascot="bear_itadakimasu"
       />
-      <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
+      <section ref={plannerRef} className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
         <div className={styles.plannerTopline}>
           <div>
             <span className={styles.plannerEyebrow}>WEEKLY TABLE</span>
@@ -317,6 +356,24 @@ export default function MealPlanPage() {
           </div>
         </div>
         <p className={styles.plannerHint}>{t.mealPlan.description}</p>
+        <div className={styles.modePicker} aria-label={language === 'ja' ? '献立の作成方法' : 'Meal-plan source'}>
+          <button
+            type="button"
+            className={creationMode === 'inventory' ? styles.modeActive : ''}
+            onClick={() => { setCreationMode('inventory'); setErrorMsg(''); setFeasibilityWarning(null); }}
+          >
+            <strong>{t.recipe.modeInventory}</strong>
+            <small>{t.mealPlan.inventoryModeHint}</small>
+          </button>
+          <button
+            type="button"
+            className={creationMode === 'free' ? styles.modeActive : ''}
+            onClick={() => { setCreationMode('free'); setErrorMsg(''); setFeasibilityWarning(null); }}
+          >
+            <strong>{t.recipe.modeFree}</strong>
+            <small>{t.mealPlan.freeModeHint}</small>
+          </button>
+        </div>
         <div className={styles.dayRail}>
           {days.map(d => {
             const lunchOn = !!active[`${d.date}_lunch`];
@@ -381,9 +438,56 @@ export default function MealPlanPage() {
       )}
 
       {errorMsg && (
-        <div className={styles.errorCard} role="alert">
-          {errorMsg}
-        </div>
+        <section className={styles.errorCard} role="alert">
+          <div className={styles.errorHeading}>
+            <AlertTriangle size={20} />
+            <span><strong>{t.mealPlan.errorGuideTitle}</strong><small>{t.mealPlan.errorGuideBody}</small></span>
+          </div>
+          <p>{errorMsg}</p>
+          <div className={styles.errorActions}>
+            <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
+              <RefreshCw size={15} />{t.mealPlan.retryGenerate}
+            </button>
+            <button type="button" onClick={reviewMealSlots}>
+              <SlidersHorizontal size={15} />{t.mealPlan.reviewSelection}
+            </button>
+          </div>
+          {creationMode === 'inventory' && (
+            <button type="button" className={styles.errorFreeAction} onClick={switchToFreeMode}>
+              {t.mealPlan.switchToFreeFromError}
+            </button>
+          )}
+        </section>
+      )}
+
+      {feasibilityWarning && (
+        <section className={styles.feasibilityCard} role="status">
+          <div className={styles.feasibilityHeading}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mascot/bear_sleeping.png" alt="" width={42} height={42} draggable={false} />
+            <div>
+              <strong>{t.recipe.feasibilityTitle}</strong>
+              {feasibilityWarning.reason && <p>{feasibilityWarning.reason}</p>}
+            </div>
+          </div>
+          {feasibilityWarning.missingKeyIngredients.length > 0 && (
+            <div className={styles.missingList}>
+              {feasibilityWarning.missingKeyIngredients.map((name) => <span key={name}>{name}</span>)}
+            </div>
+          )}
+          <div className={styles.feasibilityActions}>
+            <button type="button" onClick={switchToFreeMode}>{t.recipe.feasibilitySwitchToFree}</button>
+            {feasibilityWarning.missingKeyIngredients.length > 0 && (
+              <button type="button" onClick={() => {
+                feasibilityWarning.missingKeyIngredients.forEach((name) => addLocalShoppingItem(name));
+                showToast(t.recipe.feasibilityAddedToShoppingToast(feasibilityWarning.missingKeyIngredients.length));
+                setFeasibilityWarning(null);
+              }}>
+                <ShoppingCart size={15} />{t.recipe.feasibilityGoShopping}
+              </button>
+            )}
+          </div>
+        </section>
       )}
 
       {plan.length > 0 && (

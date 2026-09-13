@@ -445,7 +445,10 @@ export function validateWeeklyPlan(
     (Object.keys(targets) as (keyof NutritionTargets)[]).forEach((key) => {
       if (targets[key] <= 0) return;
       const differenceRatio = Math.abs(total[key] - targets[key]) / targets[key];
-      if (differenceRatio > 0.20) {
+      // 栄養値はAIによる推定であり、通常の単品生成は目標に対して概ね
+      // 55〜145%を許容している。週間だけ20%で全PFCを厳密拒否すると、
+      // 安全で再現可能な献立まで不採用になりやすいため30%へ統一する。
+      if (differenceRatio > 0.30) {
         errors.push(`weekly ${key} total is outside the target tolerance: ${Math.round(total[key])} vs ${Math.round(targets[key])}`);
       }
     });
