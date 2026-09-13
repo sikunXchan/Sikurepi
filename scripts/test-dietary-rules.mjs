@@ -19,11 +19,17 @@ assert.equal(violates(recipe(['野菜'], ['仕上げにバターを加える']),
 assert.equal(violates(recipe(['はちみつ']), 'ヴィーガン'), true);
 assert.equal(violates(recipe(['ナンプラー']), 'ヴィーガン'), true);
 assert.equal(violates(recipe(['かつおだし']), 'ベジタリアン'), true);
+assert.equal(violates(recipe(['野菜'], ['火が通ったら器に盛る']), 'ベジタリアン'), false);
+assert.equal(violates(recipe(['豆腐'], ['湯が沸いたら豆腐を入れる']), 'ヴィーガン'), false);
+assert.equal(violates(recipe(['たら']), '魚介類不使用'), true);
+assert.equal(violates(recipe(['たらこ']), '魚介類不使用'), true);
+assert.equal(violates(recipe(['野菜'], ['久しぶりに作りたい一品です']), '魚介類不使用'), false);
 
 assert.equal(violates(recipe(['豚肉']), 'ハラール（イスラム教）'), true);
 assert.equal(violates(recipe(['みりん']), 'ハラール（イスラム教）'), true);
 assert.equal(violates(recipe(['鶏肉']), 'ハラール（イスラム教）'), true);
 assert.equal(violates(recipe(['ハラール認証鶏肉'], ['鶏肉を焼く']), 'ハラール（イスラム教）'), false);
+assert.equal(violates(recipe(['ハラール認証済み鶏むね肉'], ['鶏むね肉を焼く'], 'スパイスチキン'), 'ハラール（イスラム教）'), false);
 assert.equal(violates(recipe(['ハラール認証鶏肉', '牛肉']), 'ハラール（イスラム教）'), true);
 
 assert.equal(violates(recipe(['えび']), 'コーシャ（ユダヤ教）'), true);
@@ -39,6 +45,15 @@ assert.equal(violates(recipe(['小麦粉']), 'グルテンフリー'), true);
 assert.equal(violates(recipe(['パン粉']), 'グルテンフリー'), true);
 assert.equal(violates(recipe(['醤油']), 'グルテンフリー'), true);
 assert.equal(violates(recipe(['グルテンフリー醤油']), 'グルテンフリー'), false);
+assert.equal(violates({
+  ...recipe(['グルテンフリー醤油'], ['グルテンフリー醤油を加える'], '鶏肉の醤油炒め'),
+  tips: '小麦を含まない製品か表示を確認する。',
+}, 'グルテンフリー'), false);
+assert.equal(violates({
+  ...recipe(['グルテンフリー醤油'], ['醤油は必ずグルテンフリーの製品を使う'], '鶏肉の醤油炒め'),
+  tips: '醤油は小麦不使用の表示を確認する。',
+}, 'グルテンフリー'), false);
+assert.equal(violates(recipe(['醤油'], [], '鶏肉の醤油炒め'), 'グルテンフリー'), true);
 assert.equal(violates(recipe(['米']), 'グルテンフリー'), false);
 assert.equal(violates(recipe(['rice flour']), 'グルテンフリー'), false);
 assert.equal(violates(recipe(['野菜'], ['フライパンで炒める']), 'グルテンフリー'), false);

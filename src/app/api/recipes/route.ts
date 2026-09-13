@@ -287,6 +287,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     };
 
     let lastErrors: string[] = [];
+    let latestAttemptTelemetry: RecipeAttemptTelemetry | null = null;
     for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
       const prompt = attempt === 0 ? basePrompt : `${basePrompt}\n${buildValidationRetryNote(lastErrors)}`;
 
@@ -317,11 +318,12 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         lastErrors = [
           `response was not valid JSON: ${parseError instanceof Error ? parseError.message : 'unknown parse error'}`,
         ];
-        generationAttempts.push({
+        latestAttemptTelemetry = {
           ...attemptBase,
           outcome: 'rejected',
           errors: compactValidationErrors(lastErrors),
-        });
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
 
@@ -339,6 +341,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
           outcome: 'infeasible',
           errors: [],
         };
+        latestAttemptTelemetry = attemptTelemetry;
         generationAttempts.push(attemptTelemetry);
         logRecipeGeneration(requestId, generationStartedAt, 'infeasible', generationAttempts);
         return NextResponse.json({
@@ -388,11 +391,12 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
 
       if (shapeErrors.length > 0) {
         lastErrors = shapeErrors;
-        generationAttempts.push({
+        latestAttemptTelemetry = {
           ...attemptBase,
           outcome: 'rejected',
           errors: compactValidationErrors(lastErrors),
-        });
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
 
@@ -417,11 +421,12 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       ));
       if (logicErrors.length > 0) {
         lastErrors = logicErrors;
-        generationAttempts.push({
+        latestAttemptTelemetry = {
           ...attemptBase,
           outcome: 'rejected',
           errors: compactValidationErrors(lastErrors),
-        });
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
 
@@ -431,6 +436,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         outcome: 'accepted',
         errors: [],
       };
+      latestAttemptTelemetry = attemptTelemetry;
       generationAttempts.push(attemptTelemetry);
       logRecipeGeneration(requestId, generationStartedAt, 'success', generationAttempts);
       return NextResponse.json(json, {
@@ -446,7 +452,9 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       error: language === 'en'
         ? 'The AI could not produce a recipe that satisfies your conditions after multiple attempts. Please try again or adjust your request.'
         : '条件を満たすレシピをAIが生成できませんでした。条件を変えるか、もう一度お試しください。',
-    }, { status: 422 });
+    }, latestAttemptTelemetry
+      ? { status: 422, headers: generationHeaders(generationStartedAt, latestAttemptTelemetry) }
+      : { status: 422 });
 
   } catch (error: unknown) {
     console.error('Recipe Gen Error:', error);

@@ -177,9 +177,9 @@ export function validateRecipeLogic(
       if (fuzzyIncludes(context.inventoryNames, name)) return false;
       if (context.assumeSeasoningsAvailable && isPantryStaple(name)) return false;
       if (!context.assumeSeasoningsAvailable) {
-        // 調味料を常備前提にしない設定でも、ごく基本的な塩・こしょうだけは
-        // プロンプト側が例外的に許可しているのでそれに合わせる
-        if (/^(塩|しお|こしょう|コショウ|胡椒)$/.test(name.trim())) return false;
+        // 調味料を常備前提にしない設定でも、水と最小限の塩・こしょうだけは
+        // プロンプト側が例外的に許可しているのでそれに合わせる。
+        if (/^(水|湯|お湯|water|hot water|塩|しお|こしょう|コショウ|胡椒)$/i.test(name.trim())) return false;
       }
       return true;
     });

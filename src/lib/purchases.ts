@@ -1,54 +1,260 @@
-import { Capacitor } from '@capacitor/core';
-import { Purchases, ErrorCode, PurchasesError } from '@revenuecat/purchases-js';
-import { getOrCreateClientUserId } from '@/lib/user';
+import { Capacitor } from "@capacitor/core";
+import {
+  ENTITLEMENT_VERIFICATION_MODE,
+  PACKAGE_TYPE,
+  PURCHASES_ERROR_CODE,
+  Purchases,
+  VERIFICATION_RESULT,
+  type CustomerInfo,
+  type PurchasesError,
+  type PurchasesOffering,
+  type PurchasesPackage,
+} from "@revenuecat/purchases-capacitor";
+import { getOrCreateClientUserId } from "@/lib/user";
 
-// RevenueCatダッシュボード(Project settings > Web Billing)で発行されるAPIキー。
-// StoreKit/Play Billingを経由しないWeb Billing(ブラウザ内課金)を使うことで、
-// App Store Connect / Google Play Console / Xcodeが一切不要になる構成にしている。
-// ネイティブアプリのStoreKit課金を使う場合は @revenuecat/purchases-capacitor に切り替えること。
-const REVENUECAT_WEB_BILLING_API_KEY = 'rcb_XXXXXXXXXXXXXXXXXXXXXXXXXXX';
+export const PREMIUM_ENTITLEMENT_ID = "premium";
+const CUSTOM_PAYWALL_ID = "sikurepi-plus-v1";
 
-// RevenueCatダッシュボードで作成するEntitlement識別子。プレミアムプラン加入者に付与する想定。
-export const PREMIUM_ENTITLEMENT_ID = 'premium';
+export type PremiumAvailability = "ready" | "web" | "unconfigured" | "error";
+
+export type PremiumPlan = {
+  id: string;
+  packageType: PACKAGE_TYPE;
+  productId: string;
+  title: string;
+  description: string;
+  price: number;
+  priceString: string;
+  pricePerMonthString: string | null;
+  subscriptionPeriod: string | null;
+};
+
+export type PremiumSnapshot = {
+  availability: PremiumAvailability;
+  isPremium: boolean;
+  offeringId: string | null;
+  plans: PremiumPlan[];
+};
+
+export type PurchaseActionResult =
+  | { status: "success"; isPremium: true }
+  | { status: "cancelled"; isPremium: false }
+  | { status: "pending"; isPremium: false }
+  | { status: "not-entitled"; isPremium: false }
+  | { status: "unavailable"; isPremium: false }
+  | { status: "error"; isPremium: false; message?: string };
+
+let configurationPromise: Promise<void> | null = null;
+let cachedOffering: PurchasesOffering | null = null;
 
 export function isNativeApp(): boolean {
-  return Capacitor.isNativePlatform();
+  return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
-function getPurchasesInstance(): Purchases {
-  if (Purchases.isConfigured()) return Purchases.getSharedInstance();
-  return Purchases.configure(REVENUECAT_WEB_BILLING_API_KEY, getOrCreateClientUserId());
+function cleanPublicKey(value: string | undefined): string | null {
+  const key = value?.trim();
+  if (!key || key.includes("XXXXX")) return null;
+  return key;
 }
 
-export async function hasPremiumEntitlement(): Promise<boolean> {
-  if (typeof window === 'undefined' || !isNativeApp()) return false;
-  try {
-    const customerInfo = await getPurchasesInstance().getCustomerInfo();
-    return !!customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID];
-  } catch (e) {
-    console.error('Failed to check premium entitlement:', e);
-    return false;
+/**
+ * Test Storeの公開キーは、App Store / Play Storeの設定前でも実機で課金導線を
+ * 検証するためのフォールバック。プラットフォーム別キーがあれば必ずそちらを使う。
+ */
+function getRevenueCatApiKey(): string | null {
+  const platform = Capacitor.getPlatform();
+  const platformKey = platform === "ios"
+    ? cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY)
+    : platform === "android"
+      ? cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY)
+      : null;
+
+  return platformKey || cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_TEST_API_KEY);
+}
+
+export function hasRevenueCatConfiguration(): boolean {
+  return isNativeApp() && getRevenueCatApiKey() !== null;
+}
+
+async function ensurePurchasesConfigured(): Promise<void> {
+  if (!isNativeApp()) throw new Error("RevenueCat is only available in the native app");
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) throw new Error("RevenueCat public API key is not configured");
+
+  if (!configurationPromise) {
+    configurationPromise = (async () => {
+      const { isConfigured } = await Purchases.isConfigured();
+      if (isConfigured) return;
+      await Purchases.configure({
+        apiKey,
+        appUserID: getOrCreateClientUserId(),
+        entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL,
+        diagnosticsEnabled: process.env.NODE_ENV !== "production",
+      });
+    })().catch((error) => {
+      configurationPromise = null;
+      throw error;
+    });
+  }
+
+  await configurationPromise;
+}
+
+function isPremiumCustomer(customerInfo: CustomerInfo): boolean {
+  const entitlement = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID];
+  if (!entitlement?.isActive) return false;
+
+  // 改ざんが検知されたCustomerInfoでは有料機能を解放しない。
+  return entitlement.verification !== VERIFICATION_RESULT.FAILED
+    && customerInfo.entitlements.verification !== VERIFICATION_RESULT.FAILED;
+}
+
+function planRank(aPackage: PurchasesPackage): number {
+  switch (aPackage.packageType) {
+    case PACKAGE_TYPE.ANNUAL:
+      return 0;
+    case PACKAGE_TYPE.MONTHLY:
+      return 1;
+    case PACKAGE_TYPE.LIFETIME:
+      return 2;
+    default:
+      return 3;
   }
 }
 
-export async function purchasePremium(): Promise<{ success: boolean; error?: string }> {
-  if (typeof window === 'undefined' || !isNativeApp()) {
-    return { success: false, error: 'アプリ版でのみ購入できます' };
+function toPremiumPlan(aPackage: PurchasesPackage): PremiumPlan {
+  return {
+    id: aPackage.identifier,
+    packageType: aPackage.packageType,
+    productId: aPackage.product.identifier,
+    title: aPackage.product.title,
+    description: aPackage.product.description,
+    price: aPackage.product.price,
+    priceString: aPackage.product.priceString,
+    pricePerMonthString: aPackage.product.pricePerMonthString,
+    subscriptionPeriod: aPackage.product.subscriptionPeriod,
+  };
+}
+
+async function loadOffering(): Promise<PurchasesOffering | null> {
+  await ensurePurchasesConfigured();
+  const offerings = await Purchases.getOfferings();
+  cachedOffering = offerings.current ?? null;
+  return cachedOffering;
+}
+
+export async function getPremiumSnapshot(): Promise<PremiumSnapshot> {
+  if (!isNativeApp()) {
+    return { availability: "web", isPremium: false, offeringId: null, plans: [] };
   }
+  if (!getRevenueCatApiKey()) {
+    return { availability: "unconfigured", isPremium: false, offeringId: null, plans: [] };
+  }
+
   try {
-    const purchases = getPurchasesInstance();
-    const offerings = await purchases.getOfferings();
-    const rcPackage = offerings.current?.availablePackages?.[0];
-    if (!rcPackage) {
-      return { success: false, error: '購入可能なプランが見つかりませんでした。RevenueCatダッシュボードでOfferingの設定を確認してください' };
-    }
-    const { customerInfo } = await purchases.purchase({ rcPackage });
-    return { success: !!customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] };
-  } catch (e) {
-    if (e instanceof PurchasesError && e.errorCode === ErrorCode.UserCancelledError) {
-      return { success: false };
-    }
-    const message = e instanceof Error ? e.message : '購入に失敗しました';
-    return { success: false, error: message };
+    await ensurePurchasesConfigured();
+    const [{ customerInfo }, offering] = await Promise.all([
+      Purchases.getCustomerInfo(),
+      loadOffering(),
+    ]);
+    const packages = [...(offering?.availablePackages ?? [])].sort(
+      (a, b) => planRank(a) - planRank(b),
+    );
+    return {
+      availability: "ready",
+      isPremium: isPremiumCustomer(customerInfo),
+      offeringId: offering?.identifier ?? null,
+      plans: packages.map(toPremiumPlan),
+    };
+  } catch (error) {
+    console.error("Failed to load RevenueCat state", error);
+    return { availability: "error", isPremium: false, offeringId: null, plans: [] };
+  }
+}
+
+function findPackage(offering: PurchasesOffering, packageIdentifier?: string): PurchasesPackage | null {
+  if (packageIdentifier) {
+    const selected = offering.availablePackages.find(
+      (aPackage) => aPackage.identifier === packageIdentifier,
+    );
+    if (selected) return selected;
+  }
+  return [...offering.availablePackages].sort((a, b) => planRank(a) - planRank(b))[0] ?? null;
+}
+
+function parsePurchaseError(error: unknown): PurchaseActionResult {
+  const purchasesError = error as Partial<PurchasesError>;
+  if (
+    purchasesError.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+    || purchasesError.userCancelled === true
+  ) {
+    return { status: "cancelled", isPremium: false };
+  }
+  if (purchasesError.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+    return { status: "pending", isPremium: false };
+  }
+  const message = error instanceof Error ? error.message : purchasesError.message;
+  return { status: "error", isPremium: false, message };
+}
+
+export async function purchasePremium(packageIdentifier?: string): Promise<PurchaseActionResult> {
+  if (!hasRevenueCatConfiguration()) return { status: "unavailable", isPremium: false };
+  try {
+    const offering = cachedOffering ?? await loadOffering();
+    if (!offering) return { status: "unavailable", isPremium: false };
+    const aPackage = findPackage(offering, packageIdentifier);
+    if (!aPackage) return { status: "unavailable", isPremium: false };
+
+    const { customerInfo } = await Purchases.purchasePackage({ aPackage });
+    return isPremiumCustomer(customerInfo)
+      ? { status: "success", isPremium: true }
+      : { status: "not-entitled", isPremium: false };
+  } catch (error) {
+    return parsePurchaseError(error);
+  }
+}
+
+export async function restorePremiumPurchases(): Promise<PurchaseActionResult> {
+  if (!hasRevenueCatConfiguration()) return { status: "unavailable", isPremium: false };
+  try {
+    await ensurePurchasesConfigured();
+    const { customerInfo } = await Purchases.restorePurchases();
+    return isPremiumCustomer(customerInfo)
+      ? { status: "success", isPremium: true }
+      : { status: "not-entitled", isPremium: false };
+  } catch (error) {
+    return parsePurchaseError(error);
+  }
+}
+
+export async function subscribeToPremiumStatus(
+  listener: (isPremium: boolean) => void,
+): Promise<() => void> {
+  if (!hasRevenueCatConfiguration()) return () => undefined;
+  try {
+    await ensurePurchasesConfigured();
+    const listenerId = await Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+      listener(isPremiumCustomer(customerInfo));
+    });
+    return () => {
+      void Purchases.removeCustomerInfoUpdateListener({ listenerToRemove: listenerId });
+    };
+  } catch (error) {
+    console.error("Failed to subscribe to RevenueCat updates", error);
+    return () => undefined;
+  }
+}
+
+export async function trackPremiumPaywallImpression(): Promise<void> {
+  if (!hasRevenueCatConfiguration()) return;
+  try {
+    const offering = cachedOffering ?? await loadOffering();
+    await Purchases.trackCustomPaywallImpression({
+      paywallId: CUSTOM_PAYWALL_ID,
+      offering,
+    });
+  } catch (error) {
+    // 分析イベントの失敗で購入導線そのものを止めない。
+    console.warn("Failed to track paywall impression", error);
   }
 }

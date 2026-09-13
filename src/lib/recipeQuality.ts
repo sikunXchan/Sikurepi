@@ -37,7 +37,7 @@ const normalize = (value: string) => toHiragana(value.normalize('NFKC').trim().t
 const DESSERT = /スイーツ|デザート|菓子|ケーキ|プリン|ゼリー|クッキー|タルト|パイ|アイス|パフェ|団子|だんご|餅|大福|どら焼き|マフィン|ドーナツ|ワッフル|ムース|チョコ|クレープ|パンケーキ|ホットケーキ|dessert|cake|pudding|cookie|tart|pie|ice cream|muffin|donut|waffle|chocolate/i;
 const SEASONING = /塩|しお|胡椒|こしょう|醤油|しょうゆ|味噌|みそ|砂糖|糖|酢|油|オイル|だし|出汁|コンソメ|ソース|ケチャップ|マヨ|みりん|酒|ワイン|にんにく|生姜|しょうが|ねぎ|葱|ハーブ|バジル|パセリ|レモン|ライム|酢|スパイス|カレー粉|唐辛子|ごま|胡麻|バター|クリーム|チーズ|はちみつ|蜂蜜|シロップ|salt|pepper|soy|miso|sugar|vinegar|oil|stock|broth|sauce|ketchup|mayonnaise|mirin|sake|wine|garlic|ginger|herb|basil|parsley|lemon|lime|spice|chili|sesame|butter|cream|cheese|honey|syrup/i;
 const AUXILIARY = /水|湯|氷|片栗粉|小麦粉|薄力粉|強力粉|パン粉|粉|でんぷん|starch|flour|water|ice/i;
-const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|ひとつまみ|一つまみ|少々|適量|お好み|\b(?:one|half|quarter|pinch|handful|to taste|as needed)\b/i;
+const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|(?:ひと|ふた|みっ|[一二三四五六七八九十])つまみ|少々|適量|お好み|\b(?:one|half|quarter|pinch|handful|to taste|as needed)\b/i;
 const VAGUE_ONLY = /^(適量|少々|お好みで?|必要量|ひとつまみ|一つまみ|to taste|as needed|some|a little)$/i;
 const HEAT_ACTION = /焼|炒|煮|茹|ゆで|蒸|揚|炊|加熱|火にかけ|電子レンジ|レンジ|オーブン|トースター|沸騰|温め|sear|saute|sauté|fry|boil|simmer|steam|bake|roast|grill|microwave|heat|cook/i;
 const TIME_OR_CUE = /\d+\s*(秒|分|時間|sec|second|min|minute|hour)|弱火|中火|強火|予熱|沸騰|きつね色|透明|しんなり|とろみ|香り|焼き色|火が通|中心まで|泡立|固ま|soft|tender|golden|bubbl|fragrant|translucent|cooked through|no longer pink|until set|low heat|medium heat|high heat/i;
@@ -102,6 +102,12 @@ function stepDurationMinutes(steps: string[]): { sum: number; longest: number } 
 }
 
 function ingredientMentioned(name: string, stepsText: string): boolean {
+  const englishTokens = name
+    .normalize('NFKC')
+    .toLowerCase()
+    .match(/[a-z]{3,}/g)
+    ?.filter((token) => !['fresh', 'frozen', 'optional', 'finely', 'sliced', 'chopped'].includes(token));
+  if (englishTokens?.some((token) => stepsText.includes(token))) return true;
   const target = normalize(name)
     .replace(/^(生|冷凍|新鮮な|fresh|frozen)/, '')
     .replace(/(薄切り|みじん切り|角切り|一口大|切り身|缶詰|適量|お好み).*$/, '');
@@ -147,6 +153,7 @@ export function assessRecipeQuality(
   const warnings: string[] = [];
   const text = recipeText(recipe);
   const dessert = DESSERT.test(text);
+  const plainSetStaple = context.mealStyle === 'set' && recipe.course === 'ご飯・主食';
   const minutes = parseRecipeMinutes(recipe.time);
   const servings = sanitizeServings(context.servings, 2);
 
@@ -227,18 +234,21 @@ export function assessRecipeQuality(
     errors.push('unsafe rare or undercooked instruction detected for high-risk meat');
   }
 
-  if (!dessert && substantialIngredients.length >= 1 && !FLAVOR_ANCHOR.test(text)) {
+  if (!dessert && !plainSetStaple && substantialIngredients.length >= 1 && !FLAVOR_ANCHOR.test(text)) {
     errors.push('savory recipe has no clear seasoning or flavor anchor');
   }
-  if (!AROMA.test(text)) warnings.push('the recipe could explain how aroma is developed or finished');
-  if (!BALANCE.test(text) && !dessert) warnings.push('the recipe does not show an intentional salt/acid/sweetness balance');
-  if (!TEXTURE.test(text)) warnings.push('the recipe could include a clearer texture contrast or finish cue');
+  if (!plainSetStaple) {
+    if (!AROMA.test(text)) warnings.push('the recipe could explain how aroma is developed or finished');
+    if (!BALANCE.test(text) && !dessert) warnings.push('the recipe does not show an intentional salt/acid/sweetness balance');
+    if (!TEXTURE.test(text)) warnings.push('the recipe could include a clearer texture contrast or finish cue');
+  }
 
   if (!recipe.nutrition) {
     errors.push('nutrition is required for quality and portion validation');
   } else {
     const { calories, protein_g, fat_g, carbs_g } = recipe.nutrition;
-    if (calories < 50 || calories > 2500) errors.push(`calories per serving are implausible: ${calories}`);
+    const minimumCalories = context.mealStyle === 'set' ? 15 : 50;
+    if (calories < minimumCalories || calories > 2500) errors.push(`calories per serving are implausible: ${calories}`);
     if (protein_g < 0 || protein_g > 200) errors.push(`protein per serving is implausible: ${protein_g}`);
     if (fat_g < 0 || fat_g > 200) errors.push(`fat per serving is implausible: ${fat_g}`);
     if (carbs_g < 0 || carbs_g > 400) errors.push(`carbohydrates per serving are implausible: ${carbs_g}`);
@@ -280,7 +290,8 @@ export function qualityGateErrors(
 ): string[] {
   const assessment = assessRecipeQuality(recipe, context);
   const errors = assessment.errors.map((error) => `${path}: ${error}`);
-  if (assessment.score < 85) {
+  const minimumScore = context.mealStyle === 'set' ? 80 : 85;
+  if (assessment.score < minimumScore) {
     errors.push(...assessment.warnings.map((warning) => `${path}: ${warning}`));
     errors.push(`${path}: overall reproducibility/flavor score is too low (${assessment.score}/100)`);
   }

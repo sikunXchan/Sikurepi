@@ -71,9 +71,9 @@ function normalize(value: string): string {
 const CATEGORY_TERMS = {
   pork: ["豚肉", "ぶた肉", "ポーク", "pork", "ベーコン", "bacon", "ハム", "ham", "ラード", "lard", "パンチェッタ", "pancetta", "プロシュート", "prosciutto", "チャーシュー", "叉焼", "サラミ", "salami", "豚骨", "とんこつ", "豚ひき肉", "ポークエキス", "pork extract", "pork gelatin"],
   beef: ["牛肉", "ぎゅう肉", "ビーフ", "beef", "veal", "仔牛", "牛ひき肉", "ビーフエキス", "beef extract", "牛脂", "ヘット"],
-  poultry: ["鶏肉", "とり肉", "チキン", "chicken", "鶏ひき肉", "鴨肉", "duck", "七面鳥", "turkey", "鶏がら", "チキンブイヨン", "chicken stock", "chicken broth"],
+  poultry: ["鶏肉", "とり肉", "鶏むね肉", "鶏胸肉", "鶏もも肉", "鶏ささみ", "手羽", "チキン", "chicken", "鶏ひき肉", "鴨肉", "duck", "七面鳥", "turkey", "鶏がら", "チキンブイヨン", "chicken stock", "chicken broth"],
   otherLandMeat: ["羊肉", "ラム肉", "マトン", "lamb", "mutton", "鹿肉", "venison", "馬肉", "rabbit", "兎肉", "肉エキス", "meat extract"],
-  fish: ["魚", "鮭", "さけ", "サーモン", "salmon", "まぐろ", "マグロ", "ツナ", "tuna", "かつお", "鰹", "bonito", "さば", "鯖", "mackerel", "いわし", "sardine", "たら", "cod", "鯛", "たい", "ぶり", "うなぎ", "しらす", "煮干し", "いりこ", "かつお節", "鰹節", "アンチョビ", "anchovy", "魚醤", "ナンプラー", "fish sauce", "オイスターソース", "oyster sauce", "魚介だし", "fish stock", "dashi fish"],
+  fish: ["魚", "鮭", "さけ", "サーモン", "salmon", "まぐろ", "マグロ", "ツナ", "tuna", "かつお", "鰹", "bonito", "さば", "鯖", "mackerel", "いわし", "sardine", "たら", "たらこ", "明太子", "cod", "鯛", "たい", "ぶり", "うなぎ", "しらす", "煮干し", "いりこ", "かつお節", "鰹節", "アンチョビ", "anchovy", "魚醤", "ナンプラー", "fish sauce", "オイスターソース", "oyster sauce", "魚介だし", "fish stock", "dashi fish"],
   shellfish: ["えび", "海老", "エビ", "shrimp", "prawn", "かに", "蟹", "カニ", "crab", "lobster", "ロブスター", "貝", "あさり", "clam", "牡蠣", "かき", "oyster", "ほたて", "帆立", "scallop", "ムール貝", "mussel", "いか", "烏賊", "イカ", "squid", "たこ", "蛸", "タコ", "octopus"],
   egg: ["卵", "たまご", "玉子", "egg", "うずら卵", "マヨネーズ", "mayonnaise", "mayo"],
   dairy: ["牛乳", "乳製品", "ミルク", "milk", "チーズ", "cheese", "ヨーグルト", "yogurt", "yoghurt", "バター", "butter", "生クリーム", "cream", "ホイップ", "whey", "ホエイ", "カゼイン", "casein", "練乳", "condensed milk"],
@@ -101,12 +101,23 @@ const RULE_CATEGORIES: Record<string, Category[]> = {
 };
 
 const ENGLISH_WORD = /^[a-z][a-z\s-]*$/;
+const AMBIGUOUS_HIRAGANA_FISH = new Set(["さけ", "たら", "たい", "ぶり"]);
 
 function containsTerm(text: string, term: string): boolean {
   const normalizedTerm = normalize(term);
   if (ENGLISH_WORD.test(normalizedTerm)) {
     const escaped = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
     return new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`, "i").test(text);
+  }
+  // 魚名のひらがな表記は「火が通ったら」「作りたい」「久しぶり」など、
+  // 通常の文章に現れる語尾と衝突する。単語らしい境界がある場合だけ拾い、
+  // 魚そのものを示す漢字・カタカナ表記は従来どおり確実に検出する。
+  if (AMBIGUOUS_HIRAGANA_FISH.has(normalizedTerm)) {
+    const escaped = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(
+      `(^|[^\\p{Script=Hiragana}])${escaped}(?=$|[のをがはとで、。・\\s\\d（(])`,
+      "u",
+    ).test(text);
   }
   return text.includes(normalizedTerm);
 }
@@ -116,13 +127,20 @@ function removeSafePhrases(text: string, category: Category): string {
     dairy: ["豆乳", "soy milk", "オーツミルク", "oat milk", "アーモンドミルク", "almond milk", "ココナッツミルク", "coconut milk", "植物性ミルク", "plant-based milk", "non-dairy milk", "植物性クリーム", "plant-based cream", "non-dairy cream", "ヴィーガンチーズ", "vegan cheese", "dairy-free cheese", "植物性バター", "vegan butter", "dairy-free butter"],
     egg: ["卵不使用マヨネーズ", "卵なしマヨネーズ", "ヴィーガンマヨネーズ", "egg-free mayonnaise", "egg-free mayo", "vegan mayonnaise", "vegan mayo", "卵不使用", "卵なし", "egg-free"],
     alcohol: ["ノンアルコールビール", "ノンアルコールワイン", "アルコール不使用みりん", "alcohol-free wine", "alcohol-free mirin", "non-alcoholic beer", "non-alcoholic wine"],
-    gluten: ["グルテンフリー", "gluten-free", "米粉", "rice flour", "コーンフラワー", "corn flour", "ひよこ豆粉", "chickpea flour", "アーモンド粉", "almond flour", "ココナッツ粉", "coconut flour"],
+    gluten: ["グルテンフリー", "gluten-free", "小麦不使用", "小麦を含まない", "小麦は含まれません", "wheat-free", "without wheat", "米粉", "rice flour", "コーンフラワー", "corn flour", "ひよこ豆粉", "chickpea flour", "アーモンド粉", "almond flour", "ココナッツ粉", "coconut flour"],
     glutenConditional: ["グルテンフリー醤油", "グルテンフリーしょうゆ", "gluten-free soy sauce", "小麦不使用醤油", "小麦不使用しょうゆ", "たまり醤油（小麦不使用）", "gluten-free oats", "認証済みグルテンフリーオーツ"],
     nuts: ["ココナッツ", "coconut", "ナツメグ", "nutmeg"],
   };
   let result = text;
   for (const phrase of phrases[category] || []) {
     result = result.split(normalize(phrase)).join(" ");
+  }
+  if (category === "glutenConditional") {
+    const safeLabel = "(?:ぐるてんふりー|小麦不使用|小麦を含まない|gluten[- ]?free|wheat[- ]?free)";
+    const conditionalFood = "(?:醤油|しょうゆ|soy sauce|おーつ|oats?|おーとみーる|oatmeal)";
+    result = result
+      .replace(new RegExp(`${safeLabel}.{0,24}${conditionalFood}`, "gi"), " ")
+      .replace(new RegExp(`${conditionalFood}.{0,24}${safeLabel}`, "gi"), " ");
   }
   return result;
 }
@@ -183,9 +201,18 @@ export function validateDietaryRestrictions(
 ): DietaryViolation[] {
   const fragments = collectFragments(recipe);
   const violations: DietaryViolation[] = [];
+  const usesCertifiedGlutenFreeCondiment = recipe.ingredients?.some((ingredient) =>
+    typeof ingredient.name === "string" &&
+    /グルテンフリー(?:醤油|しょうゆ)|小麦不使用(?:醤油|しょうゆ)|たまり醤油（小麦不使用）|gluten-free soy sauce/i.test(ingredient.name)
+  ) ?? false;
   const pushCategoryMatches = (restriction: string, categories: Category[]) => {
     for (const fragment of fragments) {
       for (const category of categories) {
+        // 材料欄で安全な製品を明示済みなら、料理名だけを短く「醤油炒め」等と
+        // 表現しても通常品を使ったとは判定しない。材料・手順自体の監査は続ける。
+        if (category === "glutenConditional" && fragment.field === "title" && usesCertifiedGlutenFreeCondiment) {
+          continue;
+        }
         const matchedTerm = findMatch(fragment.text, category);
         if (matchedTerm) {
           violations.push({ restriction, category, field: fragment.field, matchedTerm });

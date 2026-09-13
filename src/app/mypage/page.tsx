@@ -2,6 +2,7 @@
 
 import PageHeader from "@/components/PageHeader";
 import SettingsPanel from "@/components/SettingsPanel";
+import PremiumStatusCard from "@/components/PremiumStatusCard";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MyPage.module.css";
 
@@ -14,6 +15,8 @@ export default function MyPage() {
         subtitle={t.myPage.subtitle}
         mascot="bear_love"
       />
+
+      <PremiumStatusCard />
 
       <div className={`card ${styles.panelCard}`}>
         <SettingsPanel />

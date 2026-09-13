@@ -67,6 +67,10 @@ const overSalted = {
   ],
 };
 assert.equal(assessRecipeQuality(overSalted, { servings: 2 }).errors.some((error) => error.includes('salt amount')), true);
+assert.equal(assessRecipeQuality({
+  ...goodChicken,
+  ingredients: goodChicken.ingredients.map((item, index) => index === 2 ? { ...item, amount: 'ふたつまみ（下味用）' } : item),
+}).errors.some((error) => error.includes('not measurable')), false);
 assert.equal(assessRecipeQuality({ ...goodChicken, title: 'おすすめ料理🍳' }).errors.some((error) => error.includes('emoji')), true);
 
 const flatFlavor = {
@@ -86,6 +90,29 @@ const flatFlavor = {
 };
 assert.equal(assessRecipeQuality(flatFlavor).errors.length, 0);
 assert.equal(qualityGateErrors(flatFlavor).some((error) => error.includes('overall reproducibility/flavor score')), true);
+assert.equal(qualityGateErrors(flatFlavor, { mealStyle: 'set' }).some((error) => error.includes('overall reproducibility/flavor score')), false);
+
+const englishChicken = {
+  ...goodChicken,
+  title: 'Lemon chicken and rice',
+  genre: 'その他',
+  ingredients: [
+    { name: 'chicken breast', amount: '300g' },
+    { name: 'tomato', amount: '2' },
+    { name: 'onion', amount: '1' },
+    { name: 'rice', amount: '1 cup' },
+    { name: 'salad oil', amount: '1 tsp' },
+    { name: 'lemon juice', amount: '1 tbsp' },
+  ],
+  steps: [
+    'Cook the rice for 15 minutes until tender.',
+    'Heat the salad oil over medium heat for 1 minute, then cook the onion until fragrant and translucent.',
+    'Add the chicken and tomato; cook until the chicken reaches an internal temperature of 165°F.',
+    'Finish with lemon juice for bright acidity and serve the tender chicken over the rice.',
+  ],
+  tips: 'Brown the chicken well for a golden edge and a tender center.',
+};
+assert.equal(assessRecipeQuality(englishChicken).errors.some((error) => error.includes('never used')), false);
 
 const dessert = {
   title: 'はちみつヨーグルトプリン',
@@ -152,6 +179,24 @@ const soup = {
 const main = { ...goodChicken, course: '主菜' };
 assert.deepEqual(validateSetMeal([main, side, soup]), []);
 assert.equal(validateSetMeal([main, { ...main }, soup]).length > 0, true);
+
+const plainRice = {
+  title: '白ご飯',
+  time: '35分',
+  genre: '和食',
+  course: 'ご飯・主食',
+  ingredients: [
+    { name: '米', amount: '1合' },
+    { name: '水', amount: '200ml' },
+  ],
+  steps: [
+    '米を水で研ぎ、分量の水に30分浸す。',
+    '炊飯器で炊き、炊き上がったら全体をほぐす。',
+  ],
+  tips: '炊き上がりは粒をつぶさないよう底から返す。',
+  nutrition: { calories: 252, protein_g: 4, fat_g: 0.5, carbs_g: 56 },
+};
+assert.equal(qualityGateErrors(plainRice, { mealStyle: 'set' }).length, 0);
 
 const weeklyPlan = [
   { ...goodChicken, date: '2026-09-12', meal_slot: 'lunch' },

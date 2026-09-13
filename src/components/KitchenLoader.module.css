@@ -83,6 +83,31 @@
   text-align: center;
 }
 
+.phaseCopy {
+  animation: phaseCopyIn 220ms ease-out;
+}
+
+.phaseRail {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 8px;
+}
+
+.phasePip {
+  width: 18px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(123, 83, 50, 0.14);
+  transition: background-color 240ms ease, transform 240ms ease;
+}
+
+.phasePipActive {
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transform: scaleX(1.08);
+}
+
 .dots {
   display: inline-flex;
   gap: 3px;
@@ -120,6 +145,11 @@
   35% { transform: translateY(-4px); opacity: 1; }
 }
 
+@keyframes phaseCopyIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes servingSway {
   0%, 100% { transform: rotate(-1.5deg) translateY(0); }
   50% { transform: rotate(1.5deg) translateY(-4px); }
@@ -141,6 +171,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bear { animation: none; }
+  .bear, .phaseCopy { animation: none; }
   .steam, .dots i { animation: none; }
 }

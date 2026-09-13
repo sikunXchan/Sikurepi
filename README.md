@@ -44,3 +44,18 @@
 
 ### 5. PWAアイコンの設定
 あなたが提供した「犬のBBQ画像」ファイルを、`public/icon.png` (512x512推奨) として保存してコミットしてからプッシュしてください。PWAのアイコンとして反映されます。
+
+### 6. RevenueCatのセットアップ（ネイティブアプリ課金）
+
+週間献立の無料枠は毎週3回で、`premium` Entitlementが有効な利用者は回数制限なしになります。食事制限・アレルギーなどの安全機能は課金状態に関係なく利用できます。
+
+1. RevenueCatでプロジェクトを作成し、Product catalogに商品を追加します。ストア契約前の動作確認にはRevenueCat Test Storeを利用できます。
+2. `premium` という識別子のEntitlementを作り、商品を紐づけます。
+3. Offeringを作成してPackageを追加し、Current Offeringに設定します。
+4. Vercelの環境変数に公開SDKキーを設定して再デプロイします。
+   - Test Store: `NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`
+   - iOS: `NEXT_PUBLIC_REVENUECAT_IOS_API_KEY`
+   - Android: `NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY`
+5. `npm run build` の後に `npx cap sync` を実行し、iOSまたはAndroidの実機で購入・復元を確認します。
+
+公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。

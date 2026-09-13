@@ -5,6 +5,7 @@ import styles from "./KitchenLoader.module.css";
 
 type Props = {
   text: string;
+  phaseMessages?: string[];
   compact?: boolean;
   className?: string;
   variant?: "cooking" | "stirring" | "mixing" | "chopping" | "frying" | "plating" | "serving" | "delivering" | "reading" | "basket";
@@ -29,8 +30,11 @@ const VARIANT_ASSETS: Omit<Record<NonNullable<Props["variant"]>, string>, "cooki
   basket: "/mascot/bear_basket.png",
 };
 
-export default function KitchenLoader({ text, compact = false, className = "", variant = "cooking" }: Props) {
+const PHASE_THRESHOLDS_MS = [0, 1200, 3000, 6000];
+
+export default function KitchenLoader({ text, phaseMessages, compact = false, className = "", variant = "cooking" }: Props) {
   const [cookingFrame, setCookingFrame] = useState(0);
+  const [phaseIndex, setPhaseIndex] = useState(0);
 
   useEffect(() => {
     if (variant !== "cooking") return;
@@ -40,7 +44,22 @@ export default function KitchenLoader({ text, compact = false, className = "", v
     return () => window.clearInterval(timer);
   }, [variant]);
 
+  useEffect(() => {
+    if (!phaseMessages || phaseMessages.length < 2) return;
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const nextIndex = Math.min(
+        phaseMessages.length - 1,
+        PHASE_THRESHOLDS_MS.filter((threshold) => elapsed >= threshold).length - 1,
+      );
+      setPhaseIndex(nextIndex);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [phaseMessages]);
+
   const asset = variant === "cooking" ? COOKING_ASSETS[cookingFrame] : VARIANT_ASSETS[variant];
+  const activeText = phaseMessages?.[phaseIndex] || text;
 
   return (
     <div
@@ -63,13 +82,23 @@ export default function KitchenLoader({ text, compact = false, className = "", v
         <span className={styles.counter} />
       </div>
       <div className={styles.copy}>
-        <span>{text}</span>
+        <span key={activeText} className={styles.phaseCopy}>{activeText}</span>
         <span className={styles.dots} aria-hidden="true">
           <i />
           <i />
           <i />
         </span>
       </div>
+      {phaseMessages && phaseMessages.length > 1 && (
+        <div className={styles.phaseRail} aria-hidden="true">
+          {phaseMessages.map((message, index) => (
+            <span
+              key={message}
+              className={`${styles.phasePip} ${index <= phaseIndex ? styles.phasePipActive : ""}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
