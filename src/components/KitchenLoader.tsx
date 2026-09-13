@@ -79,7 +79,6 @@ export default function KitchenLoader({ text, phaseMessages, compact = false, cl
           width={362}
           height={362}
         />
-        <span className={styles.counter} />
       </div>
       <div className={styles.copy}>
         <span key={activeText} className={styles.phaseCopy}>{activeText}</span>

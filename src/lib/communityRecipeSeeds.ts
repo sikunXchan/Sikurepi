@@ -14,14 +14,15 @@ function bilingualRecipe(
 }
 
 // 初回から「みんなのレシピ」が空にならないよう、分量・加熱目安・味の調整方法を
-// 人手で確認した世界の家庭料理を収録する。IDはDBへ何度投入しても重複しない固定UUID。
+// 人手で確認した世界の家庭料理を収録する。creator_comment はレシピ紹介文ではなく、
+// 実際に作って食べた人の任意の感想として書く。IDはDBへ何度投入しても重複しない固定UUID。
 export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
   {
     id: '51000000-0000-4000-8000-000000000001',
     createdAt: '2026-09-13T01:08:00.000Z',
     recipe: bilingualRecipe({
       title: '鶏の照り焼きと彩り野菜', time: '25分', genre: '和食', dish_badge: 'フライパンひとつ',
-      creator_comment: 'たれを最後に煮詰めると、鶏肉が硬くなりにくく照りもきれいに出ます。',
+      creator_comment: '実際に作ったら鶏肉がやわらかく、家族にも好評でした。野菜までたれがおいしく絡みました。',
       ingredients: [
         { name: '鶏もも肉', amount: '300g' }, { name: 'パプリカ', amount: '1個' },
         { name: 'ブロッコリー', amount: '120g' }, { name: '醤油', amount: '大さじ1と1/2' },
@@ -38,7 +39,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 480, protein_g: 33, fat_g: 16, carbs_g: 50 },
     }, {
       title: 'Teriyaki Chicken with Colorful Vegetables', time: '25 min', genre: '和食', dish_badge: 'One pan',
-      creator_comment: 'Reduce the sauce at the end so the chicken stays tender and gets a glossy finish.',
+      creator_comment: 'I made this for dinner and the chicken stayed tender. My family liked the vegetables once they were coated in the sauce, too.',
       ingredients: [
         { name: 'boneless chicken thigh', amount: '300 g' }, { name: 'bell pepper', amount: '1' },
         { name: 'broccoli', amount: '120 g' }, { name: 'soy sauce', amount: '1 1/2 tbsp' },
@@ -59,7 +60,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
     createdAt: '2026-09-13T01:07:00.000Z',
     recipe: bilingualRecipe({
       title: '白いんげん豆のラタトゥイユ', time: '30分', genre: 'フレンチ', dish_badge: '野菜たっぷり',
-      creator_comment: 'パンにもご飯にも合うように、豆を加えて主菜らしい満足感を出しました。',
+      creator_comment: '翌日のランチにも食べました。豆入りでお腹にたまり、パンとよく合いました。',
       ingredients: [
         { name: 'なす', amount: '1本' }, { name: 'ズッキーニ', amount: '1本' },
         { name: 'パプリカ', amount: '1個' }, { name: '玉ねぎ', amount: '1/2個' },
@@ -77,7 +78,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 410, protein_g: 15, fat_g: 12, carbs_g: 60 },
     }, {
       title: 'White Bean Ratatouille', time: '30 min', genre: 'フレンチ', dish_badge: 'Vegetable-rich',
-      creator_comment: 'I added beans to make this satisfying enough for a main dish with either bread or rice.',
+      creator_comment: 'I had the leftovers for lunch the next day. The beans made it filling, and it was especially good with bread.',
       ingredients: [
         { name: 'eggplant', amount: '1' }, { name: 'zucchini', amount: '1' },
         { name: 'bell pepper', amount: '1' }, { name: 'onion', amount: '1/2' },
@@ -99,7 +100,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
     createdAt: '2026-09-13T01:06:00.000Z',
     recipe: bilingualRecipe({
       title: 'トマト香るチャナマサラ', time: '30分', genre: 'インド料理', dish_badge: '植物性たんぱく',
-      creator_comment: '身近なカレー粉でも、しょうがとにんにくを丁寧に炒めると香りが立ちます。',
+      creator_comment: '家にあるカレー粉で作れました。レモンを最後に入れると重くならず食べやすかったです。',
       ingredients: [
         { name: 'ひよこ豆水煮', amount: '300g' }, { name: '玉ねぎ', amount: '1個' },
         { name: 'カットトマト缶', amount: '300g' }, { name: 'にんにく', amount: '1片' },
@@ -117,7 +118,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 520, protein_g: 20, fat_g: 16, carbs_g: 74 },
     }, {
       title: 'Tomato Chana Masala', time: '30 min', genre: 'インド料理', dish_badge: 'Plant protein',
-      creator_comment: 'Even ordinary curry powder becomes aromatic when ginger and garlic are cooked patiently.',
+      creator_comment: 'I made it with the curry powder I already had. Adding lemon at the end kept it bright and easy to eat.',
       ingredients: [
         { name: 'canned chickpeas', amount: '300 g' }, { name: 'onion', amount: '1' },
         { name: 'canned chopped tomatoes', amount: '300 g' }, { name: 'garlic', amount: '1 clove' },
@@ -139,7 +140,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
     createdAt: '2026-09-13T01:05:00.000Z',
     recipe: bilingualRecipe({
       title: '彩り野菜と牛肉のビビンバ', time: '30分', genre: '韓国料理', dish_badge: '一皿で満足',
-      creator_comment: '野菜を同じフライパンで順番に炒めるので、洗い物を増やさず彩りを残せます。',
+      creator_comment: '野菜が多いのに家族もよく食べてくれました。辛さはコチュジャン半量でちょうどよかったです。',
       ingredients: [
         { name: '温かいご飯', amount: '400g' }, { name: '牛こま切れ肉', amount: '180g' },
         { name: 'にんじん', amount: '1/2本' }, { name: 'ほうれん草', amount: '120g' },
@@ -158,7 +159,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 560, protein_g: 25, fat_g: 18, carbs_g: 75 },
     }, {
       title: 'Colorful Beef Bibimbap', time: '30 min', genre: '韓国料理', dish_badge: 'Complete bowl',
-      creator_comment: 'Cook the vegetables in sequence in one pan to keep their colors bright without adding dishes.',
+      creator_comment: 'My family ate all the vegetables. Half the gochujang was just the right level of heat for us.',
       ingredients: [
         { name: 'cooked rice', amount: '400 g' }, { name: 'thinly sliced beef', amount: '180 g' },
         { name: 'carrot', amount: '1/2' }, { name: 'spinach', amount: '120 g' },
@@ -181,7 +182,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
     createdAt: '2026-09-13T01:04:00.000Z',
     recipe: bilingualRecipe({
       title: 'ひよこ豆入りシャクシュカ', time: '25分', genre: '中東料理', dish_badge: '朝食にも夕食にも',
-      creator_comment: 'トマトソースに豆を加え、パンがなくても満足できる一皿にしました。',
+      creator_comment: '休日の朝に作りました。ひよこ豆入りで、パンなしでもしっかり満足できました。',
       ingredients: [
         { name: '卵', amount: '4個' }, { name: 'ひよこ豆水煮', amount: '150g' },
         { name: 'カットトマト缶', amount: '300g' }, { name: '玉ねぎ', amount: '1/2個' },
@@ -200,7 +201,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 430, protein_g: 20, fat_g: 18, carbs_g: 47 },
     }, {
       title: 'Chickpea Shakshuka', time: '25 min', genre: '中東料理', dish_badge: 'Breakfast or dinner',
-      creator_comment: 'Chickpeas make the tomato skillet satisfying even when it is served without bread.',
+      creator_comment: 'I cooked this for a weekend breakfast. The chickpeas made it satisfying even without bread.',
       ingredients: [
         { name: 'eggs', amount: '4' }, { name: 'canned chickpeas', amount: '150 g' },
         { name: 'canned chopped tomatoes', amount: '300 g' }, { name: 'onion', amount: '1/2' },
@@ -265,7 +266,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
     createdAt: '2026-09-13T01:02:00.000Z',
     recipe: bilingualRecipe({
       title: '鶏肉とトマトのジョロフライス', time: '45分', genre: 'その他', dish_badge: '鍋ひとつ',
-      creator_comment: 'トマトの水分でご飯を炊くので、一粒ごとにうま味が入ります。',
+      creator_comment: '初めてジョロフライスを作りました。トマト味のご飯と鶏肉がよく合い、また作りたいです。',
       ingredients: [
         { name: '米', amount: '300g' }, { name: '鶏もも肉', amount: '250g' },
         { name: 'カットトマト缶', amount: '250g' }, { name: '玉ねぎ', amount: '1個' },
@@ -285,7 +286,7 @@ export const COMMUNITY_RECIPE_SEEDS: readonly CommunityRecipeSeed[] = [
       nutrition: { calories: 610, protein_g: 35, fat_g: 18, carbs_g: 77 },
     }, {
       title: 'Chicken and Tomato Jollof Rice', time: '45 min', genre: 'その他', dish_badge: 'One pot',
-      creator_comment: 'Cooking the rice in tomato gives every grain a savory flavor.',
+      creator_comment: 'This was my first time making jollof rice. The tomato rice went so well with the chicken that I want to make it again.',
       ingredients: [
         { name: 'rice', amount: '300 g' }, { name: 'boneless chicken thigh', amount: '250 g' },
         { name: 'canned chopped tomatoes', amount: '250 g' }, { name: 'onion', amount: '1' },

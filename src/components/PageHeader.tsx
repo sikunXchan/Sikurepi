@@ -1,5 +1,7 @@
 "use client";
 
+import { Crown } from "lucide-react";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import styles from "./PageHeader.module.css";
 
 /**
@@ -19,6 +21,8 @@ export default function PageHeader({
   mascot: string;
   actions?: React.ReactNode;
 }) {
+  const { isPremium } = usePremium();
+
   return (
     <div className={styles.header}>
       <img
@@ -29,7 +33,14 @@ export default function PageHeader({
         height={56}
       />
       <div className={styles.titleBlock}>
-        <h1 className={styles.title}>{title}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>{title}</h1>
+          {isPremium && (
+            <span className={styles.plusBadge} aria-label="Sikurepi Plus">
+              <Crown size={12} aria-hidden="true" />Plus
+            </span>
+          )}
+        </div>
         {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
       </div>
       {actions && <div className={styles.actions}>{actions}</div>}

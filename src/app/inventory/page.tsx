@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plus, Pin, Settings, X } from "lucide-react";
+import { Plus, Pin, X } from "lucide-react";
 import confetti from "canvas-confetti";
-import ChefProfileBadge from "@/components/ChefProfileBadge";
-import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
@@ -200,7 +198,6 @@ export default function InventoryPage() {
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [forgottenItems, setForgottenItems] = useState<Ingredient[]>([]);
   // 静的キーワードで判定できなかった食材名について、Enter押下後にAIへ判定を
   // 依頼している間だけtrueにする(判定中はフォームを操作不可にしてキャラクターの
@@ -353,19 +350,7 @@ export default function InventoryPage() {
         title={t.inventory.title}
         subtitle={t.inventory.subtitle}
         mascot="bear_basket"
-        actions={
-          <button
-            type="button"
-            className={styles.settingsBtn}
-            onClick={() => setIsSettingsOpen(true)}
-            title={t.inventory.settingsButtonTitle}
-          >
-            <Settings size={18} />
-          </button>
-        }
       />
-
-      <ChefProfileBadge />
 
       {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
       <form onSubmit={handleAdd} className={styles.addFormWrapper}>
@@ -516,11 +501,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <ProfileSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSaved={loadIngredients}
-      />
     </div>
   );
 }
