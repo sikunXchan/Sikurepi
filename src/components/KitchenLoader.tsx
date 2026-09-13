@@ -73,11 +73,13 @@ export default function KitchenLoader({ text, phaseMessages, compact = false, cl
         <span className={`${styles.steam} ${styles.steamThree}`} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={asset}
           className={`${styles.bear} ${!COOKING_ASSETS.includes(asset) ? styles[`bear_${variant}`] || "" : styles.cookingBear}`}
           src={asset}
           alt=""
           width={362}
           height={362}
+          draggable={false}
         />
       </div>
       <div className={styles.copy}>
