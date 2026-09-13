@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { Plus, Trash2, Check } from "lucide-react";
-import { motion, AnimatePresence, animate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getLocalShoppingItems,
   addLocalShoppingItem,
@@ -29,7 +30,16 @@ export default function ShoppingPage() {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [flyingItem, setFlyingItem] = useState<{
+    key: number;
+    name: string;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const animationKeyRef = useRef(0);
 
   function loadItems() {
     setItems(getLocalShoppingItems());
@@ -63,7 +73,10 @@ export default function ShoppingPage() {
   };
 
   const handleComplete = (item: ShoppingItem, e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const itemIcon = (e.currentTarget as HTMLElement)
+      .closest('li')
+      ?.querySelector('[data-shopping-item-icon]') as HTMLElement | null;
+    const rect = (itemIcon || e.currentTarget as HTMLElement).getBoundingClientRect();
     const startX = rect.left + rect.width / 2;
     const startY = rect.top + rect.height / 2;
 
@@ -77,47 +90,19 @@ export default function ShoppingPage() {
     const endX = targetRect.left + targetRect.width / 2;
     const endY = targetRect.top + targetRect.height / 2;
 
-    createFlyingEffect(item.name, startX, startY, endX, endY);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      animationKeyRef.current += 1;
+      setFlyingItem({
+        key: animationKeyRef.current,
+        name: item.name,
+        startX,
+        startY,
+        endX,
+        endY,
+      });
+    }
     toggleLocalShoppingItem(item.id);
     loadItems();
-  };
-
-  const createFlyingEffect = (name: string, startX: number, startY: number, endX: number, endY: number) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const el = document.createElement("div");
-    el.innerText = name;
-    el.style.position = "fixed";
-    el.style.left = `${startX}px`;
-    el.style.top = `${startY}px`;
-    el.style.padding = "8px 16px";
-    el.style.background = "var(--primary)";
-    el.style.color = "white";
-    el.style.borderRadius = "20px";
-    el.style.fontSize = "14px";
-    el.style.fontWeight = "bold";
-    el.style.zIndex = "10000";
-    el.style.pointerEvents = "none";
-    el.style.boxShadow = "0 10px 25px rgba(255, 111, 145, 0.4)";
-    document.body.appendChild(el);
-
-    const controlX = (startX + endX) / 2;
-    const controlY = Math.min(startY, endY) - 150;
-
-    animate(0, 1, {
-      duration: 0.8,
-      ease: [0.45, 0, 0.55, 1],
-      onUpdate: (t) => {
-        const x = (1 - t) ** 2 * startX + 2 * (1 - t) * t * controlX + t ** 2 * endX;
-        const y = (1 - t) ** 2 * startY + 2 * (1 - t) * t * controlY + t ** 2 * endY;
-        const scale = 1 - 0.5 * t;
-        const opacity = 1 - 0.2 * t;
-        el.style.transform = `translate(-50%, -50%) translate(${x - startX}px, ${y - startY}px) scale(${scale})`;
-        el.style.opacity = opacity.toString();
-      },
-      onComplete: () => {
-        el.remove();
-      }
-    });
   };
 
   // 在庫と同じカテゴリ別にアイテムを自動グルーピング
@@ -204,15 +189,16 @@ export default function ShoppingPage() {
                               >
                                 <Check size={16} />
                               </button>
-                              <span className={styles.itemIcon}>
+                              <span className={styles.itemIcon} data-shopping-item-icon>
                                 <IngredientIcon name={item.name} size={38} />
                               </span>
                               <span className={styles.itemName}>{item.name}</span>
                             </div>
                             <button
+                              type="button"
                               className={styles.deleteBtn}
                               onClick={() => handleDelete(item.id)}
-                              aria-label={t.shopping.deleteAriaLabel}
+                              aria-label={`${item.name}: ${t.shopping.deleteAriaLabel}`}
                             >
                               <Trash2 size={18} />
                             </button>
@@ -226,10 +212,40 @@ export default function ShoppingPage() {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <img src="/mascot/bear_basket.png" alt="" width={112} height={112} />
+              <Image src="/mascot/bear_basket.png" alt="" width={112} height={112} />
               <p>{t.shopping.emptyState}</p>
             </div>
           )}
+
+          <AnimatePresence>
+            {flyingItem && (
+              <motion.div
+                key={flyingItem.key}
+                className={styles.flyingIngredient}
+                style={{ left: flyingItem.startX, top: flyingItem.startY }}
+                initial={{ x: -35, y: -35, scale: 1, opacity: 1, rotate: 0 }}
+                animate={{
+                  x: [
+                    -35,
+                    flyingItem.endX - flyingItem.startX - 30,
+                    flyingItem.endX - flyingItem.startX - 35,
+                  ],
+                  y: [
+                    -35,
+                    Math.min(-150, (flyingItem.endY - flyingItem.startY) * 0.35 - 120),
+                    flyingItem.endY - flyingItem.startY - 35,
+                  ],
+                  scale: [1, 1.15, 0.45],
+                  opacity: [1, 1, 0.2],
+                  rotate: [0, -8, 12],
+                }}
+                transition={{ duration: 0.85, ease: [0.45, 0, 0.55, 1] }}
+                onAnimationComplete={() => setFlyingItem(null)}
+              >
+                <IngredientIcon name={flyingItem.name} size={58} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>

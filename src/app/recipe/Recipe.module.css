@@ -288,6 +288,49 @@
   }
 }
 
+.generationError {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgba(221, 85, 89, 0.2);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 246, 244, 0.96), rgba(255, 237, 239, 0.86));
+  box-shadow: 0 12px 30px rgba(161, 62, 68, 0.08);
+}
+
+.generationErrorHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.generationErrorIcon {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(224, 75, 81, 0.1);
+  color: #d64d53;
+}
+
+.generationErrorCopy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.generationErrorCopy strong { color: var(--foreground); font-size: 14px; font-weight: 900; }
+.generationErrorCopy span { color: var(--text-muted); font-size: 11px; font-weight: 700; line-height: 1.45; }
+.generationErrorMessage { margin: 0; padding: 9px 11px; border-radius: 12px; background: rgba(255, 255, 255, 0.64); color: #ad4850; font-size: 11px; font-weight: 750; line-height: 1.55; }
+.generationErrorActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.generationErrorActions button, .errorTertiary { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border-radius: 13px; font-size: 12px; font-weight: 900; cursor: pointer; }
+.errorPrimary { border: 0; background: linear-gradient(135deg, #e75c78, #f28ba1); color: white; box-shadow: 0 8px 18px rgba(220, 75, 111, 0.18); }
+.errorSecondary { border: 1px solid rgba(166, 88, 100, 0.16); background: rgba(255, 255, 255, 0.88); color: #7c555b; }
+.errorTertiary { width: 100%; border: 0; background: transparent; color: #a84a61; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 440px) {
+  .generationErrorActions { grid-template-columns: 1fr; }
+}
+
 .recipeIcon {
   width: 56px;
   height: 56px;
@@ -409,6 +452,7 @@
 }
 
 .section h3 {
+  min-width: 0;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 12px;
@@ -426,6 +470,10 @@
 }
 
 .ingredientList {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -433,6 +481,8 @@
 }
 
 .ingredientList li {
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -470,8 +520,11 @@
 .ingredientRight {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
   gap: 10px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   margin-left: auto;
 }
 
@@ -879,6 +932,48 @@
 .mealTabs { background: rgba(236, 248, 244, 0.8); }
 .mealTabActive { background: var(--gradient-cool); color: #fff; box-shadow: 0 5px 14px rgba(23,148,141,0.18); }
 
+.rescueModeBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  margin-bottom: 10px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(202, 151, 69, 0.24);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff9e9, #f6fbf6);
+}
+
+.rescueModeIcon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.rescueModeCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rescueModeCopy strong {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.rescueModeCopy small {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .requestCard {
   position: relative;
   margin-bottom: 16px;
@@ -998,11 +1093,22 @@
 .recipeDishChoiceIcon {
   position: relative;
   z-index: 1;
-  width: 168px !important;
-  height: 168px !important;
+  width: 176px !important;
+  height: 176px !important;
   object-fit: contain !important;
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
 }
+
+/* 単品はトレーの主役なので、定食セットの各皿より一段だけ大きく見せる。 */
+.recipeDishChoiceSingle { flex-basis: 228px; }
+.recipeDishChoiceSingle .recipeDishChoiceIcon { width: 216px !important; height: 216px !important; }
+.recipeDishChoiceSingle::after { top: 184px; width: 138px; }
+
+/* 生成結果が1品だけなら中央に据え、余白を料理の存在感へ振り分ける。 */
+.recipeDishGridSolo { justify-content: center; }
+.recipeDishChoiceSolo { flex-basis: 260px; }
+.recipeDishChoiceSolo .recipeDishChoiceIcon { width: 248px !important; height: 248px !important; }
+.recipeDishChoiceSolo::after { top: 212px; width: 154px; }
 
 .recipeDishChoiceName {
   position: relative;
@@ -1098,8 +1204,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 184px !important;
-  height: 184px !important;
+  width: clamp(240px, 32vw, 320px) !important;
+  height: clamp(240px, 32vw, 320px) !important;
   object-fit: contain !important;
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
   transform: translate(-50%, -50%);
@@ -1117,6 +1223,11 @@
   border-radius: 20px;
   background: #fffdf9;
   box-shadow: 0 8px 20px rgba(91, 51, 30, 0.09);
+}
+
+.recipeFeedbackWrap {
+  width: min(calc(100% - 16px), 710px);
+  margin: 12px auto 0;
 }
 
 .recipeDetailContent {
@@ -1141,7 +1252,13 @@
   margin-bottom: 8px;
 }
 
-.detailSectionHeading span { color: var(--text-muted); font-size: 13px; }
+.detailSectionHeading span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
 
 .cookedDetailBtn {
   display: flex;
@@ -1160,7 +1277,7 @@
 }
 
 @media (max-width: 560px) {
-  .recipeTrayGallery { min-height: 360px; padding: 54px 24px; border-radius: 30px; }
+  .recipeTrayGallery { min-height: 360px; padding: 42px 20px; border-radius: 30px; }
   .recipeDishGrid {
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -1174,9 +1291,17 @@
   }
   .recipeDishGrid::-webkit-scrollbar { display: none; }
   .recipeDishChoice { flex: 0 0 170px; scroll-snap-align: center; }
-  .recipeDishChoiceIcon { width: 148px !important; height: 148px !important; }
-  .recipeDishChoice::after { top: 124px; width: 96px; }
+  .recipeDishChoiceIcon { width: 156px !important; height: 156px !important; }
+  .recipeDishChoice::after { top: 132px; width: 102px; }
   .recipeDishChoiceName { max-width: 164px; font-size: 15px; }
+  .recipeDishGridSingle { padding-inline: calc(50% - 106px); scroll-padding-inline: calc(50% - 106px); }
+  .recipeDishChoiceSingle { flex-basis: 212px; }
+  .recipeDishChoiceSingle .recipeDishChoiceIcon { width: 194px !important; height: 194px !important; }
+  .recipeDishChoiceSingle::after { top: 165px; width: 124px; }
+  .recipeDishGridSolo { justify-content: center; padding-inline: 0; overflow-x: hidden; }
+  .recipeDishChoiceSolo { flex-basis: 236px; }
+  .recipeDishChoiceSolo .recipeDishChoiceIcon { width: 224px !important; height: 224px !important; }
+  .recipeDishChoiceSolo::after { top: 191px; width: 142px; }
 
   .recipeDetailTopbar { padding-inline: 10px; }
   .recipeDetailTopbar strong { font-size: 13px; }
@@ -1184,10 +1309,19 @@
   .recipeDetailTopbar .savedBtn { min-height: 42px; padding: 8px 12px; }
   .recipeDetailScroll { padding-inline: 8px; }
   .recipeDetailHero { aspect-ratio: 1.33 / 1; background-size: 108% 100%; }
-  .recipeDetailDishIcon { left: 50%; top: 50%; width: 148px !important; height: 148px !important; }
+  .recipeDetailDishIcon {
+    left: 50%;
+    top: 50%;
+    width: clamp(220px, 62vw, 248px) !important;
+    height: clamp(220px, 62vw, 248px) !important;
+  }
   .recipeDetailSummary { width: calc(100% - 12px); padding: 14px 16px; border-radius: 18px; }
+  .recipeFeedbackWrap { width: calc(100% - 12px); }
   .recipeDetailContent { width: calc(100% - 12px); padding: 16px; border-radius: 20px; }
   .detailSectionHeading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .detailSectionHeading span { text-align: left; }
+  .ingredientName { min-width: 0; flex-basis: 100%; }
+  .ingredientRight { width: 100%; margin-left: 0; justify-content: space-between; }
   .recipeTitle { font-size: 15px; line-height: 1.35; }
   .badgeRow { max-height: 25px; overflow: hidden; }
   .ingredientIconRow { max-height: 29px; overflow: hidden; }
@@ -1222,6 +1356,11 @@
   box-shadow: var(--glass-shadow);
 }
 
+.resultsBannerCopy {
+  flex: 1;
+  min-width: 0;
+}
+
 .resultsBannerTitle {
   font-size: 17px;
   font-weight: 900;
@@ -1233,6 +1372,55 @@
   font-weight: 700;
   color: var(--text-secondary);
   margin-top: 2px;
+}
+
+.cacheActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.cacheBadge {
+  color: var(--secondary-dark, #177f7a);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.regenerateFreshButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid rgba(32, 178, 170, 0.24);
+  border-radius: 999px;
+  background: rgba(32, 178, 170, 0.08);
+  color: var(--secondary-dark, #177f7a);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.regenerateFreshButton:focus-visible {
+  outline: 3px solid rgba(32, 178, 170, 0.2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .resultsBanner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .cacheActions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .cacheBadge { text-align: center; }
 }
 
 /* モックアップ風のカテゴリタイル（アイコン上・ラベル下の横スクロール） */
@@ -1306,3 +1494,29 @@
   gap: 5px;
   margin-top: 6px;
 }
+.freeQuotaHint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.premiumTipsGate {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 111, 145, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 246, 228, 0.96), rgba(255, 235, 242, 0.96));
+  color: var(--primary-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.premiumTipsGate svg { flex: 0 0 auto; color: #d85779; }
+.premiumTipsGate span { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.45; }
+.premiumTipsGate strong { font-size: 13px; font-weight: 900; }

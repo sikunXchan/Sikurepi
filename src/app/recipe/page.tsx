@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -11,8 +11,10 @@ import ClimateBar from "@/components/ClimateBar";
 import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import RecipeFeedbackPanel from "@/components/RecipeFeedbackPanel";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -21,10 +23,13 @@ import {
   saveLocalRecipe,
   addLocalShoppingItem,
   getRecentLocalRecipeNames,
+  getRecentFlavorFeedbackSummary,
   saveLocalTip,
   isIngredientMissing,
   getLocalLastRecipeGeneration,
   setLocalLastRecipeGeneration,
+  getLocalCachedRecipeGeneration,
+  setLocalCachedRecipeGeneration,
   consumePendingDailyPickHandoff,
   DEFAULT_USER_PROFILE,
   CATEGORY_ORDER,
@@ -33,6 +38,14 @@ import {
   UserProfile,
   NutritionData
 } from "@/lib/storage";
+import {
+  canUseFreeRecipeGeneration,
+  getFreeRecipeCreditsRemaining,
+  incrementFreeRecipeGeneration,
+} from "@/lib/storage";
+import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
+import { shareGeneratedRecipes } from "@/lib/communityRecipes";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
 import { setNavLocked } from "@/lib/navLock";
@@ -93,6 +106,7 @@ const stripLeadingEmoji = (value: string) => value
 
 export default function RecipePage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -102,6 +116,7 @@ export default function RecipePage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const requestCardRef = useRef<HTMLDivElement>(null);
   const [expandedIndex, setExpandedIndex] = useState<number>(-1);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
@@ -110,10 +125,13 @@ export default function RecipePage() {
   const [mealStyle, setMealStyle] = useState<'single' | 'set'>('single');
   const [instruction, setInstruction] = useState("");
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>([]);
+  const [rescueIngredientName, setRescueIngredientName] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [resultOrigin, setResultOrigin] = useState<'generated' | 'cache' | 'restored' | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
@@ -123,7 +141,7 @@ export default function RecipePage() {
   // 生成前の成立可否判定(要件8・9)でNGと判定された場合、レシピの代わりに
   // 警告(理由・不足食材・次のアクション)を表示する
   const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
-  const selectedTray = getTrayTheme(userProfile.trayTheme);
+  const selectedTray = getTrayTheme(isPremium ? userProfile.trayTheme : 'wood');
   const validSelectedIngredientIds = selectedIngredientIds.filter((id) =>
     ingredients.some((ingredient) => ingredient.id === id)
   );
@@ -150,9 +168,11 @@ export default function RecipePage() {
       setExpandedIndex(-1);
       setSavedSet(new Set(cached.savedIndices));
       setCreationMode(cached.creationMode);
+      setMealStyle(cached.mealStyle || (cached.recipes.length > 1 ? 'set' : 'single'));
       setInstruction(cached.instruction);
       setSelectedIngredientIds(cached.selectedIngredientIds);
       setSessionServings(cached.servings);
+      setResultOrigin('restored');
     }
   }, []);
 
@@ -166,9 +186,13 @@ export default function RecipePage() {
     if (!idParam) return;
     const id = Number(idParam);
     if (!Number.isFinite(id)) return;
+    const targetIngredient = getLocalIngredients().find((item) => item.id === id);
     setCreationMode('inventory');
     setSelectedIngredientIds([id]);
     setIngredientPickerExpanded(true);
+    if (new URLSearchParams(window.location.search).get("rescue") === "1" && targetIngredient) {
+      setRescueIngredientName(targetIngredient.name);
+    }
   }, []);
 
   // ホームタブの「今日のおすすめ」をタップして遷移してきた場合、専用の簡易表示
@@ -178,9 +202,11 @@ export default function RecipePage() {
   useEffect(() => {
     const handoff = consumePendingDailyPickHandoff();
     if (!handoff) return;
-    setRecipes([{ ...handoff, image_url: null, nutrition: null }]);
+    setRecipes([{ ...handoff, image_url: null, nutrition: handoff.nutrition || null }]);
+    setMealStyle('single');
     setExpandedIndex(0);
     setSavedSet(new Set());
+    setResultOrigin('generated');
   }, []);
 
   const loadLocalData = () => {
@@ -204,7 +230,86 @@ export default function RecipePage() {
     setInstruction(query);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (forceRefresh = false) => {
+    const selectedNames = creationMode === 'inventory'
+      ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
+      : [];
+
+    const currentClimate = getLocalClimateState();
+    const recentRecipes = getRecentLocalRecipeNames(5);
+    // 「気に入って保存した」という明示的なシグナルから、この人の好みの傾向を
+    // AIに伝え、より本人好みで美味しく感じられる提案につなげる
+    const likedRecipeSummary = getLocalSavedRecipes()
+      .slice(0, 15)
+      .map(r => ({ title: r.title, genre: r.genre }));
+
+    // 入力欄のテキストが選択中テンプレートの定型文と完全一致する場合だけ、
+    // そのテンプレートを「絶対条件」としてサーバーに伝える(要件7)。
+    const activeTemplate = TEMPLATES.find(tmpl => tmpl.query === instruction);
+
+    const payload = {
+      ingredients: selectedNames,
+      pinnedIngredients: creationMode === 'inventory'
+        ? (validSelectedIngredientIds.length > 0
+            ? selectedNames
+            : ingredients.filter((item) => item.is_pinned).map((item) => item.name))
+        : [],
+      instruction: instruction.trim() || undefined,
+      templateKey: activeTemplate?.key,
+      servings: sessionServings,
+      userProfile: {
+        ...userProfile,
+        tastePreferences: userProfile.tastePreferences || [],
+        excludedIngredients: userProfile.excludedIngredients || [],
+        cookingStyles: userProfile.cookingStyles || [],
+        dietaryRestrictions: userProfile.dietaryRestrictions || [],
+        preferredGenres: userProfile.preferredGenres || [],
+        flavorFeedback: getRecentFlavorFeedbackSummary(12),
+      },
+      climate: userProfile.enableClimate !== false ? currentClimate : undefined,
+      recentHistory: recentRecipes,
+      likedRecipeSummary,
+      mode: creationMode === 'free' ? 'free' : 'inventory',
+      mealStyle,
+      language,
+    };
+    const requestKey = createRecipeGenerationRequestKey(payload);
+
+    if (!forceRefresh) {
+      const cached = getLocalCachedRecipeGeneration(requestKey);
+      if (cached && cached.recipes.length > 0) {
+        const savedTitles = new Set(getLocalSavedRecipes().map((recipe) => recipe.title));
+        const savedIndices = cached.recipes
+          .map((recipe, index) => savedTitles.has(recipe.title) ? index : -1)
+          .filter((index) => index >= 0);
+        const restored = {
+          ...cached,
+          savedIndices,
+          creationMode,
+          mealStyle,
+          instruction,
+          selectedIngredientIds: validSelectedIngredientIds,
+          servings: sessionServings,
+        };
+        setErrorMsg("");
+        setFeasibilityWarning(null);
+        setRecipes(restored.recipes);
+        setCookingTips(restored.cookingTips);
+        setShowTips(restored.cookingTips.length > 0);
+        setExpandedIndex(-1);
+        setSavedSet(new Set(savedIndices));
+        setResultOrigin('cache');
+        setLocalLastRecipeGeneration(restored);
+        showToast(t.recipe.cacheHitToast);
+        return;
+      }
+    }
+
+    if (!isPremium && !canUseFreeRecipeGeneration(mealStyle)) {
+      setShowPaywall(true);
+      return;
+    }
+
     setLoading(true);
     setNavLocked(true);
     setErrorMsg("");
@@ -212,49 +317,9 @@ export default function RecipePage() {
     setCookingTips([]);
     setSavedSet(new Set());
     setFeasibilityWarning(null);
+    setResultOrigin(null);
 
     try {
-      const selectedNames = creationMode === 'inventory'
-        ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
-        : [];
-
-      const currentClimate = getLocalClimateState();
-      const recentRecipes = getRecentLocalRecipeNames(5);
-      // 「気に入って保存した」という明示的なシグナルから、この人の好みの傾向を
-      // AIに伝え、より本人好みで美味しく感じられる提案につなげる
-      const likedRecipeSummary = getLocalSavedRecipes()
-        .slice(0, 15)
-        .map(r => ({ title: r.title, genre: r.genre }));
-
-      // 入力欄のテキストが選択中テンプレートの定型文と完全一致する場合だけ、
-      // そのテンプレートを「絶対条件」としてサーバーに伝える(要件7)。
-      // ユーザーが文章を書き換えた時点で一致しなくなり、自然に解除される。
-      const activeTemplate = TEMPLATES.find(tmpl => tmpl.query === instruction);
-
-      const payload = {
-        ingredients: selectedNames,
-        instruction: instruction.trim() || undefined,
-        templateKey: activeTemplate?.key,
-        servings: sessionServings,
-        userProfile: {
-          ...userProfile,
-          tastePreferences: userProfile.tastePreferences || [],
-          excludedIngredients: userProfile.excludedIngredients || [],
-          cookingStyles: userProfile.cookingStyles || [],
-          dietaryRestrictions: userProfile.dietaryRestrictions || [],
-          preferredGenres: userProfile.preferredGenres || [],
-        },
-        climate: userProfile.enableClimate !== false ? currentClimate : undefined,
-        // 旧実装ではサーバー側が読む項目名(recentHistory)と送信側の項目名
-        // (recentRecipes)が一致しておらず、直近レシピの重複防止が機能して
-        // いなかったため、正しい項目名で送るよう修正
-        recentHistory: recentRecipes,
-        likedRecipeSummary,
-        mode: creationMode === 'free' ? 'free' : 'inventory',
-        mealStyle,
-        language,
-      };
-
       const res = await fetch("/api/recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -281,6 +346,14 @@ export default function RecipePage() {
       if (data.recipes && data.recipes.length > 0) {
         setRecipes(data.recipes);
         setExpandedIndex(-1);
+        setResultOrigin('generated');
+        if (!isPremium) incrementFreeRecipeGeneration(mealStyle);
+
+        // 無料版は常に、Plusは設定がONの時だけ、完成レシピ本文を自動共有する。
+        // 個人設定・在庫・自由記述は送信しない。
+        if (!isPremium || userProfile.shareGeneratedRecipes !== false) {
+          void shareGeneratedRecipes(data.recipes);
+        }
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -296,17 +369,21 @@ export default function RecipePage() {
       }
 
       // 別タブへ移動しても前回の生成結果が消えないように保存しておく
-      setLocalLastRecipeGeneration({
+      const generationSnapshot = {
         recipes: data.recipes,
         cookingTips: tips,
         expandedIndex: -1,
         savedIndices: [],
         creationMode,
+        mealStyle,
         instruction,
         selectedIngredientIds: validSelectedIngredientIds,
         servings: sessionServings,
         savedAt: new Date().toISOString(),
-      });
+        requestKey,
+      };
+      setLocalLastRecipeGeneration(generationSnapshot);
+      setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : t.recipe.errorGeneric);
@@ -314,6 +391,24 @@ export default function RecipePage() {
       setLoading(false);
       setNavLocked(false);
     }
+  };
+
+  const scrollToGenerationForm = () => {
+    requestAnimationFrame(() => {
+      requestCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleReviewGenerationConditions = () => {
+    setErrorMsg("");
+    if (creationMode === "inventory") setIngredientPickerExpanded(true);
+    scrollToGenerationForm();
+  };
+
+  const handleSwitchToFreeFromError = () => {
+    setErrorMsg("");
+    setCreationMode("free");
+    scrollToGenerationForm();
   };
 
   const handleSaveRecipe = (index: number) => {
@@ -438,6 +533,18 @@ export default function RecipePage() {
         </button>
       </div>
 
+      {creationMode === 'inventory' && rescueIngredientName && (
+        <div className={styles.rescueModeBanner}>
+          <span className={styles.rescueModeIcon}>
+            <IngredientIcon name={rescueIngredientName} size={52} />
+          </span>
+          <span className={styles.rescueModeCopy}>
+            <strong>{t.recipe.rescueModeTitle}</strong>
+            <small>{t.recipe.rescueModeBody(rescueIngredientName)}</small>
+          </span>
+        </div>
+      )}
+
       {/* 単品の候補を複数出す ⇄ 主菜・副菜・汁物からなる定食セットを1組出す */}
       <div className={`${styles.modeTabs} ${styles.mealTabs}`}>
         <button
@@ -457,7 +564,7 @@ export default function RecipePage() {
       </div>
 
       {/* 設定・リクエストフォーム */}
-      <div className={`card ${styles.requestCard}`}>
+      <div ref={requestCardRef} className={`card ${styles.requestCard}`}>
         {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
@@ -608,7 +715,7 @@ export default function RecipePage() {
 
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate(false)}
           disabled={loading}
           className="btn-primary"
           style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 700 }}
@@ -625,17 +732,42 @@ export default function RecipePage() {
             </>
           )}
         </button>
+        {!isPremium && (
+          <p className={styles.freeQuotaHint}>
+            {t.recipe.freeDailyRemaining(getFreeRecipeCreditsRemaining(), mealStyle)}
+          </p>
+        )}
       </div>
       </div>
 
       {loading && (
-        <KitchenLoader text={t.recipe.loadingText} />
+        <KitchenLoader text={t.recipe.loadingText} phaseMessages={t.recipe.loadingPhases} />
       )}
 
       {errorMsg && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
-          {errorMsg}
-        </div>
+        <section className={styles.generationError} role="alert">
+          <div className={styles.generationErrorHead}>
+            <span className={styles.generationErrorIcon}><CircleAlert size={21} /></span>
+            <span className={styles.generationErrorCopy}>
+              <strong>{t.recipe.errorGuideTitle}</strong>
+              <span>{t.recipe.errorGuideBody}</span>
+            </span>
+          </div>
+          <p className={styles.generationErrorMessage}>{errorMsg}</p>
+          <div className={styles.generationErrorActions}>
+            <button type="button" className={styles.errorPrimary} onClick={() => void handleGenerate(true)}>
+              <RefreshCw size={16} />{t.recipe.retryGenerate}
+            </button>
+            <button type="button" className={styles.errorSecondary} onClick={handleReviewGenerationConditions}>
+              <SlidersHorizontal size={16} />{t.recipe.reviewConditions}
+            </button>
+          </div>
+          {creationMode === "inventory" && (
+            <button type="button" className={styles.errorTertiary} onClick={handleSwitchToFreeFromError}>
+              {t.recipe.switchToFreeFromError}
+            </button>
+          )}
+        </section>
       )}
 
       {/* 生成前の成立可否判定でNGだった場合の警告(要件8): エラーではなく、
@@ -689,28 +821,45 @@ export default function RecipePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className={styles.resultsBanner}>
             <img src="/mascot/bear_serving.png" alt="" width={52} height={52} />
-            <div>
+            <div className={styles.resultsBannerCopy}>
               <div className={styles.resultsBannerTitle}>{t.recipe.resultsBannerTitle(recipes.length)}</div>
               <div className={styles.resultsBannerSub}>{t.recipe.resultsBannerSub}</div>
             </div>
+            {resultOrigin === 'cache' && (
+              <div className={styles.cacheActions}>
+                <span className={styles.cacheBadge}>{t.recipe.cachedResultLabel}</span>
+                <button
+                  type="button"
+                  className={styles.regenerateFreshButton}
+                  onClick={() => void handleGenerate(true)}
+                  disabled={loading}
+                >
+                  <RefreshCw size={15} aria-hidden="true" />
+                  {t.recipe.regenerateFresh}
+                </button>
+              </div>
+            )}
           </div>
           <div
             className={styles.recipeTrayGallery}
-            style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+            style={{
+              backgroundImage: `url("${selectedTray.asset}")`,
+              backgroundSize: selectedTray.backgroundSize,
+            }}
           >
-            <div className={styles.recipeDishGrid}>
+            <div className={`${styles.recipeDishGrid} ${mealStyle === 'single' ? styles.recipeDishGridSingle : ''} ${recipes.length === 1 ? styles.recipeDishGridSolo : ''}`}>
               {recipes.map((recipe, index) => (
                 <button
                   key={index}
                   type="button"
-                  className={styles.recipeDishChoice}
+                  className={`${styles.recipeDishChoice} ${mealStyle === 'single' ? styles.recipeDishChoiceSingle : ''} ${recipes.length === 1 ? styles.recipeDishChoiceSolo : ''}`}
                   onClick={() => setExpandedIndex(index)}
                   aria-label={`${recipe.title} — ${language === 'ja' ? 'レシピを表示' : 'View recipe'}`}
                 >
                   <RecipeThumbnail
                     genre={recipe.genre}
                     fallbackIngredientName={recipe.title}
-                    size={168}
+                    size={mealStyle === 'single' ? (recipes.length === 1 ? 248 : 216) : 176}
                     className={styles.recipeDishChoiceIcon}
                   />
                   <span className={styles.recipeDishChoiceName}>{recipe.title}</span>
@@ -722,7 +871,7 @@ export default function RecipePage() {
       )}
 
       {/* 豆知識セクション */}
-      {!loading && cookingTips.length > 0 && (
+      {!loading && cookingTips.length > 0 && isPremium && (
         <div className={styles.cookingTipsSection}>
           <button
             className={styles.cookingTipsHeader}
@@ -759,6 +908,13 @@ export default function RecipePage() {
             )}
           </AnimatePresence>
         </div>
+      )}
+
+      {!loading && cookingTips.length > 0 && !isPremium && (
+        <button type="button" className={styles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+          <Lightbulb size={20} />
+          <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+        </button>
       )}
 
       {/* クッキングセッション */}
@@ -822,12 +978,15 @@ export default function RecipePage() {
             <div className={styles.recipeDetailScroll}>
               <div
                 className={styles.recipeDetailHero}
-                style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+                style={{
+                  backgroundImage: `url("${selectedTray.asset}")`,
+                  backgroundSize: selectedTray.backgroundSize,
+                }}
               >
                 <RecipeThumbnail
                   genre={detailRecipe.genre}
                   fallbackIngredientName={detailRecipe.title}
-                  size={184}
+                  size={320}
                   className={styles.recipeDetailDishIcon}
                 />
               </div>
@@ -868,6 +1027,10 @@ export default function RecipePage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className={styles.recipeFeedbackWrap}>
+                <RecipeFeedbackPanel recipe={detailRecipe} source="generation" />
               </div>
 
               <div className={styles.recipeDetailContent}>
@@ -936,10 +1099,17 @@ export default function RecipePage() {
                   </ol>
                 </div>
 
-                {detailRecipe.tips && (
+                {detailRecipe.tips && isPremium && (
                   <div className={styles.tipsBox}>
                     <strong>{t.recipe.tipsPrefix}</strong> {detailRecipe.tips}
                   </div>
+                )}
+
+                {detailRecipe.tips && !isPremium && (
+                  <button type="button" className={styles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+                    <Lightbulb size={20} />
+                    <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                  </button>
                 )}
 
                 <button
@@ -954,6 +1124,8 @@ export default function RecipePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }

@@ -8,6 +8,59 @@ type DishIconRule = {
 // 料理名から具体的な見た目を優先して解決する。一般語ほど後ろに置き、
 // 「カレーパン→カレー」「魚介パスタ→魚介」のような誤分類を避ける。
 const DISH_ICON_RULES: readonly DishIconRule[] = [
+  // 文化圏ごとの代表料理は、見た目の近い汎用カテゴリへ落とす前に固有画像を優先する。
+  { slug: "oyakodon", keywords: ["親子丼", "oyakodon", "chicken and egg rice bowl"] },
+  { slug: "gyudon", keywords: ["牛丼", "gyudon", "beef bowl"] },
+  { slug: "katsudon", keywords: ["カツ丼", "かつ丼", "katsudon", "pork cutlet rice bowl"] },
+  { slug: "tempura", keywords: ["天ぷら", "天麩羅", "tempura"] },
+  { slug: "miso_soup", keywords: ["味噌汁", "みそ汁", "miso soup"] },
+  { slug: "yakisoba", keywords: ["焼きそば", "焼そば", "yakisoba"] },
+  { slug: "teriyaki_chicken", keywords: ["照り焼きチキン", "鶏の照り焼き", "teriyaki chicken"] },
+  { slug: "bulgogi", keywords: ["プルコギ", "불고기", "bulgogi"] },
+  { slug: "tteokbokki", keywords: ["トッポギ", "떡볶이", "tteokbokki", "topokki"] },
+  { slug: "japchae", keywords: ["チャプチェ", "잡채", "japchae"] },
+  { slug: "kimchi_jjigae", keywords: ["キムチチゲ", "キムチ鍋", "김치찌개", "kimchi jjigae", "kimchi stew"] },
+  { slug: "dim_sum", keywords: ["点心", "飲茶", "dim sum", "yum cha"] },
+  { slug: "spring_rolls", keywords: ["春巻き", "春巻", "spring roll"] },
+  { slug: "sweet_sour_pork", keywords: ["酢豚", "古老肉", "sweet and sour pork"] },
+  { slug: "thai_green_curry", keywords: ["タイグリーンカレー", "グリーンカレー", "ゲーンキョウワーン", "thai green curry", "green curry"] },
+  { slug: "laksa", keywords: ["ラクサ", "laksa"] },
+  { slug: "nasi_goreng", keywords: ["ナシゴレン", "nasi goreng"] },
+  { slug: "chicken_tikka_masala", keywords: ["チキンティッカマサラ", "chicken tikka masala"] },
+  { slug: "chana_masala", keywords: ["チャナマサラ", "ひよこ豆カレー", "chana masala", "chole masala"] },
+  { slug: "tagine", keywords: ["タジン鍋", "タジン", "tagine", "tajine"] },
+  { slug: "tabbouleh", keywords: ["タブーリ", "タブレ", "tabbouleh", "tabouli"] },
+  { slug: "enchiladas", keywords: ["エンチラーダ", "enchilada"] },
+  { slug: "tamales", keywords: ["タマレス", "タマル", "tamale"] },
+  { slug: "mac_and_cheese", keywords: ["マカロニチーズ", "マックアンドチーズ", "mac and cheese", "macaroni and cheese"] },
+  { slug: "shepherds_pie", keywords: ["シェパーズパイ", "コテージパイ", "shepherd's pie", "shepherd’s pie", "cottage pie"] },
+
+  { slug: "ramen", keywords: ["ラーメン", "ramen"] },
+  { slug: "pho", keywords: ["フォー", "phở", "pho"] },
+  { slug: "udon", keywords: ["うどん", "饂飩", "udon"] },
+  { slug: "soba", keywords: ["そば", "蕎麦", "soba"] },
+  { slug: "bibimbap", keywords: ["ビビンバ", "ピビンパ", "bibimbap"] },
+  { slug: "poke_bowl", keywords: ["ポケボウル", "ポキボウル", "ポキ丼", "poke bowl", "poke"] },
+  { slug: "pad_thai", keywords: ["パッタイ", "パッ・タイ", "pad thai"] },
+  { slug: "tom_yum", keywords: ["トムヤム", "tom yum"] },
+  { slug: "butter_chicken", keywords: ["バターチキン", "ムルグマカニ", "butter chicken", "murgh makhani"] },
+  { slug: "masala_dosa", keywords: ["マサラドーサ", "ドーサ", "masala dosa", "dosa"] },
+  { slug: "falafel_plate", keywords: ["ファラフェル", "falafel"] },
+  { slug: "shawarma", keywords: ["シャワルマ", "シャウルマ", "shawarma"] },
+  { slug: "moussaka", keywords: ["ムサカ", "moussaka"] },
+  { slug: "shakshuka", keywords: ["シャクシュカ", "shakshuka"] },
+  { slug: "ratatouille", keywords: ["ラタトゥイユ", "ratatouille"] },
+  { slug: "fish_and_chips", keywords: ["フィッシュアンドチップス", "フィッシュ＆チップス", "fish and chips"] },
+  { slug: "ceviche", keywords: ["セビーチェ", "セビチェ", "ceviche"] },
+  { slug: "feijoada", keywords: ["フェイジョアーダ", "feijoada"] },
+  { slug: "jollof_rice", keywords: ["ジョロフライス", "jollof rice", "jollof"] },
+  { slug: "arepa", keywords: ["アレパ", "arepa"] },
+  { slug: "pierogi", keywords: ["ピエロギ", "pierogi"] },
+  { slug: "borscht", keywords: ["ボルシチ", "borscht", "borsch"] },
+  { slug: "injera_platter", keywords: ["インジェラ", "injera"] },
+  { slug: "gazpacho", keywords: ["ガスパチョ", "gazpacho"] },
+  { slug: "mapo_tofu", keywords: ["麻婆豆腐", "マーボー豆腐", "mapo tofu", "mapo doufu"] },
+
   { slug: "pilaf_biryani", keywords: ["ビリヤニ", "biryani", "ピラフ", "pilaf"] },
   { slug: "fried_rice", keywords: ["炒飯", "チャーハン", "fried rice", "nasi goreng"] },
   { slug: "rice_porridge", keywords: ["おかゆ", "お粥", "雑炊", "リゾット風おかゆ", "congee", "rice porridge", "juk"] },
@@ -118,6 +171,46 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "fried_food", keywords: ["揚げ物", "フライ", "天ぷら", "コロッケ", "fried", "tempura", "croquette"] },
   { slug: "meat_stir_fry", keywords: ["肉炒め", "豚バラ炒め", "豚肉炒め", "牛肉炒め", "回鍋肉", "青椒肉絲", "生姜焼き", "しょうが焼き", "stir-fried meat", "meat stir-fry"] },
 ];
+
+export type DishIconCategory =
+  | "rice"
+  | "noodle"
+  | "soup_stew"
+  | "meat"
+  | "seafood"
+  | "egg_bean"
+  | "vegetable"
+  | "bread_snack"
+  | "dessert_drink"
+  | "other";
+
+export const DISH_ICON_SLUGS = Array.from(new Set(DISH_ICON_RULES.map((rule) => rule.slug)));
+
+function containsJapanese(value: string): boolean {
+  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(value);
+}
+
+export function getDishIconDisplayName(slug: string, language: "ja" | "en" = "ja"): string {
+  const rule = DISH_ICON_RULES.find((candidate) => candidate.slug === slug);
+  const keywords = rule?.keywords || [];
+  if (language === "ja") return keywords.find(containsJapanese) || keywords[0] || slug;
+  const english = keywords.find((keyword) => /[a-z]/i.test(keyword) && !containsJapanese(keyword));
+  if (english) return english.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return slug.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function getDishIconCategory(slug: string): DishIconCategory {
+  if (/(cake|tart|pie_slice|pancake|waffle|crepe|donut|cupcake|cookie|brownie|pudding|custard|ice_cream|popsicle|shaved_ice|fruit_bowl|mochi|sweet_bun|chocolate|parfait|smoothie|hot_drink)/.test(slug)) return "dessert_drink";
+  if (/(ramen|pho|udon|soba|yakisoba|tteokbokki|japchae|laksa|pad_thai|pasta|gnocchi|noodle)/.test(slug)) return "noodle";
+  if (/(rice|don$|donburi|bibimbap|poke_bowl|nasi_goreng|jollof|pilaf|biryani|risotto|paella|sushi)/.test(slug)) return "rice";
+  if (/(soup|stew|hotpot|jjigae|tom_yum|tagine|borscht|gazpacho|curry|masala|shakshuka|feijoada|fondue|casserole|baked_dish)/.test(slug)) return "soup_stew";
+  if (/(fish|seafood|shellfish|ceviche)/.test(slug)) return "seafood";
+  if (/(chicken|meat|steak|bulgogi|pork|sausage|shawarma|kebab|cutlet|meatball|burger|shepherd)/.test(slug)) return "meat";
+  if (/(egg|omelet|tofu|lentil|bean|mapo)/.test(slug)) return "egg_bean";
+  if (/(vegetable|salad|ratatouille|tabbouleh|pickled|dip_spread|falafel)/.test(slug)) return "vegetable";
+  if (/(bread|toast|sandwich|pizza|wrap|taco|arepa|dosa|dumpling|dim_sum|spring_roll|tamale|pastry|savory|steamed_bun|pierogi|injera)/.test(slug)) return "bread_snack";
+  return "other";
+}
 
 function normalizeDishName(name: string): string {
   return name.normalize("NFKC").toLocaleLowerCase().replace(/[‐‑‒–—―]/g, "-");

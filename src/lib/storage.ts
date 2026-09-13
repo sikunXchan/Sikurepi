@@ -2,6 +2,26 @@
 
 import { toHiragana } from './kana';
 import type { TrayThemeId } from './trayThemes';
+import {
+  FREE_DAILY_RECEIPT_SCANS,
+  FREE_DAILY_RECIPE_CREDITS,
+  FREE_WEEKLY_PLAN_GENERATIONS,
+  getRecipeGenerationCost,
+  normalizeDailyFeatureUsage,
+  normalizeFreeGenerationUsage,
+  type DailyFeatureUsage,
+  type FreeGenerationUsage,
+} from './premiumQuota';
+
+export {
+  FREE_COMMUNITY_RECIPE_ITEMS,
+  FREE_DAILY_RECEIPT_SCANS,
+  FREE_DAILY_RECIPE_CREDITS,
+  FREE_HISTORY_ITEMS,
+  FREE_WEEKLY_PLAN_GENERATIONS,
+  getGenerationWeekKey,
+  getRecipeGenerationCost,
+} from './premiumQuota';
 
 export type Ingredient = {
   id: number;
@@ -24,6 +44,36 @@ export type NutritionData = {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+};
+
+export type FlavorFeedbackTag = 'delicious' | 'bland' | 'salty' | 'too_sweet' | 'heavy';
+export type RecipeFeedbackRating = 'positive' | 'negative';
+
+export type CookingFeedback = {
+  tags: FlavorFeedbackTag[];
+  wouldCookAgain: boolean;
+  rating?: RecipeFeedbackRating;
+  note?: string;
+  comment?: string;
+};
+
+export type RecipeFeedbackInput = {
+  title: string;
+  ingredients?: { name: string; amount?: string }[];
+};
+
+export type LocalRecipeFeedback = {
+  recipeKey: string;
+  recipeTitle: string;
+  rating: RecipeFeedbackRating;
+  note: string;
+  source: 'generation' | 'completion';
+  createdAt: string;
+};
+
+export type RescuedIngredientSnapshot = {
+  name: string;
+  ageDays: number;
 };
 
 export type SavedRecipe = {
@@ -51,6 +101,12 @@ export type CookedRecord = {
   // 使った材料名を全て記録しておく（在庫にずっと残っている食材が、直近の
   // 料理で本当に使われていないかを判定するために使う）
   ingredientNames?: string[];
+  // 実際に在庫から減らした食材と、そのうち「使い時」を迎えていた食材を分けて
+  // 保存する。従来データとの互換性のため任意項目にしている。
+  consumedCount?: number;
+  consumedIngredientNames?: string[];
+  rescuedIngredients?: RescuedIngredientSnapshot[];
+  feedback?: CookingFeedback;
 };
 
 export type UserStats = {
@@ -87,6 +143,9 @@ export type UserProfile = {
   preferredGenres: string[];
   // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
   trayTheme?: TrayThemeId;
+  // 生成したレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
+  // falseにして共有を停止できる。旧データは未定義=trueとして扱う。
+  shareGeneratedRecipes?: boolean;
   // 「そろそろ使って」通知をユーザーが明示的に非表示にした食材ID。
   // 食材を削除して再登録した場合は新IDになるため、再び通常判定へ戻る。
   ignoredForgottenIngredientIds?: number[];
@@ -97,11 +156,11 @@ export type UserProfile = {
 // 常備調味料と前提としているもの（AIプロンプトのSEASONING_SECTIONと対応）。
 // 在庫に無くても「不足」扱いにはしない。
 export const PANTRY_STAPLES = [
-  '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
+  '水', '湯', '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
   '酢', 'サラダ油', 'ごま油', 'バター', 'だし', 'コンソメ', '鶏がらスープ',
   'ケチャップ', 'マヨネーズ', 'にんにく', 'ニンニク', 'しょうが', '生姜',
-  'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
-  'vegetable oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
+  'water', 'hot water', 'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
+  'vegetable oil', 'salad oil', 'cooking oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
   'mayonnaise', 'garlic', 'ginger',
 ];
 
@@ -262,6 +321,28 @@ function forgottenThresholdDays(item: Ingredient): number {
   }
 }
 
+export function getIngredientAgeDays(item: Ingredient, now = Date.now()): number {
+  const createdAt = new Date(item.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return 0;
+  return Math.max(0, Math.floor((now - createdAt) / MS_PER_DAY));
+}
+
+function isRescueEligibleIngredient(item: Ingredient, now: number, minDays?: number): boolean {
+  if ((item.category || '') === '調味料' || isPantryStaple(item.name)) return false;
+  const createdAt = new Date(item.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return false;
+  return (now - createdAt) / MS_PER_DAY >= (minDays ?? forgottenThresholdDays(item));
+}
+
+// 呼びかけを非表示にしていても、実際に使い切れた時は成果として記録できるよう、
+// ignored設定や最近の使用履歴には左右されない「救済対象」だけを返す。
+export function getRescueEligibleIngredients(minDays?: number): Ingredient[] {
+  const now = Date.now();
+  return getLocalIngredients()
+    .filter(item => isRescueEligibleIngredient(item, now, minDays))
+    .sort((a, b) => getIngredientAgeDays(b, now) - getIngredientAgeDays(a, now));
+}
+
 export function getIgnoredForgottenIngredientIds(): number[] {
   return getLocalUserProfile().ignoredForgottenIngredientIds || [];
 }
@@ -296,20 +377,13 @@ export function getForgottenIngredients(minDays?: number): Ingredient[] {
     .filter(Boolean);
 
   return inventory.filter(item => {
-    if ((item.category || '') === '調味料') return false;
-    if (isPantryStaple(item.name)) return false;
     if (ignoredIds.has(item.id)) return false;
-
-    const createdAt = new Date(item.created_at).getTime();
-    if (!Number.isFinite(createdAt)) return false;
-    const ageDays = (now - createdAt) / MS_PER_DAY;
-    const threshold = minDays ?? forgottenThresholdDays(item);
-    if (ageDays < threshold) return false;
+    if (!isRescueEligibleIngredient(item, now, minDays)) return false;
 
     const target = item.name.trim().toLowerCase();
     const wasUsedRecently = usedNames.some(used => used.includes(target) || target.includes(used));
     return !wasUsedRecently;
-  });
+  }).sort((a, b) => getIngredientAgeDays(b, now) - getIngredientAgeDays(a, now));
 }
 
 // --- 週間献立プラン (Weekly Meal Plan) ---
@@ -357,7 +431,11 @@ const KEYS = {
   TIPS: 'lily_app_saved_tips',
   WEEK_PLAN: 'lily_app_week_plan',
   FREE_GENERATIONS_USED: 'lily_app_free_generations_used',
+  FREE_RECIPE_USAGE: 'lily_app_free_recipe_usage_v1',
+  FREE_RECEIPT_USAGE: 'lily_app_free_receipt_usage_v1',
   LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
+  RECIPE_GENERATION_CACHE: 'lily_app_recipe_generation_cache_v2',
+  RECIPE_FEEDBACK: 'lily_app_recipe_feedback_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -413,30 +491,45 @@ export function getOrCreateDeviceId(): string {
 }
 
 // --- 今日のおすすめ (ホームタブ) のクライアント側キャッシュ ---
-// Supabase未設定、またはdaily_picksテーブル未作成の環境では、サーバー側で
-// 日付キャッシュができず/api/daily-pickが毎回新しいレシピを生成してしまう
-// (タブを切り替える度に「今日のおすすめ」が変わって見える不具合の原因)。
-// サーバー側キャッシュの有無に関わらず、同じ端末では同じ日は同じ結果を見せる
-// ことを保証するため、端末側でも日付をキーに1件だけキャッシュしておく。
+// 在庫・好みから生成した端末ごとのおすすめを、ローカル日付をキーに1件保存する。
+// 同じ日はタブを開き直しても通信・再生成せず、日付が変わった時だけ更新する。
+// scopeは旧「全ユーザー共通」キャッシュを一度だけ無効化するためのバージョン。
 const DAILY_PICK_CACHE_KEY = 'lily_app_daily_pick_cache';
+const DAILY_PICK_CACHE_SCOPE = 'personalized-v3-quality';
 
-export function getCachedDailyPick<T>(todayDate: string): T | null {
+export function getTodayLocalDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getCachedDailyPick<T>(todayDate: string, constraintKey = ''): T | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(DAILY_PICK_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.date !== todayDate) return null;
+    if (
+      parsed?.scope !== DAILY_PICK_CACHE_SCOPE ||
+      parsed?.date !== todayDate ||
+      parsed?.constraintKey !== constraintKey
+    ) return null;
     return parsed.recipe ?? null;
   } catch {
     return null;
   }
 }
 
-export function setCachedDailyPick<T>(todayDate: string, recipe: T): void {
+export function setCachedDailyPick<T>(todayDate: string, recipe: T, constraintKey = ''): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(DAILY_PICK_CACHE_KEY, JSON.stringify({ date: todayDate, recipe }));
+    localStorage.setItem(DAILY_PICK_CACHE_KEY, JSON.stringify({
+      scope: DAILY_PICK_CACHE_SCOPE,
+      date: todayDate,
+      constraintKey,
+      recipe,
+    }));
   } catch {
     // 保存に失敗しても致命的ではない(次回また生成し直すだけ)ので無視する
   }
@@ -457,6 +550,7 @@ export type DailyPickHandoffRecipe = {
   ingredients: { name: string; amount: string }[];
   steps: string[];
   tips: string;
+  nutrition?: NutritionData | null;
 };
 
 export function setPendingDailyPickHandoff(recipe: DailyPickHandoffRecipe): void {
@@ -525,7 +619,7 @@ export function updateLocalIngredientCategory(id: number, category: string): voi
   setStorage(KEYS.INVENTORY, updated);
 }
 
-export function consumeLocalIngredients(ingredientNames: string[]): number {
+export function consumeLocalIngredientsDetailed(ingredientNames: string[]): Ingredient[] {
   const list = getLocalIngredients();
   const idsToRemove = new Set<number>();
 
@@ -550,10 +644,14 @@ export function consumeLocalIngredients(ingredientNames: string[]): number {
     if (partial.length === 1) idsToRemove.add(partial[0].id);
   }
 
+  const consumed = list.filter(item => idsToRemove.has(item.id));
   const remaining = list.filter(item => !idsToRemove.has(item.id));
-  const consumedCount = idsToRemove.size;
   setStorage(KEYS.INVENTORY, remaining);
-  return consumedCount;
+  return consumed;
+}
+
+export function consumeLocalIngredients(ingredientNames: string[]): number {
+  return consumeLocalIngredientsDetailed(ingredientNames).length;
 }
 
 // --- 買い物リスト (Shopping) ---
@@ -646,11 +744,20 @@ export type LastRecipeGeneration = {
   expandedIndex: number;
   savedIndices: number[];
   creationMode: 'inventory' | 'free';
+  mealStyle?: 'single' | 'set';
   instruction: string;
   selectedIngredientIds: number[];
   servings: number;
   savedAt: string;
+  requestKey?: string;
 };
+
+type RecipeGenerationCacheEntry = LastRecipeGeneration & {
+  requestKey: string;
+};
+
+const RECIPE_GENERATION_CACHE_LIMIT = 6;
+export const RECIPE_GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export function getLocalLastRecipeGeneration(): LastRecipeGeneration | null {
   return getStorage<LastRecipeGeneration | null>(KEYS.LAST_RECIPE_GENERATION, null);
@@ -660,10 +767,33 @@ export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
   setStorage(KEYS.LAST_RECIPE_GENERATION, data);
 }
 
+export function getLocalCachedRecipeGeneration(
+  requestKey: string,
+  maxAgeMs = RECIPE_GENERATION_CACHE_TTL_MS,
+): LastRecipeGeneration | null {
+  const now = Date.now();
+  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const entry = entries.find((candidate) =>
+    candidate.requestKey === requestKey
+    && Number.isFinite(Date.parse(candidate.savedAt))
+    && now - Date.parse(candidate.savedAt) <= maxAgeMs
+  );
+  return entry || null;
+}
+
+export function setLocalCachedRecipeGeneration(data: LastRecipeGeneration & { requestKey: string }): void {
+  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const next = [
+    data,
+    ...entries.filter((entry) => entry.requestKey !== data.requestKey),
+  ].slice(0, RECIPE_GENERATION_CACHE_LIMIT);
+  setStorage(KEYS.RECIPE_GENERATION_CACHE, next);
+}
+
 // --- 統計 ＆ PFC記録 (Stats) ---
 
 export const DEFAULT_USER_STATS: UserStats = {
-  streak_days: 1,
+  streak_days: 0,
   last_cooked_date: null,
   total_cooked: 0,
   saved_food_count: 0,
@@ -676,7 +806,15 @@ export const DEFAULT_USER_STATS: UserStats = {
 };
 
 export function getLocalUserStats(): UserStats {
-  return getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
+  const stats = getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
+  if (!stats.last_cooked_date || stats.streak_days === 0) return stats;
+
+  const lastCooked = new Date(`${stats.last_cooked_date}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!Number.isFinite(lastCooked.getTime())) return stats;
+  const diffDays = Math.floor((today.getTime() - lastCooked.getTime()) / (1000 * 3600 * 24));
+  return diffDays > 1 ? { ...stats, streak_days: 0 } : stats;
 }
 
 // ブリガード・ド・キュイジーヌの階級(Lv.1〜10)に必要な累計自炊回数のしきい値。
@@ -701,9 +839,17 @@ export function getChefLevelProgress(totalCooked: number): { level: number; curr
   return { level, currentThreshold, nextThreshold };
 }
 
-export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作り料理', nutrition?: NutritionData | null, ingredientNames: string[] = []): UserStats {
+export function recordLocalCookingDone(
+  consumedCount = 0,
+  recipeTitle = '手作り料理',
+  nutrition?: NutritionData | null,
+  ingredientNames: string[] = [],
+  feedback?: CookingFeedback,
+  consumedIngredientNames: string[] = [],
+  rescuedIngredients: RescuedIngredientSnapshot[] = [],
+): UserStats {
   const stats = getLocalUserStats();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocalDateKey();
   let newStreak = stats.streak_days;
 
   if (stats.last_cooked_date) {
@@ -717,7 +863,9 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
   }
 
   const newTotal = stats.total_cooked + 1;
-  const newSavedFood = stats.saved_food_count + consumedCount;
+  // 「救済した食材」は単なる在庫消費数ではなく、保管日数が食材別のしきい値を
+  // 超えてから実際に使い切れた件数だけを数える。
+  const newSavedFood = stats.saved_food_count + rescuedIngredients.length;
   const newLevel = computeChefLevel(newTotal);
 
   const addCals = nutrition?.calories || 0;
@@ -733,6 +881,10 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
     fat_g: addFat,
     carbs_g: addCarbs,
     ingredientNames,
+    consumedCount,
+    consumedIngredientNames,
+    rescuedIngredients,
+    feedback,
   };
 
   const updated: UserStats = {
@@ -745,10 +897,114 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
     total_protein: (stats.total_protein || 0) + addProtein,
     total_fat: (stats.total_fat || 0) + addFat,
     total_carbs: (stats.total_carbs || 0) + addCarbs,
-    cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 50),
+    // 食材図鑑は調理履歴から復元できる設計なので、全300種を十分集められ、
+    // 最上位ランク(555回)へ到達しても初期の発見が消えない件数を保持する。
+    cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 750),
   };
   setStorage(KEYS.STATS, updated);
   return updated;
+}
+
+export function getRecentFlavorFeedbackSummary(limit = 12): {
+  recipeTitle: string;
+  tags: FlavorFeedbackTag[];
+  wouldCookAgain: boolean;
+  rating?: RecipeFeedbackRating;
+  note?: string;
+  comment?: string;
+}[] {
+  const cookedFeedback = getLocalUserStats().cooked_records
+    .filter((record) => record.feedback && (
+      (Array.isArray(record.feedback.tags) && record.feedback.tags.length > 0)
+      || record.feedback.wouldCookAgain === true
+      || record.feedback.rating === 'positive'
+      || record.feedback.rating === 'negative'
+      || Boolean(record.feedback.note?.trim())
+      || Boolean(record.feedback.comment?.trim())
+    ))
+    .map((record) => ({
+      recipeTitle: record.recipeTitle,
+      tags: Array.isArray(record.feedback?.tags) ? record.feedback.tags : [],
+      wouldCookAgain: record.feedback?.wouldCookAgain === true,
+      rating: record.feedback?.rating,
+      note: record.feedback?.note?.trim() || undefined,
+      comment: record.feedback?.comment?.trim() || undefined,
+      createdAt: record.date,
+    }));
+
+  const generatedFeedback = getLocalRecipeFeedbackList().map((entry) => ({
+    recipeTitle: entry.recipeTitle,
+    tags: [] as FlavorFeedbackTag[],
+    wouldCookAgain: entry.rating === 'positive',
+    rating: entry.rating,
+    note: entry.note || undefined,
+    comment: undefined,
+    createdAt: entry.createdAt,
+  }));
+
+  const seenTitles = new Set<string>();
+  return [...cookedFeedback, ...generatedFeedback]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .filter((entry) => {
+      const key = entry.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase();
+      if (!key || seenTitles.has(key)) return false;
+      seenTitles.add(key);
+      return true;
+    })
+    .slice(0, Math.max(0, limit))
+    .map((entry) => ({
+      recipeTitle: entry.recipeTitle,
+      tags: entry.tags,
+      wouldCookAgain: entry.wouldCookAgain,
+      rating: entry.rating,
+      note: entry.note,
+      comment: entry.comment,
+    }));
+}
+
+export function createLocalRecipeFeedbackKey(recipe: RecipeFeedbackInput): string {
+  const title = recipe.title.normalize('NFKC').trim().toLocaleLowerCase();
+  const ingredients = (recipe.ingredients || [])
+    .map((item) => [
+      item.name.normalize('NFKC').trim().toLocaleLowerCase(),
+      (item.amount || '').normalize('NFKC').trim().toLocaleLowerCase(),
+    ])
+    .filter(([name]) => Boolean(name));
+  return JSON.stringify([title, ingredients]);
+}
+
+export function getLocalRecipeFeedbackList(): LocalRecipeFeedback[] {
+  return getStorage<LocalRecipeFeedback[]>(KEYS.RECIPE_FEEDBACK, []).filter((entry) =>
+    Boolean(entry?.recipeKey && entry?.recipeTitle)
+    && (entry.rating === 'positive' || entry.rating === 'negative')
+  );
+}
+
+export function getLocalRecipeFeedback(recipe: RecipeFeedbackInput): LocalRecipeFeedback | null {
+  const key = createLocalRecipeFeedbackKey(recipe);
+  return getLocalRecipeFeedbackList().find((entry) => entry.recipeKey === key) || null;
+}
+
+export function saveLocalRecipeFeedback(
+  recipe: RecipeFeedbackInput,
+  rating: RecipeFeedbackRating,
+  note = '',
+  source: 'generation' | 'completion' = 'generation',
+): LocalRecipeFeedback {
+  const recipeKey = createLocalRecipeFeedbackKey(recipe);
+  const next: LocalRecipeFeedback = {
+    recipeKey,
+    recipeTitle: recipe.title.normalize('NFKC').trim().slice(0, 160),
+    rating,
+    note: note.normalize('NFKC').trim().slice(0, 500),
+    source,
+    createdAt: new Date().toISOString(),
+  };
+  setStorage(KEYS.RECIPE_FEEDBACK, [
+    next,
+    ...getLocalRecipeFeedbackList().filter((entry) => entry.recipeKey !== recipeKey),
+  ].slice(0, 150));
+  return next;
 }
 
 // 自炊記録(cooked_records)から誤って記録された1件を削除する(履歴の横スライド削除用)。
@@ -756,8 +1012,8 @@ export function recordLocalCookingDone(consumedCount = 0, recipeTitle = '手作�
 // - streak_days/last_cooked_dateは「記録の有無」から都度導出しているのではなく、
 //   記録した日付を比較するだけの単純なカウンタのため、後から特定の1件を除いても
 //   正しく巻き戻す方法がない(どの記録が連続日数に影響したかを遡れない)。
-// - saved_food_count(食品ロス削減数)は、その記録作成時に実際に消費した食材数
-//   (consumedCount)を保存していないため、正確に差し引けない。
+// - 新しい記録にはconsumedCountとrescuedIngredientsを保存しているが、旧記録には
+//   どちらも存在しないため、saved_food_countを全期間で正確に巻き戻せない。
 // そのため、ここでは「ログの一覧から消す」ことだけを行い、チェフレベル等の
 // ゲーミフィケーション要素には手を加えない(中途半端な補正で別の不整合を生むよりも、
 // 一覧に出さないことを優先する)。
@@ -801,17 +1057,68 @@ export function clearLocalWeekPlanRange(dates: string[]): void {
 
 // --- プレミアムプラン無料枠 (アプリ版のみ有効。Web版は無制限) ---
 
-// アプリ版で「週間献立の自動生成」を無料で使える回数。これを超えるとプレミアムプラン加入を促す。
-export const FREE_WEEKLY_PLAN_GENERATIONS = 3;
-
-export function getFreeGenerationsUsed(): number {
-  return getStorage<number>(KEYS.FREE_GENERATIONS_USED, 0);
+function getFreeGenerationUsage(now: Date = new Date()): FreeGenerationUsage {
+  const stored = getStorage<unknown>(KEYS.FREE_GENERATIONS_USED, null);
+  const usage = normalizeFreeGenerationUsage(stored, now);
+  const current = stored as Partial<FreeGenerationUsage> | null;
+  if (current?.weekStart !== usage.weekStart || current?.count !== usage.count) {
+    setStorage(KEYS.FREE_GENERATIONS_USED, usage);
+  }
+  return usage;
 }
 
-export function incrementFreeGenerationsUsed(): number {
-  const next = getFreeGenerationsUsed() + 1;
-  setStorage(KEYS.FREE_GENERATIONS_USED, next);
+export function getFreeGenerationsUsed(now: Date = new Date()): number {
+  return getFreeGenerationUsage(now).count;
+}
+
+export function incrementFreeGenerationsUsed(now: Date = new Date()): number {
+  const usage = getFreeGenerationUsage(now);
+  const next = usage.count + 1;
+  setStorage(KEYS.FREE_GENERATIONS_USED, { ...usage, count: next });
   return next;
+}
+
+export function getFreeGenerationsRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed(now));
+}
+
+function getDailyFeatureUsage(key: string, now: Date = new Date()): DailyFeatureUsage {
+  const stored = getStorage<unknown>(key, null);
+  const usage = normalizeDailyFeatureUsage(stored, now);
+  const current = stored as Partial<DailyFeatureUsage> | null;
+  if (current?.date !== usage.date || current?.count !== usage.count) {
+    setStorage(key, usage);
+  }
+  return usage;
+}
+
+function incrementDailyFeatureUsage(key: string, amount: number, now: Date = new Date()): number {
+  const usage = getDailyFeatureUsage(key, now);
+  const next = usage.count + Math.max(0, Math.floor(amount));
+  setStorage(key, { ...usage, count: next });
+  return next;
+}
+
+export function getFreeRecipeCreditsRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_DAILY_RECIPE_CREDITS - getDailyFeatureUsage(KEYS.FREE_RECIPE_USAGE, now).count);
+}
+
+export function canUseFreeRecipeGeneration(mealStyle: 'single' | 'set', now: Date = new Date()): boolean {
+  return getFreeRecipeCreditsRemaining(now) >= getRecipeGenerationCost(mealStyle);
+}
+
+export function incrementFreeRecipeGeneration(mealStyle: 'single' | 'set', now: Date = new Date()): number {
+  incrementDailyFeatureUsage(KEYS.FREE_RECIPE_USAGE, getRecipeGenerationCost(mealStyle), now);
+  return getFreeRecipeCreditsRemaining(now);
+}
+
+export function getFreeReceiptScansRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_DAILY_RECEIPT_SCANS - getDailyFeatureUsage(KEYS.FREE_RECEIPT_USAGE, now).count);
+}
+
+export function incrementFreeReceiptScan(now: Date = new Date()): number {
+  incrementDailyFeatureUsage(KEYS.FREE_RECEIPT_USAGE, 1, now);
+  return getFreeReceiptScansRemaining(now);
 }
 
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---
@@ -830,6 +1137,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   dietaryRestrictions: [],
   preferredGenres: [],
   trayTheme: 'wood',
+  shareGeneratedRecipes: true,
   ignoredForgottenIngredientIds: [],
 };
 
@@ -896,6 +1204,7 @@ export type AppBackupPayload = {
   climate: ClimateState;
   tips?: SavedTip[];
   weekPlan?: WeeklyPlanEntry[];
+  recipeFeedback?: LocalRecipeFeedback[];
 };
 
 // アカウント同期(SyncManager)でも同じ形のスナップショットを使うため、
@@ -912,6 +1221,7 @@ export function buildBackupPayload(): AppBackupPayload {
     climate: getLocalClimateState(),
     tips: getLocalSavedTips(),
     weekPlan: getLocalWeekPlan(),
+    recipeFeedback: getLocalRecipeFeedbackList(),
   };
 }
 
@@ -950,6 +1260,7 @@ export function applyBackupPayload(data: unknown): void {
   if (payload.climate && typeof payload.climate === 'object') setStorage(KEYS.CLIMATE, payload.climate);
   if (Array.isArray(payload.tips)) setStorage(KEYS.TIPS, payload.tips);
   if (Array.isArray(payload.weekPlan)) setStorage(KEYS.WEEK_PLAN, payload.weekPlan);
+  if (Array.isArray(payload.recipeFeedback)) setStorage(KEYS.RECIPE_FEEDBACK, payload.recipeFeedback);
 
   window.dispatchEvent(new Event('storage-updated'));
 }

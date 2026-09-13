@@ -4,8 +4,10 @@ import BottomNav from "@/components/BottomNav";
 import LanguageToggle from "@/components/LanguageToggle";
 import CookingCheerBear from "@/components/CookingCheerBear";
 import SyncManager from "@/components/SyncManager";
+import ImageInteractionGuard from "@/components/ImageInteractionGuard";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { PremiumProvider } from "@/lib/premium/PremiumContext";
 
 export const metadata: Metadata = {
   title: "Sikurepi",
@@ -36,13 +38,16 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <LanguageProvider>
-            <LanguageToggle />
-            <main className="container app-content">
-              {children}
-            </main>
-            <BottomNav />
-            <CookingCheerBear />
-            <SyncManager />
+            <PremiumProvider>
+              <LanguageToggle />
+              <main className="container app-content">
+                {children}
+              </main>
+              <BottomNav />
+              <CookingCheerBear />
+              <SyncManager />
+              <ImageInteractionGuard />
+            </PremiumProvider>
           </LanguageProvider>
         </AuthProvider>
       </body>

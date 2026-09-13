@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Heart, ChevronRight } from "lucide-react";
-import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import { Crown, ChevronRight } from "lucide-react";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
+import CommunityRecipesScreen, { CommunityRecipeRowCard, type CommunityRecipeRow } from "@/components/CommunityRecipesScreen";
+import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
+import { FREE_COMMUNITY_RECIPE_ITEMS } from "@/lib/premiumQuota";
 import {
   getLocalShoppingItems,
   getLocalSavedRecipes,
-  getOrCreateDeviceId,
+  getLocalIngredients,
+  getLocalUserProfile,
   getCachedDailyPick,
+  getTodayLocalDateKey,
   setCachedDailyPick,
   setPendingDailyPickHandoff,
+  getRecentFlavorFeedbackSummary,
+  getForgottenIngredients,
+  getIngredientAgeDays,
+  getLocalUserStats,
+  ignoreForgottenIngredient,
+  CookedRecord,
+  Ingredient,
   ShoppingItem,
   SavedRecipe,
 } from "@/lib/storage";
 import styles from "./Home.module.css";
+import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
+import { flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
+import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -32,12 +48,7 @@ type DailyPickRecipe = {
   ingredients: { name: BilingualText; amount: BilingualText }[];
   steps: BilingualText[];
   tips: BilingualText;
-};
-
-type CommunityRecipeRow = {
-  id: string;
-  likes_count: number;
-  recipe: { title: string; time?: string; genre?: string | null; dish_badge?: string | null };
+  nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
 };
 
 function pickText(value: BilingualText | undefined, language: "ja" | "en"): string {
@@ -45,23 +56,59 @@ function pickText(value: BilingualText | undefined, language: "ja" | "en"): stri
   return (language === "en" ? value.en : value.ja) || value.ja || value.en || "";
 }
 
+const subscribeToHydration = () => () => {};
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
+
 export default function HomePage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const router = useRouter();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
+  const [rescueTarget, setRescueTarget] = useState<Ingredient | null>(null);
+  const [latestRescue, setLatestRescue] = useState<CookedRecord | null>(null);
 
-  const [dailyPick, setDailyPick] = useState<DailyPickRecipe | null>(null);
-  const [dailyPickLoading, setDailyPickLoading] = useState(true);
+  const [dailyPickResult, setDailyPickResult] = useState<{
+    constraintKey: string;
+    recipe: DailyPickRecipe;
+  } | null>(null);
+  const [dailyPickSettledKey, setDailyPickSettledKey] = useState<string | null>(null);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+  const todayDate = getTodayLocalDateKey();
+  const currentProfile = isHydrated ? getLocalUserProfile() : null;
+  const dailyPickConstraintKey = currentProfile
+    ? buildDietaryConstraintKey(
+        currentProfile.dietaryRestrictions,
+        currentProfile.excludedIngredients,
+        currentProfile.allergies,
+      )
+    : '';
+  const cachedDailyPick = isHydrated
+    ? getCachedDailyPick<DailyPickRecipe>(todayDate, dailyPickConstraintKey)
+    : null;
+  const generatedDailyPick = dailyPickResult?.constraintKey === dailyPickConstraintKey
+    ? dailyPickResult.recipe
+    : null;
+  const visibleDailyPick = generatedDailyPick ?? cachedDailyPick;
+  const dailyPickLoading = !visibleDailyPick && dailyPickSettledKey !== dailyPickConstraintKey;
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [communityAllOpen, setCommunityAllOpen] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     const loadLocal = () => {
       setShoppingItems(getLocalShoppingItems().filter(i => !i.is_completed));
       setRecentRecipes([...getLocalSavedRecipes()].sort((a, b) => new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()).slice(0, 6));
+      setRescueTarget(getForgottenIngredients()[0] || null);
+      setLatestRescue(
+        getLocalUserStats().cooked_records.find((record) => (record.rescuedIngredients?.length || 0) > 0) || null
+      );
     };
     loadLocal();
     window.addEventListener("storage-updated", loadLocal);
@@ -69,32 +116,71 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // サーバー側(Supabase)のキャッシュが無い/未設定の環境でも、同じ端末では
-    // 同じ日は同じ「今日のおすすめ」を見せるよう、まず端末側キャッシュを確認する。
-    // (キャッシュが無ければAPIを呼び、結果を端末側にも保存する)
-    const todayDate = new Date().toISOString().slice(0, 10);
-    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate);
-    if (cached) {
-      queueMicrotask(() => {
-        setDailyPick(cached);
-        setDailyPickLoading(false);
-      });
-      return;
-    }
+    if (!isHydrated) return;
 
-    fetch("/api/daily-pick")
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        const recipe = data?.recipe || null;
-        setDailyPick(recipe);
-        if (recipe) setCachedDailyPick(data?.date || todayDate, recipe);
+    // 今日のパーソナライズ結果が端末にあれば通信もローディング表示も発生させない。
+    const cached = getCachedDailyPick<DailyPickRecipe>(todayDate, dailyPickConstraintKey);
+    if (cached) return;
+
+    const profile = getLocalUserProfile();
+    const hasHardConstraints = Boolean(
+      profile.dietaryRestrictions?.length || profile.excludedIngredients?.length || profile.allergies?.length
+    );
+    const controller = new AbortController();
+    let cancelled = false;
+    fetch("/api/daily-pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        date: todayDate,
+        personalization: {
+          inventory: getLocalIngredients().map(item => item.name),
+          tastePreferences: profile.tastePreferences,
+          excludedIngredients: profile.excludedIngredients,
+          allergies: profile.allergies,
+          cookingStyles: profile.cookingStyles,
+          dietaryRestrictions: profile.dietaryRestrictions,
+          preferredGenres: profile.preferredGenres,
+          kitchenAppliances: profile.kitchenAppliances,
+          targetCalories: profile.targetCalories,
+          targetProtein: profile.targetProtein,
+          flavorFeedback: getRecentFlavorFeedbackSummary(12),
+        },
+      }),
+    })
+      .then(async res => {
+        if (res.ok) return res.json();
+        // 食事制限・アレルギー・除外食材がある場合、条件未検証の共通枠へは
+        // フォールバックしない。安全性を優先して明示的に空のままにする。
+        if (hasHardConstraints) return null;
+        const fallback = await fetch("/api/daily-pick", { signal: controller.signal });
+        return fallback.ok ? fallback.json() : null;
       })
-      .catch(() => setDailyPick(null))
-      .finally(() => setDailyPickLoading(false));
-  }, []);
+      .then(data => {
+        if (cancelled) return;
+        const recipe = data?.recipe || null;
+        if (recipe) setDailyPickResult({ constraintKey: dailyPickConstraintKey, recipe });
+        if (recipe) setCachedDailyPick(todayDate, recipe, dailyPickConstraintKey);
+      })
+      .catch(error => {
+        if (!cancelled && error?.name !== "AbortError") {
+          setDailyPickSettledKey(dailyPickConstraintKey);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDailyPickSettledKey(dailyPickConstraintKey);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [dailyPickConstraintKey, isHydrated, todayDate]);
 
   useEffect(() => {
-    fetch("/api/community-recipes")
+    void flushCommunityRecipeOutbox();
+    fetch(`/api/community-recipes?limit=${FREE_COMMUNITY_RECIPE_ITEMS}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
       .catch(() => setCommunityRecipes([]));
@@ -108,44 +194,42 @@ export default function HomePage() {
   // 料理完了ボタン等)で開けるようにする。言語に応じた文言をここで確定させてから
   // レシピタブへ1回きりの受け渡しをし、遷移する。
   const handleOpenDailyPick = () => {
-    if (!dailyPick) return;
+    if (!visibleDailyPick) return;
     setPendingDailyPickHandoff({
-      title: pickText(dailyPick.title, language),
-      time: dailyPick.time,
-      genre: dailyPick.genre,
-      dish_badge: dailyPick.dish_badge,
-      ingredients: dailyPick.ingredients.map(ing => ({
+      title: pickText(visibleDailyPick.title, language),
+      time: visibleDailyPick.time,
+      genre: visibleDailyPick.genre,
+      dish_badge: visibleDailyPick.dish_badge,
+      ingredients: visibleDailyPick.ingredients.map(ing => ({
         name: pickText(ing.name, language),
         amount: pickText(ing.amount, language),
       })),
-      steps: dailyPick.steps.map(step => pickText(step, language)),
-      tips: pickText(dailyPick.tips, language),
+      steps: visibleDailyPick.steps.map(step => pickText(step, language)),
+      tips: pickText(visibleDailyPick.tips, language),
+      nutrition: visibleDailyPick.nutrition,
     });
     router.push("/recipe");
   };
 
-  const handleLike = async (id: string) => {
-    if (likedIds.has(id)) return;
-    const deviceId = getOrCreateDeviceId();
-    if (!deviceId) return;
-    // 楽観的に即反映し、サーバーからの実際のカウントで後から補正する
-    setLikedIds(prev => new Set(prev).add(id));
-    setCommunityRecipes(prev => prev.map(r => r.id === id ? { ...r, likes_count: r.likes_count + 1 } : r));
-    try {
-      const res = await fetch(`/api/community-recipes/${id}/like`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (typeof data.likes_count === "number") {
-          setCommunityRecipes(prev => prev.map(r => r.id === id ? { ...r, likes_count: data.likes_count } : r));
-        }
-      }
-    } catch {
-      // 通信失敗時も楽観的な表示のままにする(見た目上は「いいね済み」で困らないため)
-    }
+  const handleOpenCommunityRecipe = (row: CommunityRecipeRow) => {
+    const recipe = localizeCommunityRecipe(row.recipe, language);
+    setPendingDailyPickHandoff({
+      title: recipe.title,
+      time: recipe.time,
+      genre: recipe.genre || undefined,
+      dish_badge: recipe.dish_badge || undefined,
+      ingredients: recipe.ingredients || [],
+      steps: recipe.steps || [],
+      tips: recipe.tips || '',
+      nutrition: recipe.nutrition || null,
+    });
+    router.push('/recipe');
+  };
+
+  const handleDismissRescue = () => {
+    if (!rescueTarget) return;
+    ignoreForgottenIngredient(rescueTarget.id);
+    setRescueTarget(getForgottenIngredients()[0] || null);
   };
 
   return (
@@ -156,12 +240,12 @@ export default function HomePage() {
         </div>
         <div className={styles.greetingTextCol}>
           <p className={styles.greetingEyebrow}>SIKUREPI KITCHEN</p>
-          <p className={styles.greetingTitle}>{greeting}</p>
+          <div className={styles.greetingTitleRow}>
+            <p className={styles.greetingTitle}>{greeting}</p>
+            {isPremium && <span className={styles.greetingPlusBadge}><Crown size={12} aria-hidden="true" />Plus</span>}
+          </div>
           <p className={styles.greetingSubtitle}>{t.home.greetingSubtitle}</p>
         </div>
-        <button type="button" className={styles.settingsBtn} onClick={() => setIsSettingsOpen(true)} title={t.home.settingsButtonTitle}>
-          <Settings size={18} />
-        </button>
       </header>
 
       <ChefProfileBadge />
@@ -177,53 +261,103 @@ export default function HomePage() {
         </Link>
       </div>
 
+      {rescueTarget ? (
+        <section className={`${styles.card} ${styles.cardRescue}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>{t.home.rescueTitle}</span>
+            <span className={styles.rescueEyebrow}>{t.home.rescueEyebrow}</span>
+          </div>
+          <div className={styles.rescueBody}>
+            <span className={styles.rescueIngredientIcon}>
+              <IngredientIcon name={rescueTarget.name} size={76} />
+            </span>
+            <div className={styles.rescueCopy}>
+              <strong>{rescueTarget.name}</strong>
+              <p>{t.home.rescueCandidate(rescueTarget.name, getIngredientAgeDays(rescueTarget))}</p>
+              <div className={styles.rescueActions}>
+                <Link href={`/recipe?ingredient=${rescueTarget.id}&rescue=1`} className={styles.rescueCta}>
+                  {t.home.rescueCta}<ChevronRight size={15} />
+                </Link>
+                <button type="button" className={styles.rescueDismiss} onClick={handleDismissRescue}>
+                  {t.home.rescueDismiss}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : latestRescue?.rescuedIngredients?.length ? (
+        <section className={`${styles.card} ${styles.cardRescue} ${styles.cardRescueDone}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>{t.home.rescueLatestTitle}</span>
+            <Link href="/history" className={styles.cardSeeAll}>{t.home.rescueHistoryCta}<ChevronRight size={14} /></Link>
+          </div>
+          <div className={styles.latestRescueBody}>
+            <div className={styles.latestRescueIcons}>
+              {latestRescue.rescuedIngredients.slice(0, 3).map((item) => (
+                <span key={item.name}><IngredientIcon name={item.name} size={54} /></span>
+              ))}
+            </div>
+            <p>{t.home.rescueLatestMessage(latestRescue.rescuedIngredients.map((item) => item.name), latestRescue.recipeTitle)}</p>
+          </div>
+        </section>
+      ) : null}
+
       <div className={`${styles.card} ${styles.cardPick}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}><UiIcon slug="cooking_pot" size={25} alt="" />{t.home.todaysPickTitle}</span>
           <span className={styles.todayBadge}>TODAY</span>
         </div>
-        {dailyPickLoading ? (
-          <KitchenLoader compact variant="cooking" text={t.home.todaysPickLoading} />
-        ) : !dailyPick ? (
-          <div className={styles.emptyKitchen}>
-            <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
-            <p>{t.home.todaysPickEmpty}</p>
-          </div>
-        ) : (
+        {!isHydrated ? (
+          <div className={styles.pickHydrationPlaceholder} aria-hidden="true" />
+        ) : visibleDailyPick ? (
           <div className={styles.pickBody}>
             <div className={styles.pickThumb}>
-              <RecipeThumbnail genre={dailyPick.genre} fallbackIngredientName={pickText(dailyPick.title, language)} size={64} />
+              <RecipeThumbnail genre={visibleDailyPick.genre} fallbackIngredientName={pickText(visibleDailyPick.title, language)} size={64} />
             </div>
             <div className={styles.pickTextCol}>
-              <p className={styles.pickTagline}>{pickText(dailyPick.tagline, language)}</p>
-              <p className={styles.pickTitle}>{pickText(dailyPick.title, language)}</p>
-              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{dailyPick.time}</p>
+              <p className={styles.pickTagline}>{pickText(visibleDailyPick.tagline, language)}</p>
+              <p className={styles.pickTitle}>{pickText(visibleDailyPick.title, language)}</p>
+              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{visibleDailyPick.time}</p>
             </div>
             <button type="button" className={styles.pickViewBtn} onClick={handleOpenDailyPick}>
               {t.home.todaysPickViewButton}
             </button>
           </div>
+        ) : dailyPickLoading ? (
+          <KitchenLoader compact variant="cooking" text={t.home.todaysPickLoading} />
+        ) : (
+          <div className={styles.emptyKitchen}>
+            <img src="/mascot/bear_sleeping.png" alt="" width={72} height={72} />
+            <p>{t.home.todaysPickEmpty}</p>
+          </div>
         )}
       </div>
 
-      <div className={`${styles.card} ${styles.cardRecipes}`}>
+      <div className={`${styles.card} ${styles.cardCommunity}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}><UiIcon slug="teishoku" size={24} alt="" />{t.home.recentRecipesTitle}</span>
-          <Link href="/history" className={styles.cardSeeAll}>{t.home.recentRecipesSeeAll}<ChevronRight size={14} /></Link>
+          <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
+          <button
+            type="button"
+            className={styles.communityHeaderAction}
+            onClick={() => isPremium ? setCommunityAllOpen(true) : setShowPaywall(true)}
+          >
+            {isPremium ? t.home.communitySeeAll : t.home.communityTopOne}
+            {isPremium && <ChevronRight size={14} />}
+          </button>
         </div>
-        {recentRecipes.length === 0 ? (
-          <div className={styles.emptyRow}><img src="/mascot/bear_reading.png" alt="" width={52} height={52} /><p>{t.home.recentRecipesEmpty}</p></div>
+        {communityRecipes.length === 0 ? (
+          <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
         ) : (
-          <div className={styles.recentScroll}>
-            {recentRecipes.map(recipe => (
-              <Link key={recipe.id} href="/history" className={styles.recentCard}>
-                <div className={styles.recentThumbWrap}>
-                  <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
-                </div>
-                <span className={styles.recentCardTitle}>{recipe.title}</span>
-              </Link>
+          <div className={styles.communityList}>
+            {communityRecipes.slice(0, FREE_COMMUNITY_RECIPE_ITEMS).map(row => (
+              <CommunityRecipeRowCard key={row.id} row={row} onSelect={handleOpenCommunityRecipe} />
             ))}
           </div>
+        )}
+        {!isPremium && (
+          <button type="button" className={styles.communityPlusGate} onClick={() => setShowPaywall(true)}>
+            {t.home.communityUnlockAll}<ChevronRight size={14} />
+          </button>
         )}
       </div>
 
@@ -246,36 +380,34 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className={`${styles.card} ${styles.cardCommunity}`}>
+        <div className={`${styles.card} ${styles.cardRecipes}`}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
+            <span className={styles.cardTitle}><UiIcon slug="teishoku" size={24} alt="" />{t.home.recentRecipesTitle}</span>
+            <Link href="/history" className={styles.cardSeeAll}>{t.home.recentRecipesSeeAll}<ChevronRight size={14} /></Link>
           </div>
-          {communityRecipes.length === 0 ? (
-            <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
+          {recentRecipes.length === 0 ? (
+            <div className={styles.emptyRow}><img src="/mascot/bear_reading.png" alt="" width={52} height={52} /><p>{t.home.recentRecipesEmpty}</p></div>
           ) : (
-            <div className={styles.communityList}>
-              {communityRecipes.map(row => (
-                <div key={row.id} className={styles.communityRow}>
-                  <div className={styles.communityRowInfo}>
-                    <p className={styles.communityRowTitle}>{row.recipe.title}</p>
+            <div className={styles.recentScroll}>
+              {recentRecipes.map(recipe => (
+                <Link key={recipe.id} href="/history" className={styles.recentCard}>
+                  <div className={styles.recentThumbWrap}>
+                    <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
                   </div>
-                  <button
-                    type="button"
-                    className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
-                    onClick={() => handleLike(row.id)}
-                    title={t.home.communityLikeTitle}
-                  >
-                    <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
-                    {row.likes_count}
-                  </button>
-                </div>
+                  <span className={styles.recentCardTitle}>{recipe.title}</span>
+                </Link>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <CommunityRecipesScreen
+        open={communityAllOpen}
+        onClose={() => setCommunityAllOpen(false)}
+        onSelect={handleOpenCommunityRecipe}
+      />
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
+import { ThinkingLevel } from '@google/genai';
 import {
   ai,
   generateWithRetry,
+  getAiCallTelemetry,
+  FAST_AI_MODEL,
+  QUALITY_AI_MODEL,
   buildProfileSection,
   buildClimateSection,
   buildSeasoningSection,
   buildLanguageSection,
   buildTemplateConstraintSection,
-  RECIPE_TEMPLATE_CONSTRAINTS,
   DISH_LOAD_INSTRUCTION,
   FLAVOR_INTENSITY_INSTRUCTION,
   Language,
@@ -18,89 +21,66 @@ import {
   buildValidationRetryNote,
   ValidatedRecipe,
   FeasibilityContext,
+  summarizeInventoryForFeasibility,
 } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
+import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
+import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
 
-// 判定・分類のような軽いタスク用の安価なモデル(classify-ingredientルートと同じ方針)
-const FEASIBILITY_MODELS = ['models/gemini-1.5-flash-8b', 'models/gemini-2.5-flash-lite', 'models/gemini-2.5-flash'];
-const MAX_VALIDATION_ATTEMPTS = 3;
+// 初回生成は低遅延のFlash-Liteを使い、品質検証で不採用になった場合だけ
+// Flashへ昇格する。無条件に重いモデルを複数回呼ばない。
+const RECIPE_MODEL_ORDER = [
+  [FAST_AI_MODEL, QUALITY_AI_MODEL],
+  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+] as const;
+const MAX_VALIDATION_ATTEMPTS = RECIPE_MODEL_ORDER.length;
 
-type FeasibilityResult = {
-  feasible: boolean;
-  reason: string;
-  missingKeyIngredients: string[];
+type RecipeAttemptTelemetry = {
+  attempt: number;
+  model: string;
+  aiDurationMs: number;
+  transportFailures: number;
+  outcome: 'accepted' | 'rejected' | 'infeasible';
+  errors: string[];
 };
 
-// --- レシピ生成前の成立可否判定 (要件8・9) -----------------------------------
-// 在庫からの生成の場合、実際にレシピが成立しそうかを本生成の前に軽量モデルで
-// 判定する。「在庫：魚・野菜」+「スイーツを作りたい」のような、指定カテゴリと
-// 在庫が噛み合わないケースや、在庫の点数が極端に少なく1品として成立しにくい
-// ケースを検出し、無理にレシピ生成を強行しないようにする。
-async function judgeFeasibility(params: {
-  ingredients: string[];
-  templateKey?: string | null;
-  instruction?: string;
-  dietaryRestrictions: string[];
-  assumeSeasoningsAvailable: boolean;
-  language: Language;
-}): Promise<FeasibilityResult | null> {
-  const templateInstruction = params.templateKey ? RECIPE_TEMPLATE_CONSTRAINTS[params.templateKey] : null;
-  const requestSection = [
-    templateInstruction ? `・指定カテゴリ: ${templateInstruction}` : null,
-    params.instruction ? `・ユーザーの追加要望: ${params.instruction}` : null,
-    params.dietaryRestrictions.length > 0 ? `・食事制限: ${params.dietaryRestrictions.join('、')}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+function compactValidationErrors(errors: string[]): string[] {
+  return errors.slice(0, 12).map((error) => error.slice(0, 220));
+}
 
-  const prompt = `あなたは家庭料理のレシピが実際に成立するかどうかを判定する専門家です。以下の在庫食材とユーザーの希望から、料理として無理なく成立するレシピを提案できそうかを判定してください。
+function generationHeaders(
+  startedAt: number,
+  attempt: RecipeAttemptTelemetry,
+): HeadersInit {
+  return {
+    'Server-Timing': `ai;dur=${attempt.aiDurationMs}, total;dur=${Date.now() - startedAt}`,
+    'X-Sikurepi-AI-Model': attempt.model.replace(/^models\//, ''),
+    'X-Sikurepi-AI-Rescue': String(attempt.attempt > 1 || attempt.model === QUALITY_AI_MODEL),
+    'X-Sikurepi-Validation-Attempts': String(attempt.attempt),
+  };
+}
 
-【現在の在庫食材(これが全てです)】
-${params.ingredients.length > 0 ? params.ingredients.join(', ') : '(なし)'}
-
-【常備調味料の前提】
-${params.assumeSeasoningsAvailable ? '塩・こしょう・砂糖・醤油・味噌・みりん・酒・酢・油・だし・バター等の基本調味料は常備している前提でよい' : '調味料も在庫にあるものしか使えない前提'}
-
-【ユーザーの希望】
-${requestSection || '(特になし。おまかせ)'}
-
-判定基準:
-・在庫食材の系統(魚介・野菜中心 等)と指定カテゴリ(例:スイーツ)が明らかに噛み合わない場合は feasible:false
-・在庫の点数が極端に少なく(常備調味料を除いて実質0〜1品程度)、1品の料理として成立させるのが困難な場合も feasible:false
-・多少の工夫や常備調味料の追加で成立の余地があるなら feasible:true (在庫が完璧に揃っている必要はない)
-・在庫を指定していない(自由作成)場合は判定不要だが、ここでは常に在庫が指定されている前提で判定する
-
-JSON形式のみで回答してください(他のテキストは一切含めない):
-{
-  "feasible": true,
-  "reason": "判定理由を1〜2文の日本語で",
-  "missingKeyIngredients": ["成立のために不足していると考えられる主要食材(あれば。無ければ空配列)"]
-}`;
-
-  try {
-    const response = await generateWithRetry(
-      ai,
-      { contents: [{ role: 'user', parts: [{ text: prompt }] }], config: { responseMimeType: 'application/json' } },
-      FEASIBILITY_MODELS
-    );
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
-    if (!text) return null;
-    const json = parseAiJson<Record<string, unknown>>(text);
-    return {
-      feasible: json.feasible !== false,
-      reason: typeof json.reason === 'string' ? json.reason : '',
-      missingKeyIngredients: Array.isArray(json.missingKeyIngredients) ? json.missingKeyIngredients as string[] : [],
-    };
-  } catch (err) {
-    // 判定AI自体が失敗した場合は、生成を止めずに素通りさせる
-    // (成立可否判定はユーザー体験の保護が目的であり、判定不能を理由に
-    // 本来使えるはずの生成機能をブロックしないため)
-    console.warn('Feasibility check failed, proceeding without it:', err);
-    return null;
-  }
+function logRecipeGeneration(
+  requestId: string,
+  startedAt: number,
+  outcome: 'success' | 'infeasible' | 'validation_failed' | 'request_failed',
+  attempts: RecipeAttemptTelemetry[],
+) {
+  console.info('[RECIPE_GENERATION]', JSON.stringify({
+    requestId,
+    outcome,
+    totalDurationMs: Date.now() - startedAt,
+    usedFlashRescue: attempts.some((attempt) =>
+      attempt.attempt > 1 || attempt.model === QUALITY_AI_MODEL
+    ),
+    attempts,
+  }));
 }
 
 export async function POST(req: Request) {
+  const generationStartedAt = Date.now();
+  const requestId = `${generationStartedAt.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const generationAttempts: RecipeAttemptTelemetry[] = [];
   let language: Language = 'ja';
   try {
     const body = await req.json();
@@ -126,7 +106,45 @@ export async function POST(req: Request) {
     const isSetMeal = mealStyle === 'set';
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
     const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
-    const excludedIngredients: string[] = Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : [];
+    const excludedIngredients: string[] = [...new Set([
+      ...(Array.isArray(actualProfile?.excludedIngredients) ? actualProfile.excludedIngredients : []),
+      ...(Array.isArray(actualProfile?.allergies) ? actualProfile.allergies : []),
+    ])];
+
+    if (templateKey === 'meaty' && dietaryRestrictions.some((value) => value === 'ベジタリアン' || value === 'ヴィーガン')) {
+      return NextResponse.json({
+        recipes: [],
+        cooking_tips: [],
+        feasibility: {
+          feasible: false,
+          reason: language === 'en'
+            ? 'The meat-focused template conflicts with your vegetarian or vegan restriction.'
+            : '「ガッツリ肉」テンプレートは、選択中のベジタリアン／ヴィーガン設定と両立しません。',
+          missingKeyIngredients: [],
+        },
+      });
+    }
+
+    if (Array.isArray(pinnedIngredients) && pinnedIngredients.length > 0) {
+      const pinnedRecipe = { ingredients: pinnedIngredients.map((name: string) => ({ name, amount: '' })) };
+      const pinnedViolations = [
+        ...validateDietaryRestrictions(pinnedRecipe, dietaryRestrictions),
+        ...validateExcludedIngredients(pinnedRecipe, excludedIngredients),
+      ];
+      if (pinnedViolations.length > 0) {
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: language === 'en'
+              ? 'A selected ingredient conflicts with your dietary restrictions or excluded ingredients.'
+              : '使いたい食材に、食事制限または除外食材と両立しないものが含まれています。',
+            missingKeyIngredients: [],
+          },
+        });
+      }
+    }
 
     // 在庫モードを、在庫が空という理由だけで自由作成へ暗黙変換しない。
     // 先に理由を示して止めることで「在庫から」と指定したユーザーの意図を守る。
@@ -144,18 +162,20 @@ export async function POST(req: Request) {
       });
     }
 
-    // --- 生成前の成立可否判定(在庫モードのみ。自由作成は在庫制約が無いため対象外) ---
     if (!isFreeMode) {
-      const feasibility = await judgeFeasibility({
-        ingredients,
-        templateKey,
-        instruction,
-        dietaryRestrictions,
-        assumeSeasoningsAvailable,
-        language,
-      });
-      if (feasibility && !feasibility.feasible) {
-        return NextResponse.json({ recipes: [], cooking_tips: [], feasibility });
+      const inventorySummary = summarizeInventoryForFeasibility(ingredients, true);
+      if (inventorySummary.nonStapleCount === 0) {
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: language === 'en'
+              ? 'Only seasonings are available. Add at least one substantive ingredient before generating from your pantry.'
+              : '在庫が調味料だけのため料理として成立しません。肉・魚・野菜・卵・主食など、軸になる食材を1つ以上追加してください。',
+            missingKeyIngredients: [],
+          },
+        });
       }
     }
 
@@ -178,7 +198,7 @@ export async function POST(req: Request) {
 
     // ユーザープロファイル（マイ一括設定）セクション
     const profileSection = buildProfileSection(actualProfile);
-    const seasoningSection = buildSeasoningSection(assumeSeasoningsAvailable);
+    const seasoningSection = buildSeasoningSection(assumeSeasoningsAvailable, dietaryRestrictions);
 
     const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
       ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
@@ -193,16 +213,25 @@ export async function POST(req: Request) {
           .join('\n')}\nこれらから読み取れる味付け・ジャンル・食材選びの傾向をくみ取り、同じ料理を繰り返すのではなく「この人がきっと美味しいと感じるであろう」新しい一皿の精度を高めるための参考にしてください。\n`
       : '';
 
-    const targetServings = servings || 2;
+    const targetServings = sanitizeServings(servings ?? actualProfile?.servings, 2);
+    const targetCaloriesPerMeal = typeof actualProfile?.targetCalories === 'number' && actualProfile.targetCalories > 0
+      ? actualProfile.targetCalories / 3
+      : null;
+    const targetProteinPerMeal = typeof actualProfile?.targetProtein === 'number' && actualProfile.targetProtein > 0
+      ? actualProfile.targetProtein / 3
+      : null;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
+    const feasibilityLanguageSection = language === 'en'
+      ? '\n【成立可否の出力言語】"feasibility.reason"と"feasibility.missingKeyIngredients"も自然な英語で出力してください。\n'
+      : '';
     const mealStyleSection = isSetMeal
       ? `\n【重要：定食セット構成】\n単品の料理候補を複数出すのではなく、主菜1品・副菜1〜2品・汁物1品（和食以外のジャンルなら、それに相当する主菜・副菜・スープ等の構成でよい）からなる、レストランの定食のような統一感のある「1組のセット」を提案してください。全体で1食分として栄養バランスが良くなるよう調整してください。各レシピの"course"には「主菜」「副菜」「汁物」「ご飯・主食」のいずれかを必ず指定してください${language === 'en' ? '（courseの値は必ずこの日本語表記のまま出力し、翻訳しないでください。表示側で翻訳します）' : ''}。\n【最優先で厳守：セット内の変化・メリハリ】「統一感」は食卓としての相性の良さを指すのであって、似た味・似た食材を繰り返すことではありません。以下を必ず守ってください。\n・主菜で使うメインの調味料・味の系統（醤油ベース、味噌ベース、塩・酸味系、スパイシー系など）を、副菜・汁物ではそのまま繰り返さず、意図的に変えてください（例：主菜が醤油だれの照り焼きなら、副菜は塩味や酢の物、汁物は味噌汁ではなく澄まし汁や別の出汁にするなど）。\n・主菜で使うメイン食材（肉・魚など）を副菜・汁物でそのまま主役として重複させないでください。食感も、主菜がジューシー・こってり系なら副菜はシャキシャキ・さっぱり系にするなど、セット全体で単調にならないようにしてください。\n・こうすることで、一口ごとに違う美味しさが感じられる「メリハリのある定食」に仕上げてください。\n`
       : '';
 
     const basePrompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${mealStyleSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
 
 【重要・厳守事項】
 ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいのは、在庫食材リストにある食材と、常備調味料の前提で許可されている基本調味料だけです。在庫にない主要な具材(肉・魚・野菜・主食・卵・乳製品など)を1つでも追加した場合、それはユーザーの意図に反する失敗作とみなされます。\n'}1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -212,11 +241,18 @@ ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいの�
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
 6. 【本当に美味しい仕上がりへのこだわり】提案する前に、実際に味見したときの味を頭の中で具体的に想像してください。甘味・塩味・酸味・苦味・旨味のバランス、香りの立たせ方（仕上げのひと振り・香味油・薬味など）、食感のコントラスト（カリカリ×とろとろ等）のうち最低1つは意識的に取り入れ、単に食材を組み合わせただけの平凡な一皿ではなく「これは美味しそう」と一目で伝わる工夫を必ず盛り込んでください。
 7. ${DISH_LOAD_INSTRUCTION}
-8. ${isSetMeal
+8. 【提出前の自己監査】材料の全てが手順内で使われているか、人数分の分量が具体的か、調理時間と各工程の時間が矛盾しないか、PFCから計算される熱量とcaloriesが大きく矛盾しないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含めてください。味は塩分量だけに頼らず、旨味・酸味・香り・食感を確認してからJSONを確定してください。
+9. ${isSetMeal
         ? '以下のJSON構造で、"recipes"配列の中に定食セットを構成する各品(主菜・副菜・汁物など、通常3〜4品)のレシピデータを格納して返してください。'
-        : '以下のJSON構造で、"recipes"配列の中に複数の独立した料理の候補データを格納して返してください。'
-      }"climate_badge"には気候マッチ度を示す文字だけの短いタグ（例：「猛暑に最適」「体ポカポカ」など）を記載してください。"climate_badge"と"dish_badge"には絵文字や装飾記号を含めないでください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。これ以外のテキストは一切含めないでください。
+        : '以下のJSON構造で、"recipes"配列の中に最もおすすめする料理を1品だけ格納して返してください。候補を複数生成しないでください。'
+      }"climate_badge"には気候マッチ度を示す文字だけの短いタグ（例：「猛暑に最適」「体ポカポカ」など）を記載してください。"climate_badge"と"dish_badge"には絵文字や装飾記号を含めないでください。また"cooking_tips"配列に食材や気候に関連するコツ・保存方法・栄養豆知識を3件含めてください。
+10. 【成立可否も同時判定】在庫モードで、在庫食材の系統と指定カテゴリが明らかに噛み合わない、または主要食材が足りず条件どおりの料理が成立しない場合は、無理なレシピを作らず"feasibility.feasible"をfalse、"recipes"と"cooking_tips"を空配列にしてください。成立する場合と自由作成モードでは"feasibility.feasible"をtrueにしてください。これ以外のテキストは一切含めないでください。
 {
+  "feasibility": {
+    "feasible": true,
+    "reason": "作れない場合だけ理由を1〜2文で記載。作れる場合は空文字",
+    "missingKeyIngredients": ["成立に不足する主要食材。作れる場合は空配列"]
+  },
   "recipes": [
     {
       "title": "料理名",
@@ -251,17 +287,26 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     };
 
     let lastErrors: string[] = [];
+    let latestAttemptTelemetry: RecipeAttemptTelemetry | null = null;
     for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
       const prompt = attempt === 0 ? basePrompt : `${basePrompt}\n${buildValidationRetryNote(lastErrors)}`;
 
+      const models = [...RECIPE_MODEL_ORDER[attempt]];
+      const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
-          // 「本当に美味しい一皿」への工夫を考えさせる分、思考の余地を少し広げる
-          thinkingConfig: { thinkingBudget: 6000 },
+          thinkingConfig: { thinkingLevel },
         }
-      });
+      }, models, 2);
+      const aiTelemetry = getAiCallTelemetry(response);
+      const attemptBase = {
+        attempt: attempt + 1,
+        model: aiTelemetry?.model || models[0],
+        aiDurationMs: aiTelemetry?.durationMs || 0,
+        transportFailures: aiTelemetry?.failedAttempts.length || 0,
+      };
 
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
@@ -273,7 +318,43 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         lastErrors = [
           `response was not valid JSON: ${parseError instanceof Error ? parseError.message : 'unknown parse error'}`,
         ];
+        latestAttemptTelemetry = {
+          ...attemptBase,
+          outcome: 'rejected',
+          errors: compactValidationErrors(lastErrors),
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
+      }
+
+      const rawFeasibility = json.feasibility;
+      if (
+        !isFreeMode
+        && rawFeasibility
+        && typeof rawFeasibility === 'object'
+        && !Array.isArray(rawFeasibility)
+        && (rawFeasibility as Record<string, unknown>).feasible === false
+      ) {
+        const feasibility = rawFeasibility as Record<string, unknown>;
+        const attemptTelemetry: RecipeAttemptTelemetry = {
+          ...attemptBase,
+          outcome: 'infeasible',
+          errors: [],
+        };
+        latestAttemptTelemetry = attemptTelemetry;
+        generationAttempts.push(attemptTelemetry);
+        logRecipeGeneration(requestId, generationStartedAt, 'infeasible', generationAttempts);
+        return NextResponse.json({
+          recipes: [],
+          cooking_tips: [],
+          feasibility: {
+            feasible: false,
+            reason: typeof feasibility.reason === 'string' ? feasibility.reason : '',
+            missingKeyIngredients: Array.isArray(feasibility.missingKeyIngredients)
+              ? feasibility.missingKeyIngredients.filter((name): name is string => typeof name === 'string')
+              : [],
+          },
+        }, { headers: generationHeaders(generationStartedAt, attemptTelemetry) });
       }
 
       const recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
@@ -281,32 +362,103 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         ? recipeArray.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
         : ['recipes must be a non-empty array'];
 
+      if (isSetMeal && (recipeArray.length < 3 || recipeArray.length > 4)) {
+        shapeErrors.push('set meal recipes must contain 3 or 4 dishes');
+      }
+      if (!isSetMeal && recipeArray.length !== 1) {
+        shapeErrors.push('single-dish suggestions must contain exactly 1 recipe');
+      }
+      if (!Array.isArray(json.cooking_tips) || json.cooking_tips.length !== 3) {
+        shapeErrors.push('cooking_tips must contain exactly 3 items');
+      } else {
+        json.cooking_tips.forEach((tip, index) => {
+          if (!tip || typeof tip !== 'object') {
+            shapeErrors.push(`cooking_tips[${index}] must be an object`);
+            return;
+          }
+          const entry = tip as Record<string, unknown>;
+          if (typeof entry.category !== 'string' || !entry.category.trim()) {
+            shapeErrors.push(`cooking_tips[${index}].category is missing`);
+          }
+          if (typeof entry.tip !== 'string' || !entry.tip.trim()) {
+            shapeErrors.push(`cooking_tips[${index}].tip is missing`);
+          }
+          if (/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/u.test(`${entry.category || ''} ${entry.tip || ''}`)) {
+            shapeErrors.push(`cooking_tips[${index}] must not contain emoji`);
+          }
+        });
+      }
+
       if (shapeErrors.length > 0) {
         lastErrors = shapeErrors;
+        latestAttemptTelemetry = {
+          ...attemptBase,
+          outcome: 'rejected',
+          errors: compactValidationErrors(lastErrors),
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
 
       const logicErrors = (recipeArray as ValidatedRecipe[]).flatMap((r) => validateRecipeLogic(r, feasibilityContext));
+      logicErrors.push(...(recipeArray as ValidatedRecipe[]).flatMap((recipe, index) =>
+        qualityGateErrors(recipe, {
+          servings: targetServings,
+          mealStyle: isSetMeal ? 'set' : 'single',
+          targetCaloriesPerServing: isSetMeal ? null : targetCaloriesPerMeal,
+          targetProteinPerServing: isSetMeal ? null : targetProteinPerMeal,
+        }, `recipes[${index}]`)
+      ));
+      logicErrors.push(...validateRequiredIngredients(
+        recipeArray as ValidatedRecipe[],
+        Array.isArray(pinnedIngredients) ? pinnedIngredients : [],
+        !isSetMeal,
+      ));
+      if (isSetMeal) logicErrors.push(...validateSetMeal(
+        recipeArray as ValidatedRecipe[],
+        targetCaloriesPerMeal,
+        targetProteinPerMeal,
+      ));
       if (logicErrors.length > 0) {
         lastErrors = logicErrors;
+        latestAttemptTelemetry = {
+          ...attemptBase,
+          outcome: 'rejected',
+          errors: compactValidationErrors(lastErrors),
+        };
+        generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
 
       // 検証OK: 採用
-      return NextResponse.json(json);
+      const attemptTelemetry: RecipeAttemptTelemetry = {
+        ...attemptBase,
+        outcome: 'accepted',
+        errors: [],
+      };
+      latestAttemptTelemetry = attemptTelemetry;
+      generationAttempts.push(attemptTelemetry);
+      logRecipeGeneration(requestId, generationStartedAt, 'success', generationAttempts);
+      return NextResponse.json(json, {
+        headers: generationHeaders(generationStartedAt, attemptTelemetry),
+      });
     }
 
     // 規定回数リトライしても検証を通らなかった場合は、不正確なレシピを
     // そのまま出すよりも明示的にエラーにする
     console.error('Recipe validation failed after retries:', lastErrors);
+    logRecipeGeneration(requestId, generationStartedAt, 'validation_failed', generationAttempts);
     return NextResponse.json({
       error: language === 'en'
         ? 'The AI could not produce a recipe that satisfies your conditions after multiple attempts. Please try again or adjust your request.'
         : '条件を満たすレシピをAIが生成できませんでした。条件を変えるか、もう一度お試しください。',
-    }, { status: 422 });
+    }, latestAttemptTelemetry
+      ? { status: 422, headers: generationHeaders(generationStartedAt, latestAttemptTelemetry) }
+      : { status: 422 });
 
   } catch (error: unknown) {
     console.error('Recipe Gen Error:', error);
+    logRecipeGeneration(requestId, generationStartedAt, 'request_failed', generationAttempts);
     const details = typeof error === 'object' && error !== null
       ? error as { status?: number | string; httpStatusCode?: number | string; code?: number | string; message?: string }
       : {};
