@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Flame, Leaf } from "lucide-react";
-import { getLocalUserStats, UserStats } from "@/lib/storage";
+import { getChefLevelProgress, getLocalUserStats, UserStats } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import styles from "./ChefProfileBadge.module.css";
 
 // ブリガード・ド・キュイジーヌ(伝統的なフランス料理の厨房組織)にちなんだ
@@ -43,6 +44,7 @@ const INITIAL_STATS: UserStats = {
 
 export default function ChefProfileBadge() {
   const { t } = useLanguage();
+  const { isPremium } = usePremium();
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
 
   useEffect(() => {
@@ -58,9 +60,19 @@ export default function ChefProfileBadge() {
 
   const currentBadge = CHEF_BADGES.slice().reverse().find((r) => stats.chef_level >= r.level) || CHEF_BADGES[0];
   const rankName = t.chefRanks[currentBadge.level - 1];
+  const levelProgress = getChefLevelProgress(stats.total_cooked);
+  const progressRange = levelProgress.nextThreshold === null
+    ? 1
+    : levelProgress.nextThreshold - levelProgress.currentThreshold;
+  const progressValue = levelProgress.nextThreshold === null
+    ? 1
+    : Math.min(1, Math.max(0, (stats.total_cooked - levelProgress.currentThreshold) / progressRange));
+  const remainingToNext = levelProgress.nextThreshold === null
+    ? null
+    : Math.max(0, levelProgress.nextThreshold - stats.total_cooked);
 
   return (
-    <div className={styles.badgeContainer}>
+    <div className={`${styles.badgeContainer} ${isPremium ? styles.badgePremium : ''}`}>
       <div className={styles.rankPill}>
         <img
           src={`/ranks/${currentBadge.badge}.png`}
@@ -69,7 +81,15 @@ export default function ChefProfileBadge() {
           width={36}
           height={48}
         />
-        <span className={styles.rankName}>Lv.{stats.chef_level} {rankName}</span>
+        <span className={styles.rankInfo}>
+          <span className={styles.rankName}>Lv.{stats.chef_level} {rankName}</span>
+          <span className={styles.progressRow}>
+            <span className={styles.progressTrack} aria-hidden="true"><span style={{ width: `${progressValue * 100}%` }} /></span>
+            <span className={styles.progressLabel}>
+              {remainingToNext === null ? t.chefBadge.maxRank : t.chefBadge.nextRank(remainingToNext)}
+            </span>
+          </span>
+        </span>
       </div>
 
       <div className={styles.metricsGroup}>

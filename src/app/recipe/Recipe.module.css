@@ -1426,3 +1426,29 @@
   gap: 5px;
   margin-top: 6px;
 }
+.freeQuotaHint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.premiumTipsGate {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 111, 145, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 246, 228, 0.96), rgba(255, 235, 242, 0.96));
+  color: var(--primary-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.premiumTipsGate svg { flex: 0 0 auto; color: #d85779; }
+.premiumTipsGate span { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.45; }
+.premiumTipsGate strong { font-size: 13px; font-weight: 900; }

@@ -13,6 +13,7 @@ import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -36,7 +37,14 @@ import {
   UserProfile,
   NutritionData
 } from "@/lib/storage";
+import {
+  canUseFreeRecipeGeneration,
+  getFreeRecipeCreditsRemaining,
+  incrementFreeRecipeGeneration,
+} from "@/lib/storage";
 import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
+import { shareGeneratedRecipes } from "@/lib/communityRecipes";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
 import { setNavLocked } from "@/lib/navLock";
@@ -97,6 +105,7 @@ const stripLeadingEmoji = (value: string) => value
 
 export default function RecipePage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -119,6 +128,7 @@ export default function RecipePage() {
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [resultOrigin, setResultOrigin] = useState<'generated' | 'cache' | 'restored' | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
@@ -129,7 +139,7 @@ export default function RecipePage() {
   // 生成前の成立可否判定(要件8・9)でNGと判定された場合、レシピの代わりに
   // 警告(理由・不足食材・次のアクション)を表示する
   const [feasibilityWarning, setFeasibilityWarning] = useState<{ reason: string; missingKeyIngredients: string[] } | null>(null);
-  const selectedTray = getTrayTheme(userProfile.trayTheme);
+  const selectedTray = getTrayTheme(isPremium ? userProfile.trayTheme : 'wood');
   const validSelectedIngredientIds = selectedIngredientIds.filter((id) =>
     ingredients.some((ingredient) => ingredient.id === id)
   );
@@ -293,6 +303,11 @@ export default function RecipePage() {
       }
     }
 
+    if (!isPremium && !canUseFreeRecipeGeneration(mealStyle)) {
+      setShowPaywall(true);
+      return;
+    }
+
     setLoading(true);
     setNavLocked(true);
     setErrorMsg("");
@@ -330,6 +345,13 @@ export default function RecipePage() {
         setRecipes(data.recipes);
         setExpandedIndex(-1);
         setResultOrigin('generated');
+        if (!isPremium) incrementFreeRecipeGeneration(mealStyle);
+
+        // 無料版は常に、Plusは設定がONの時だけ、完成レシピ本文を自動共有する。
+        // 個人設定・在庫・自由記述は送信しない。
+        if (!isPremium || userProfile.shareGeneratedRecipes !== false) {
+          void shareGeneratedRecipes(data.recipes);
+        }
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -690,6 +712,11 @@ export default function RecipePage() {
             </>
           )}
         </button>
+        {!isPremium && (
+          <p className={styles.freeQuotaHint}>
+            {t.recipe.freeDailyRemaining(getFreeRecipeCreditsRemaining(), mealStyle)}
+          </p>
+        )}
       </div>
       </div>
 
@@ -801,7 +828,7 @@ export default function RecipePage() {
       )}
 
       {/* 豆知識セクション */}
-      {!loading && cookingTips.length > 0 && (
+      {!loading && cookingTips.length > 0 && isPremium && (
         <div className={styles.cookingTipsSection}>
           <button
             className={styles.cookingTipsHeader}
@@ -838,6 +865,13 @@ export default function RecipePage() {
             )}
           </AnimatePresence>
         </div>
+      )}
+
+      {!loading && cookingTips.length > 0 && !isPremium && (
+        <button type="button" className={styles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+          <Lightbulb size={20} />
+          <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+        </button>
       )}
 
       {/* クッキングセッション */}
@@ -1015,10 +1049,17 @@ export default function RecipePage() {
                   </ol>
                 </div>
 
-                {detailRecipe.tips && (
+                {detailRecipe.tips && isPremium && (
                   <div className={styles.tipsBox}>
                     <strong>{t.recipe.tipsPrefix}</strong> {detailRecipe.tips}
                   </div>
+                )}
+
+                {detailRecipe.tips && !isPremium && (
+                  <button type="button" className={styles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+                    <Lightbulb size={20} />
+                    <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                  </button>
                 )}
 
                 <button
@@ -1033,6 +1074,8 @@ export default function RecipePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }

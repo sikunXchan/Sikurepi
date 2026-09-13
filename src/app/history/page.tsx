@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -12,7 +12,9 @@ import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
@@ -27,6 +29,7 @@ import {
   Ingredient,
   UserProfile
 } from "@/lib/storage";
+import { FREE_HISTORY_ITEMS } from "@/lib/storage";
 import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
@@ -34,6 +37,7 @@ const GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS);
 
 export default function HistoryPage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const TIME_OPTIONS = t.history.timeOptions;
   const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,7 @@ export default function HistoryPage() {
   const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -91,7 +96,9 @@ export default function HistoryPage() {
   };
 
   // Client-side filtering
-  const filteredRecipes = allRecipes.filter(recipe => {
+  const accessibleRecipes = isPremium ? allRecipes : allRecipes.slice(0, FREE_HISTORY_ITEMS);
+  const visibleRescueRecords = isPremium ? rescueRecords : rescueRecords.slice(0, FREE_HISTORY_ITEMS);
+  const filteredRecipes = accessibleRecipes.filter(recipe => {
     if (searchText) {
       const q = searchText.toLowerCase();
       const inTitle = recipe.title.toLowerCase().includes(q);
@@ -201,7 +208,7 @@ export default function HistoryPage() {
             </div>
           </div>
           <div className={styles.rescueRecordScroll}>
-            {rescueRecords.map((record, recordIndex) => {
+            {visibleRescueRecords.map((record, recordIndex) => {
               const rescued = record.rescuedIngredients || [];
               return (
                 <article key={`${record.date}-${recordIndex}`} className={styles.rescueRecord}>
@@ -282,7 +289,7 @@ export default function HistoryPage() {
 
         {hasFilters && (
           <p className={styles.filterResult}>
-            {t.history.filterResultCount(filteredRecipes.length, allRecipes.length)}
+            {t.history.filterResultCount(filteredRecipes.length, accessibleRecipes.length)}
           </p>
         )}
       </div>}
@@ -327,6 +334,12 @@ export default function HistoryPage() {
 
       {!loading && (
         <>
+          {!isPremium && allRecipes.length > FREE_HISTORY_ITEMS && (
+            <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
+              <Crown size={20} />
+              <span><strong>{t.history.plusLimitTitle}</strong>{t.history.plusLimitBody(allRecipes.length - FREE_HISTORY_ITEMS)}</span>
+            </button>
+          )}
           {sortedRecipes.map((recipe) => {
             const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
@@ -456,10 +469,16 @@ export default function HistoryPage() {
                       </ol>
                     </div>
 
-                    {recipe.tips && (
+                    {recipe.tips && isPremium && (
                       <div className={styles.tipsBox}>
                         <strong>{t.history.tipsPrefix}</strong> {recipe.tips}
                       </div>
+                    )}
+                    {recipe.tips && !isPremium && (
+                      <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
+                        <Crown size={18} />
+                        <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                      </button>
                     )}
                   </div>
                 )}
@@ -467,7 +486,7 @@ export default function HistoryPage() {
             );
           })}
 
-          {filteredRecipes.length === 0 && allRecipes.length > 0 && (
+          {filteredRecipes.length === 0 && accessibleRecipes.length > 0 && (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}><Search size={32} /></div>
               <p>{t.history.noFilterResults}</p>
@@ -498,6 +517,8 @@ export default function HistoryPage() {
           />
         )}
       </AnimatePresence>
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
 
       {/* クッキングセッション */}
       <AnimatePresence>

@@ -627,6 +627,47 @@
   color: #ffffff;
 }
 
+.communityOpen {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.communityOpen > img { flex: 0 0 auto; }
+.communityRowInfo { display: flex; flex-direction: column; gap: 2px; }
+.communityRowInfo small { color: var(--secondary); font-size: 10px; font-weight: 900; }
+
+.communityScope {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.communityPlusGate {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 9px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 111, 145, .22);
+  border-radius: 12px;
+  background: rgba(255, 240, 245, .82);
+  color: #a94464;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 @keyframes homeBearWave {
   0%, 82%, 100% { transform: translateY(0) rotate(0); }
   88% { transform: translateY(-3px) rotate(-3deg); }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Crown, Loader2, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { Check, Crown, Loader2, Palette, RotateCcw, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import type { PurchaseActionResult } from "@/lib/purchases";
@@ -140,7 +140,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
             <ul className={styles.benefits}>
               <li><Check size={15} />{t.premium.benefitUnlimited}</li>
               <li><Check size={15} />{t.premium.benefitRegenerate}</li>
-              <li><ShieldCheck size={15} />{t.premium.benefitSafety}</li>
+              <li><Palette size={15} />{t.premium.benefitSafety}</li>
             </ul>
 
             {premium.isPremium ? (

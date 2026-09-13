@@ -31,8 +31,8 @@ import {
   MealSlot,
   WeeklyPlanEntry,
 } from "@/lib/storage";
-import { isNativeApp } from "@/lib/purchases";
 import { usePremium } from "@/lib/premium/PremiumContext";
+import { shareGeneratedRecipes } from "@/lib/communityRecipes";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
@@ -178,7 +178,7 @@ export default function MealPlanPage() {
       setErrorMsg(t.mealPlan.errorNoSlots);
       return;
     }
-    if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+    if (!isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
       setShowPaywall(true);
       return;
     }
@@ -196,7 +196,10 @@ export default function MealPlanPage() {
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
-      if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium || profile.shareGeneratedRecipes !== false) {
+        void shareGeneratedRecipes(entries.map((entry) => entry.recipe));
+      }
       loadData();
       showToast(t.mealPlan.generatedToast(entries.length));
     } catch (err: unknown) {
@@ -207,7 +210,7 @@ export default function MealPlanPage() {
   };
 
   const handleRegenerateSlot = async (date: string, mealSlot: MealSlot) => {
-    if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+    if (!isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
       setShowPaywall(true);
       return;
     }
@@ -224,8 +227,12 @@ export default function MealPlanPage() {
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorRegenFailed);
       const r = (data.plan || [])[0];
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
-      setLocalWeekPlanEntries([mapPlanItem(r)]);
-      if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
+      const entry = mapPlanItem(r);
+      setLocalWeekPlanEntries([entry]);
+      if (!isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium || profile.shareGeneratedRecipes !== false) {
+        void shareGeneratedRecipes([entry.recipe]);
+      }
       loadData();
       showToast(t.mealPlan.regeneratedToast);
     } catch (err: unknown) {
@@ -298,7 +305,7 @@ export default function MealPlanPage() {
         subtitle={t.mealPlan.subtitle}
         mascot="bear_itadakimasu"
         actions={
-          isNativeApp() && isPremium ? (
+          isPremium ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: '#b45309', background: 'rgba(245, 158, 11, 0.14)', padding: '5px 11px', borderRadius: 20 }}>
               <Crown size={13} /> {t.mealPlan.premiumBadge}
             </span>
@@ -369,7 +376,7 @@ export default function MealPlanPage() {
             </>
           )}
         </button>
-        {isNativeApp() && !isPremium && (
+        {!isPremium && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
             {t.mealPlan.freeRemaining(getFreeGenerationsRemaining())}
           </p>
@@ -532,11 +539,17 @@ export default function MealPlanPage() {
                                       ))}
                                     </ol>
                                   </div>
-                                  {entry.recipe.tips && (
+                                  {entry.recipe.tips && isPremium && (
                                     <div className={recipeStyles.tipsBox} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                       <UiIcon slug="tips_idea" size={32} alt="" />
                                       <span>{entry.recipe.tips}</span>
                                     </div>
+                                  )}
+                                  {entry.recipe.tips && !isPremium && (
+                                    <button type="button" className={recipeStyles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+                                      <Crown size={18} />
+                                      <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                                    </button>
                                   )}
 
                                   {/* 料理完了ボタン (在庫消費 & PFC累積) : レシピ生成画面と同じ導線・見た目にする */}
