@@ -18,6 +18,7 @@ import { usePremium } from "@/lib/premium/PremiumContext";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
+  deleteLocalCookingRecordsForRecipe,
   getLocalIngredients,
   addLocalShoppingItem,
   isIngredientMissing,
@@ -152,7 +153,9 @@ export default function HistoryPage() {
 
   const handleDelete = () => {
     if (targetId === null) return;
+    const target = allRecipes.find((recipe) => recipe.id === targetId);
     deleteLocalSavedRecipe(targetId);
+    if (target) deleteLocalCookingRecordsForRecipe(target.id, target.title);
     if (expandedId === targetId) setExpandedId(null);
     setModalOpen(false);
     setTargetId(null);
@@ -509,6 +512,8 @@ export default function HistoryPage() {
         {cookedModalRecipe && (
           <CookedModal
             recipe={cookedModalRecipe}
+            source="history"
+            sourceRecipeId={cookedModalRecipe.id}
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadRecipes();
@@ -527,6 +532,9 @@ export default function HistoryPage() {
             title={cookingSessionRecipe.title}
             steps={cookingSessionRecipe.steps || []}
             ingredients={cookingSessionRecipe.ingredients || []}
+            completionRecipe={cookingSessionRecipe}
+            source="history"
+            sourceRecipeId={cookingSessionRecipe.id}
             onClose={() => setCookingSessionRecipe(null)}
           />
         )}

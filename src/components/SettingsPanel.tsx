@@ -402,10 +402,10 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               <span>
                 <strong>{isPremium && profile.shareGeneratedRecipes === false
                   ? (language === 'ja' ? '共有しない' : 'Do not share')
-                  : (language === 'ja' ? '生成レシピを共有する' : 'Share generated recipes')}</strong>
+                  : (language === 'ja' ? '作ったレシピを共有する' : 'Share recipes I cooked')}</strong>
                 <small>{isPremium
-                  ? (language === 'ja' ? 'レシピ本文のみ。個人設定や在庫は送信しません。' : 'Recipe content only. Your settings and pantry are never sent.')
-                  : (language === 'ja' ? '無料版は自動共有。PlusではOFFにできます。' : 'Free automatically shares; Plus can turn this off.')}</small>
+                  ? (language === 'ja' ? '「この料理を作った！」で記録したレシピ本文のみ。個人設定や在庫は送信しません。' : 'Only recipes recorded with “I made this!” are shared. Your settings and pantry are never sent.')
+                  : (language === 'ja' ? '実際に作った料理は自動共有。PlusではOFFにできます。' : 'Recipes you actually cook are shared automatically; Plus can turn this off.')}</small>
               </span>
             </button>
           </div>

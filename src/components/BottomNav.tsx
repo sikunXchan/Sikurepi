@@ -15,7 +15,8 @@ export default function BottomNav() {
   // 「食材が呼びかける」対象がいる間、在庫タブに気づけるよう赤いバッジを出す
   const [forgottenCount, setForgottenCount] = useState(0);
   // レシート解析中など、離脱すると処理が失われる画面ではタブ移動をロックする
-  const [locked, setLocked] = useState(false);
+  const [lockState, setLockState] = useState({ locked: false, path: "" });
+  const locked = lockState.locked && lockState.path === pathname;
 
   useEffect(() => {
     const update = () => setForgottenCount(getForgottenIngredients().length);
@@ -26,10 +27,18 @@ export default function BottomNav() {
 
   useEffect(() => {
     const onLockChange = (e: Event) => {
-      setLocked(Boolean((e as CustomEvent<{ locked: boolean }>).detail?.locked));
+      setLockState({
+        locked: Boolean((e as CustomEvent<{ locked: boolean }>).detail?.locked),
+        path: window.location.pathname,
+      });
     };
+    const clearStaleLock = () => setLockState({ locked: false, path: "" });
     window.addEventListener(NAV_LOCK_EVENT, onLockChange);
-    return () => window.removeEventListener(NAV_LOCK_EVENT, onLockChange);
+    window.addEventListener("pageshow", clearStaleLock);
+    return () => {
+      window.removeEventListener(NAV_LOCK_EVENT, onLockChange);
+      window.removeEventListener("pageshow", clearStaleLock);
+    };
   }, []);
 
   const guardClick = (e: React.MouseEvent) => {
@@ -51,7 +60,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className={`${styles.nav} ${locked ? styles.navLocked : ""}`} aria-disabled={locked}>
+    <nav className={`${styles.nav} ${locked ? styles.navLocked : ""}`} aria-busy={locked}>
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.path;

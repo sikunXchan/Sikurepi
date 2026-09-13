@@ -20,6 +20,21 @@ function getRecipeKey(recipe: CommunityRecipe): string {
   return createHash('sha256').update(serializeCommunityRecipeIdentity(recipe)).digest('hex');
 }
 
+async function findLegacyRecipe(recipe: CommunityRecipe): Promise<string | null> {
+  if (!supabase) return null;
+  const target = serializeCommunityRecipeIdentity(recipe);
+  const result = await supabase
+    .from('community_recipes')
+    .select('id, recipe')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (result.error) return null;
+  const match = (result.data as CommunityRecipeListRow[] | null)?.find((row) =>
+    isCommunityRecipe(row.recipe) && serializeCommunityRecipeIdentity(row.recipe) === target
+  );
+  return match?.id || null;
+}
+
 type CommunityRecipeListRow = {
   id: string;
   recipe: CommunityRecipe;
@@ -146,8 +161,11 @@ export async function POST(req: Request) {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!existing.error && existing.data?.id) {
-        ids.push(existing.data.id);
+      const existingId = !existing.error && existing.data?.id
+        ? existing.data.id
+        : await findLegacyRecipe(recipe);
+      if (existingId) {
+        ids.push(existingId);
         continue;
       }
 

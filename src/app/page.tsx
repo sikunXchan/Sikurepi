@@ -207,6 +207,7 @@ export default function HomePage() {
       steps: visibleDailyPick.steps.map(step => pickText(step, language)),
       tips: pickText(visibleDailyPick.tips, language),
       nutrition: visibleDailyPick.nutrition,
+      source: 'daily-pick',
     });
     router.push("/recipe");
   };
@@ -222,6 +223,8 @@ export default function HomePage() {
       steps: recipe.steps || [],
       tips: recipe.tips || '',
       nutrition: recipe.nutrition || null,
+      source: 'community',
+      sourceRecipeId: row.id,
     });
     router.push('/recipe');
   };

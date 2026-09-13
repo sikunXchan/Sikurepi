@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plus, Pin, X } from "lucide-react";
+import { ChevronRight, Plus, Pin, X } from "lucide-react";
 import confetti from "canvas-confetti";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
@@ -307,11 +307,13 @@ export default function InventoryPage() {
   };
 
   const handleFindRecipeForForgotten = (item: Ingredient) => {
-    router.push(`/recipe?ingredient=${item.id}`);
+    router.push(`/recipe?ingredient=${item.id}&rescue=1`);
   };
 
   const hasIngredients = ingredients.length > 0;
   const forgottenIds = new Set(forgottenItems.map(i => i.id));
+  const previewIsForgotten = previewItem ? forgottenIds.has(previewItem.id) : false;
+  const previewAgeDays = previewItem ? Math.max(0, computeAgeDays(previewItem.created_at)) : 0;
 
   // 冷蔵庫の棚の1段 = カテゴリ1つ。以前は12カテゴリを3ゾーンへ圧縮して表示して
   // いたが、ユーザーの要望でカテゴリ自体を7つへ圧縮し、以降は圧縮なしで
@@ -462,7 +464,7 @@ export default function InventoryPage() {
       )}
 
       {previewItem && !confirmDeleteItem && (
-        <div className={styles.itemPreviewCard} role="status" aria-live="polite">
+        <div className={styles.itemPreviewCard} role="dialog" aria-modal="false" aria-label={previewItem.name}>
           <div className={styles.itemPreviewIcon}>
             <IngredientIcon name={previewItem.name} size={58} />
           </div>
@@ -479,6 +481,17 @@ export default function InventoryPage() {
           >
             <X size={18} />
           </button>
+          {previewIsForgotten && (
+            <div className={styles.itemPreviewRescue}>
+              <div>
+                <strong>{t.inventory.itemPreviewRescueTitle(previewItem.name)}</strong>
+                <span>{t.inventory.itemPreviewRescueBody(previewAgeDays)}</span>
+              </div>
+              <button type="button" onClick={() => handleFindRecipeForForgotten(previewItem)}>
+                {t.inventory.itemPreviewRescueCta}<ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

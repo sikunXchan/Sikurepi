@@ -32,7 +32,6 @@ import {
   WeeklyPlanEntry,
 } from "@/lib/storage";
 import { usePremium } from "@/lib/premium/PremiumContext";
-import { shareGeneratedRecipes } from "@/lib/communityRecipes";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
@@ -199,9 +198,6 @@ export default function MealPlanPage() {
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
       if (!isPremium) incrementFreeGenerationsUsed();
-      if (!isPremium || profile.shareGeneratedRecipes !== false) {
-        void shareGeneratedRecipes(entries.map((entry) => entry.recipe));
-      }
       loadData();
       showToast(t.mealPlan.generatedToast(entries.length));
     } catch (err: unknown) {
@@ -232,9 +228,6 @@ export default function MealPlanPage() {
       const entry = mapPlanItem(r);
       setLocalWeekPlanEntries([entry]);
       if (!isPremium) incrementFreeGenerationsUsed();
-      if (!isPremium || profile.shareGeneratedRecipes !== false) {
-        void shareGeneratedRecipes([entry.recipe]);
-      }
       loadData();
       showToast(t.mealPlan.regeneratedToast);
     } catch (err: unknown) {
@@ -607,6 +600,8 @@ export default function MealPlanPage() {
         {cookedModalEntry && (
           <CookedModal
             recipe={cookedModalEntry.recipe}
+            source="meal-plan"
+            sourceRecipeId={`${cookedModalEntry.date}_${cookedModalEntry.mealSlot}`}
             onClose={() => setCookedModalEntry(null)}
             onCompleted={() => {
               loadData();

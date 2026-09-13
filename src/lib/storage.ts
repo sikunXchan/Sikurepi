@@ -93,6 +93,11 @@ export type SavedRecipe = {
 export type CookedRecord = {
   date: string;
   recipeTitle: string;
+  // 「何を表示したか」ではなく、どの導線から実際に調理を完了したかを残す。
+  // みんなのレシピ由来の料理を再共有しないことや、履歴削除時に対応する
+  // 自炊記録だけを取り除くために使う。旧データとの互換性のため任意。
+  source?: 'generated' | 'meal-plan' | 'history' | 'community' | 'daily-pick';
+  sourceRecipeId?: string;
   calories?: number;
   protein_g?: number;
   fat_g?: number;
@@ -143,7 +148,7 @@ export type UserProfile = {
   preferredGenres: string[];
   // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
   trayTheme?: TrayThemeId;
-  // 生成したレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
+  // 実際に作ったレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
   // falseにして共有を停止できる。旧データは未定義=trueとして扱う。
   shareGeneratedRecipes?: boolean;
   // 「そろそろ使って」通知をユーザーが明示的に非表示にした食材ID。
@@ -551,6 +556,8 @@ export type DailyPickHandoffRecipe = {
   steps: string[];
   tips: string;
   nutrition?: NutritionData | null;
+  source?: 'daily-pick' | 'community';
+  sourceRecipeId?: string;
 };
 
 export function setPendingDailyPickHandoff(recipe: DailyPickHandoffRecipe): void {
@@ -752,19 +759,27 @@ export type LastRecipeGeneration = {
   requestKey?: string;
 };
 
-type RecipeGenerationCacheEntry = LastRecipeGeneration & {
+export type RecipeGenerationCacheEntry = LastRecipeGeneration & {
   requestKey: string;
 };
 
 const RECIPE_GENERATION_CACHE_LIMIT = 6;
 export const RECIPE_GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+function withoutSavedInstruction<T extends LastRecipeGeneration>(data: T): T {
+  return data.instruction ? { ...data, instruction: '' } : data;
+}
+
 export function getLocalLastRecipeGeneration(): LastRecipeGeneration | null {
-  return getStorage<LastRecipeGeneration | null>(KEYS.LAST_RECIPE_GENERATION, null);
+  const stored = getStorage<LastRecipeGeneration | null>(KEYS.LAST_RECIPE_GENERATION, null);
+  if (!stored) return null;
+  const sanitized = withoutSavedInstruction(stored);
+  if (sanitized !== stored) setStorage(KEYS.LAST_RECIPE_GENERATION, sanitized);
+  return sanitized;
 }
 
 export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
-  setStorage(KEYS.LAST_RECIPE_GENERATION, data);
+  setStorage(KEYS.LAST_RECIPE_GENERATION, withoutSavedInstruction(data));
 }
 
 export function getLocalCachedRecipeGeneration(
@@ -772,7 +787,7 @@ export function getLocalCachedRecipeGeneration(
   maxAgeMs = RECIPE_GENERATION_CACHE_TTL_MS,
 ): LastRecipeGeneration | null {
   const now = Date.now();
-  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const entries = getLocalRecipeGenerationCache();
   const entry = entries.find((candidate) =>
     candidate.requestKey === requestKey
     && Number.isFinite(Date.parse(candidate.savedAt))
@@ -782,12 +797,21 @@ export function getLocalCachedRecipeGeneration(
 }
 
 export function setLocalCachedRecipeGeneration(data: LastRecipeGeneration & { requestKey: string }): void {
-  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const entries = getLocalRecipeGenerationCache();
   const next = [
-    data,
+    withoutSavedInstruction(data),
     ...entries.filter((entry) => entry.requestKey !== data.requestKey),
   ].slice(0, RECIPE_GENERATION_CACHE_LIMIT);
   setStorage(KEYS.RECIPE_GENERATION_CACHE, next);
+}
+
+export function getLocalRecipeGenerationCache(): RecipeGenerationCacheEntry[] {
+  const stored = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const sanitized = stored.map(withoutSavedInstruction);
+  if (sanitized.some((entry, index) => entry !== stored[index])) {
+    setStorage(KEYS.RECIPE_GENERATION_CACHE, sanitized);
+  }
+  return sanitized;
 }
 
 // --- 統計 ＆ PFC記録 (Stats) ---
@@ -847,6 +871,7 @@ export function recordLocalCookingDone(
   feedback?: CookingFeedback,
   consumedIngredientNames: string[] = [],
   rescuedIngredients: RescuedIngredientSnapshot[] = [],
+  metadata: Pick<CookedRecord, 'source' | 'sourceRecipeId'> = {},
 ): UserStats {
   const stats = getLocalUserStats();
   const today = getTodayLocalDateKey();
@@ -885,6 +910,8 @@ export function recordLocalCookingDone(
     consumedIngredientNames,
     rescuedIngredients,
     feedback,
+    source: metadata.source,
+    sourceRecipeId: metadata.sourceRecipeId,
   };
 
   const updated: UserStats = {
@@ -932,18 +959,9 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
       createdAt: record.date,
     }));
 
-  const generatedFeedback = getLocalRecipeFeedbackList().map((entry) => ({
-    recipeTitle: entry.recipeTitle,
-    tags: [] as FlavorFeedbackTag[],
-    wouldCookAgain: entry.rating === 'positive',
-    rating: entry.rating,
-    note: entry.note || undefined,
-    comment: undefined,
-    createdAt: entry.createdAt,
-  }));
-
   const seenTitles = new Set<string>();
-  return [...cookedFeedback, ...generatedFeedback]
+  // 生成結果を眺めただけの旧評価は学習へ混ぜず、調理完了まで記録された感想だけを使う。
+  return cookedFeedback
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .filter((entry) => {
       const key = entry.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase();
@@ -1007,25 +1025,75 @@ export function saveLocalRecipeFeedback(
   return next;
 }
 
-// 自炊記録(cooked_records)から誤って記録された1件を削除する(履歴の横スライド削除用)。
-// 累計値(total_cooked・連続記録日数・累計PFC等)はここでは補正しない。
-// - streak_days/last_cooked_dateは「記録の有無」から都度導出しているのではなく、
-//   記録した日付を比較するだけの単純なカウンタのため、後から特定の1件を除いても
-//   正しく巻き戻す方法がない(どの記録が連続日数に影響したかを遡れない)。
-// - 新しい記録にはconsumedCountとrescuedIngredientsを保存しているが、旧記録には
-//   どちらも存在しないため、saved_food_countを全期間で正確に巻き戻せない。
-// そのため、ここでは「ログの一覧から消す」ことだけを行い、チェフレベル等の
-// ゲーミフィケーション要素には手を加えない(中途半端な補正で別の不整合を生むよりも、
-// 一覧に出さないことを優先する)。
-export function deleteLocalCookedRecord(index: number): UserStats {
-  const stats = getLocalUserStats();
+function localDateKeyFromIso(value: string): string | null {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return getTodayLocalDateKey(date);
+}
+
+function deriveCookingStreak(records: CookedRecord[]): { streakDays: number; lastCookedDate: string | null } {
+  const dateKeys = Array.from(new Set(records
+    .map((record) => localDateKeyFromIso(record.date))
+    .filter((value): value is string => Boolean(value))))
+    .sort((a, b) => b.localeCompare(a));
+  if (dateKeys.length === 0) return { streakDays: 0, lastCookedDate: null };
+
+  let streakDays = 1;
+  let cursor = new Date(`${dateKeys[0]}T12:00:00`);
+  const available = new Set(dateKeys.slice(1));
+  while (true) {
+    cursor = new Date(cursor);
+    cursor.setDate(cursor.getDate() - 1);
+    const previous = getTodayLocalDateKey(cursor);
+    if (!available.has(previous)) break;
+    streakDays += 1;
+  }
+  return { streakDays, lastCookedDate: dateKeys[0] };
+}
+
+function removeCookingRecords(stats: UserStats, shouldRemove: (record: CookedRecord, index: number) => boolean): UserStats {
   const records = stats.cooked_records || [];
+  const removed = records.filter(shouldRemove);
+  if (removed.length === 0) return stats;
+  const kept = records.filter((record, index) => !shouldRemove(record, index));
+  const streak = deriveCookingStreak(kept);
+  const subtract = (key: 'calories' | 'protein_g' | 'fat_g' | 'carbs_g') =>
+    removed.reduce((sum, record) => sum + (Number(record[key]) || 0), 0);
+  const rescuedCount = removed.reduce((sum, record) => sum + (record.rescuedIngredients?.length || 0), 0);
+  const totalCooked = Math.max(0, stats.total_cooked - removed.length);
   const updated: UserStats = {
     ...stats,
-    cooked_records: records.filter((_, i) => i !== index),
+    cooked_records: kept,
+    total_cooked: totalCooked,
+    chef_level: computeChefLevel(totalCooked),
+    saved_food_count: Math.max(0, stats.saved_food_count - rescuedCount),
+    total_calories: Math.max(0, (stats.total_calories || 0) - subtract('calories')),
+    total_protein: Math.max(0, (stats.total_protein || 0) - subtract('protein_g')),
+    total_fat: Math.max(0, (stats.total_fat || 0) - subtract('fat_g')),
+    total_carbs: Math.max(0, (stats.total_carbs || 0) - subtract('carbs_g')),
+    streak_days: streak.streakDays,
+    last_cooked_date: streak.lastCookedDate,
   };
   setStorage(KEYS.STATS, updated);
   return updated;
+}
+
+// 自炊記録を削除した時は、回数・階級・PFC・救済数・連続記録も同時に戻す。
+export function deleteLocalCookedRecord(index: number): UserStats {
+  const stats = getLocalUserStats();
+  return removeCookingRecords(stats, (_, recordIndex) => recordIndex === index);
+}
+
+// 保存履歴を削除する時、その履歴から行った自炊記録も統計から除く。
+// sourceRecipeIdを持たない旧データだけは、正規化した料理名で対応付ける。
+export function deleteLocalCookingRecordsForRecipe(recipeId: number, recipeTitle: string): UserStats {
+  const stats = getLocalUserStats();
+  const id = String(recipeId);
+  const normalizedTitle = recipeTitle.normalize('NFKC').trim().toLocaleLowerCase();
+  return removeCookingRecords(stats, (record) => {
+    if (record.sourceRecipeId) return record.sourceRecipeId === id;
+    return record.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase() === normalizedTitle;
+  });
 }
 
 // --- 週間献立プラン (Weekly Meal Plan) ---
@@ -1205,6 +1273,11 @@ export type AppBackupPayload = {
   tips?: SavedTip[];
   weekPlan?: WeeklyPlanEntry[];
   recipeFeedback?: LocalRecipeFeedback[];
+  lastRecipeGeneration?: LastRecipeGeneration | null;
+  recipeGenerationCache?: RecipeGenerationCacheEntry[];
+  freeWeeklyPlanUsage?: FreeGenerationUsage;
+  freeRecipeUsage?: DailyFeatureUsage;
+  freeReceiptUsage?: DailyFeatureUsage;
 };
 
 // アカウント同期(SyncManager)でも同じ形のスナップショットを使うため、
@@ -1222,6 +1295,11 @@ export function buildBackupPayload(): AppBackupPayload {
     tips: getLocalSavedTips(),
     weekPlan: getLocalWeekPlan(),
     recipeFeedback: getLocalRecipeFeedbackList(),
+    lastRecipeGeneration: getLocalLastRecipeGeneration(),
+    recipeGenerationCache: getLocalRecipeGenerationCache(),
+    freeWeeklyPlanUsage: getFreeGenerationUsage(),
+    freeRecipeUsage: getDailyFeatureUsage(KEYS.FREE_RECIPE_USAGE),
+    freeReceiptUsage: getDailyFeatureUsage(KEYS.FREE_RECEIPT_USAGE),
   };
 }
 
@@ -1261,6 +1339,21 @@ export function applyBackupPayload(data: unknown): void {
   if (Array.isArray(payload.tips)) setStorage(KEYS.TIPS, payload.tips);
   if (Array.isArray(payload.weekPlan)) setStorage(KEYS.WEEK_PLAN, payload.weekPlan);
   if (Array.isArray(payload.recipeFeedback)) setStorage(KEYS.RECIPE_FEEDBACK, payload.recipeFeedback);
+  if ('lastRecipeGeneration' in payload && (
+    payload.lastRecipeGeneration === null || typeof payload.lastRecipeGeneration === 'object'
+  )) {
+    setStorage(KEYS.LAST_RECIPE_GENERATION, payload.lastRecipeGeneration);
+  }
+  if (Array.isArray(payload.recipeGenerationCache)) setStorage(KEYS.RECIPE_GENERATION_CACHE, payload.recipeGenerationCache);
+  if (payload.freeWeeklyPlanUsage && typeof payload.freeWeeklyPlanUsage === 'object') {
+    setStorage(KEYS.FREE_GENERATIONS_USED, payload.freeWeeklyPlanUsage);
+  }
+  if (payload.freeRecipeUsage && typeof payload.freeRecipeUsage === 'object') {
+    setStorage(KEYS.FREE_RECIPE_USAGE, payload.freeRecipeUsage);
+  }
+  if (payload.freeReceiptUsage && typeof payload.freeReceiptUsage === 'object') {
+    setStorage(KEYS.FREE_RECEIPT_USAGE, payload.freeReceiptUsage);
+  }
 
   window.dispatchEvent(new Event('storage-updated'));
 }
@@ -1273,7 +1366,9 @@ export function hasLocalData(): boolean {
     getLocalIngredients().length > 0 ||
     getLocalShoppingItems().length > 0 ||
     getLocalSavedRecipes().length > 0 ||
-    getLocalUserStats().total_cooked > 0
+    getLocalUserStats().total_cooked > 0 ||
+    getLocalWeekPlan().length > 0 ||
+    getLocalLastRecipeGeneration() !== null
   );
 }
 
