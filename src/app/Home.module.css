@@ -585,12 +585,13 @@
 
 .communityRow {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 12px;
   background: rgba(255, 255, 255, 0.78);
-  min-height: 42px;
-  border-radius: 13px;
-  padding: 9px 10px;
+  min-height: 76px;
+  border: 1px solid rgba(167, 93, 112, .08);
+  border-radius: 17px;
+  padding: 11px;
 }
 
 .communityRowInfo {
@@ -600,23 +601,67 @@
 
 .communityRowTitle {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.likeBtn {
+.communityIdentity {
+  color: #9a777f;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.communityComment {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #78676b;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.communityActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.communitySentiment {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.communitySentiment_positive { background: #e5f7f1; color: #177e72; }
+.communitySentiment_negative { background: #fff0f3; color: #b74862; }
+.communitySentiment_mixed { background: #f4eff8; color: #77627f; }
+.communitySentiment_new { background: #f4f1ed; color: #82746f; }
+
+.likeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   border: none;
   background: rgba(255, 111, 145, 0.12);
   color: var(--primary-text);
-  font-size: 12px;
-  font-weight: 800;
-  padding: 6px 10px;
+  padding: 0;
   border-radius: 999px;
   cursor: pointer;
   flex-shrink: 0;
@@ -631,7 +676,7 @@
   display: flex;
   min-width: 0;
   flex: 1;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 0;
   border: 0;
@@ -641,9 +686,8 @@
   cursor: pointer;
 }
 
-.communityOpen > img { flex: 0 0 auto; }
+.communityOpen > img { flex: 0 0 auto; margin-top: 5px; }
 .communityRowInfo { display: flex; flex-direction: column; gap: 2px; }
-.communityRowInfo small { color: var(--secondary); font-size: 10px; font-weight: 900; }
 
 .communityScope {
   color: var(--text-muted);
@@ -687,6 +731,8 @@
   .rescueBody { align-items: flex-start; gap: 12px; }
   .rescueIngredientIcon { width: 82px; height: 82px; border-radius: 23px; }
   .latestRescueBody { align-items: flex-start; flex-direction: column; }
+  .communityRow { gap: 8px; padding: 10px; }
+  .communitySentiment { padding-inline: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

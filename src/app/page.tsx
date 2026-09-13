@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Heart, ChevronRight } from "lucide-react";
+import { Settings, Heart, ChevronRight, ThumbsDown, ThumbsUp, CircleDot } from "lucide-react";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -37,6 +37,7 @@ import {
 import styles from "./Home.module.css";
 import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
 import { flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
+import { localizeCommunityRecipe, type CommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -54,17 +55,21 @@ type DailyPickRecipe = {
 type CommunityRecipeRow = {
   id: string;
   likes_count: number;
-  recipe: {
-    title: string;
-    time: string;
-    ingredients: { name: string; amount: string }[];
-    steps: string[];
-    tips: string;
-    genre?: string | null;
-    dish_badge?: string | null;
-    nutrition?: { calories: number; protein_g: number; fat_g: number; carbs_g: number } | null;
-  };
+  positive_ratings_count?: number;
+  negative_ratings_count?: number;
+  ranking_score?: number;
+  recipe: CommunityRecipe;
 };
+
+type CommunitySentiment = 'positive' | 'negative' | 'mixed' | 'new';
+
+function getCommunitySentiment(row: CommunityRecipeRow): CommunitySentiment {
+  const positive = Math.max(0, row.likes_count || 0) + Math.max(0, row.positive_ratings_count || 0);
+  const negative = Math.max(0, row.negative_ratings_count || 0);
+  if (positive === 0 && negative === 0) return 'new';
+  if (positive === negative) return 'mixed';
+  return positive > negative ? 'positive' : 'negative';
+}
 
 function pickText(value: BilingualText | undefined, language: "ja" | "en"): string {
   if (!value) return "";
@@ -252,15 +257,16 @@ export default function HomePage() {
   };
 
   const handleOpenCommunityRecipe = (row: CommunityRecipeRow) => {
+    const recipe = localizeCommunityRecipe(row.recipe, language);
     setPendingDailyPickHandoff({
-      title: row.recipe.title,
-      time: row.recipe.time,
-      genre: row.recipe.genre || undefined,
-      dish_badge: row.recipe.dish_badge || undefined,
-      ingredients: row.recipe.ingredients || [],
-      steps: row.recipe.steps || [],
-      tips: row.recipe.tips || '',
-      nutrition: row.recipe.nutrition || null,
+      title: recipe.title,
+      time: recipe.time,
+      genre: recipe.genre || undefined,
+      dish_badge: recipe.dish_badge || undefined,
+      ingredients: recipe.ingredients || [],
+      steps: recipe.steps || [],
+      tips: recipe.tips || '',
+      nutrition: recipe.nutrition || null,
     });
     router.push('/recipe');
   };
@@ -381,26 +387,49 @@ export default function HomePage() {
           <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
         ) : (
           <div className={styles.communityList}>
-            {communityRecipes.map(row => (
-              <div key={row.id} className={styles.communityRow}>
-                <button type="button" className={styles.communityOpen} onClick={() => handleOpenCommunityRecipe(row)}>
-                  <RecipeThumbnail genre={row.recipe.genre} fallbackIngredientName={row.recipe.title} size={48} />
-                  <span className={styles.communityRowInfo}>
-                    <span className={styles.communityRowTitle}>{row.recipe.title}</span>
-                    <small>{t.home.todaysPickViewButton}</small>
+            {communityRecipes.map(row => {
+              const recipe = localizeCommunityRecipe(row.recipe, language);
+              const sentiment = getCommunitySentiment(row);
+              const sentimentLabel = sentiment === 'positive'
+                ? t.home.communityHighRating
+                : sentiment === 'negative'
+                  ? t.home.communityLowRating
+                  : sentiment === 'mixed'
+                    ? t.home.communityMixedRating
+                    : t.home.communityNewRating;
+              const SentimentIcon = sentiment === 'positive'
+                ? ThumbsUp
+                : sentiment === 'negative'
+                  ? ThumbsDown
+                  : CircleDot;
+              return (
+                <div key={row.id} className={styles.communityRow}>
+                  <button type="button" className={styles.communityOpen} onClick={() => handleOpenCommunityRecipe(row)}>
+                    <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={52} />
+                    <span className={styles.communityRowInfo}>
+                      <span className={styles.communityIdentity}>{t.home.communityAnonymousAuthor}</span>
+                      <span className={styles.communityRowTitle}>{recipe.title}</span>
+                      {recipe.creator_comment && <span className={styles.communityComment}>{recipe.creator_comment}</span>}
+                    </span>
+                  </button>
+                  <span className={styles.communityActions}>
+                    <span className={`${styles.communitySentiment} ${styles[`communitySentiment_${sentiment}`]}`}>
+                      <SentimentIcon size={12} />{sentimentLabel}
+                    </span>
+                    <button
+                      type="button"
+                      className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
+                      onClick={() => handleLike(row.id)}
+                      title={t.home.communityLikeTitle}
+                      aria-label={t.home.communityLikeTitle}
+                      aria-pressed={likedIds.has(row.id)}
+                    >
+                      <Heart size={16} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
+                    </button>
                   </span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
-                  onClick={() => handleLike(row.id)}
-                  title={t.home.communityLikeTitle}
-                >
-                  <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
-                  {row.likes_count}
-                </button>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
         {!isPremium && (

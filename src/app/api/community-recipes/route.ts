@@ -7,6 +7,7 @@ import {
   serializeCommunityRecipeIdentity,
 } from '@/lib/communityRecipeSchema';
 import type { CommunityRecipe } from '@/lib/communityRecipeSchema';
+import { COMMUNITY_RECIPE_SEEDS } from '@/lib/communityRecipeSeeds';
 
 // ホームタブ「みんなのレシピ」用API。
 // ユーザーが気に入ったレシピをSupabaseの公開テーブル(community_recipes)に共有し、
@@ -19,13 +20,83 @@ function getRecipeKey(recipe: CommunityRecipe): string {
   return createHash('sha256').update(serializeCommunityRecipeIdentity(recipe)).digest('hex');
 }
 
+type CommunityRecipeListRow = {
+  id: string;
+  recipe: CommunityRecipe;
+  likes_count?: number;
+  positive_ratings_count?: number;
+  negative_ratings_count?: number;
+  ranking_score?: number;
+  created_at?: string;
+};
+
+function mergeSeedRecipes(rows: CommunityRecipeListRow[], limit: number): CommunityRecipeListRow[] {
+  const seedById = new Map(COMMUNITY_RECIPE_SEEDS.map((seed) => [seed.id, seed]));
+  const merged = rows.map((row) => {
+    const seed = seedById.get(row.id);
+    return seed ? { ...row, recipe: seed.recipe, created_at: row.created_at || seed.createdAt } : row;
+  });
+  const existingIds = new Set(merged.map((row) => row.id));
+  for (const seed of COMMUNITY_RECIPE_SEEDS) {
+    if (existingIds.has(seed.id)) continue;
+    merged.push({
+      id: seed.id,
+      recipe: seed.recipe,
+      likes_count: 0,
+      positive_ratings_count: 0,
+      negative_ratings_count: 0,
+      ranking_score: 0,
+      created_at: seed.createdAt,
+    });
+  }
+  return merged
+    .sort((a, b) =>
+      (b.ranking_score ?? b.likes_count ?? 0) - (a.ranking_score ?? a.likes_count ?? 0)
+      || (b.likes_count ?? 0) - (a.likes_count ?? 0)
+      || Date.parse(b.created_at || '') - Date.parse(a.created_at || '')
+    )
+    .slice(0, limit);
+}
+
+async function ensureCommunityRecipeSeeds(): Promise<void> {
+  if (!supabase) return;
+  const ids = COMMUNITY_RECIPE_SEEDS.map((seed) => seed.id);
+  const existing = await supabase.from('community_recipes').select('id').in('id', ids);
+  if (existing.error) return;
+  const existingIds = new Set((existing.data || []).map((row) => row.id));
+
+  for (const seed of COMMUNITY_RECIPE_SEEDS) {
+    if (existingIds.has(seed.id)) continue;
+    const recipeKey = getRecipeKey(seed.recipe);
+    const inserted = await supabase.from('community_recipes').insert({
+      id: seed.id,
+      recipe: seed.recipe,
+      recipe_key: recipeKey,
+      created_at: seed.createdAt,
+    });
+    if (!inserted.error) continue;
+    // 評価用スキーマ適用前でも、従来カラムだけで初期レシピを投入する。
+    const legacy = await supabase.from('community_recipes').insert({
+      id: seed.id,
+      recipe: seed.recipe,
+      created_at: seed.createdAt,
+    });
+    if (legacy.error && legacy.error.code !== '23505') {
+      console.warn('Community Recipe Seed Error:', legacy.error.message);
+    }
+  }
+}
+
 export async function GET(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ recipes: [] });
+    const requestedLimit = Number(new URL(req.url).searchParams.get('limit'));
+    const limit = Number.isFinite(requestedLimit) ? Math.min(20, Math.max(1, Math.floor(requestedLimit))) : 10;
+    return NextResponse.json({ recipes: mergeSeedRecipes([], limit) });
   }
 
   const requestedLimit = Number(new URL(req.url).searchParams.get('limit'));
   const limit = Number.isFinite(requestedLimit) ? Math.min(20, Math.max(1, Math.floor(requestedLimit))) : 10;
+  await ensureCommunityRecipeSeeds();
   const ranked = await supabase
     .from('community_recipes')
     .select('id, recipe, likes_count, positive_ratings_count, negative_ratings_count, ranking_score, created_at')
@@ -35,7 +106,7 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (!ranked.error) {
-    return NextResponse.json({ recipes: ranked.data || [] });
+    return NextResponse.json({ recipes: mergeSeedRecipes((ranked.data || []) as CommunityRecipeListRow[], limit) });
   }
 
   // 新しい評価用カラムのSQLがまだ適用されていない環境でも、従来の一覧は表示する。
@@ -47,9 +118,9 @@ export async function GET(req: Request) {
     .limit(limit);
   if (legacy.error) {
     console.error('Community Recipes List Error:', legacy.error);
-    return NextResponse.json({ error: legacy.error.message }, { status: 500 });
+    return NextResponse.json({ recipes: mergeSeedRecipes([], limit) });
   }
-  return NextResponse.json({ recipes: legacy.data || [] });
+  return NextResponse.json({ recipes: mergeSeedRecipes((legacy.data || []) as CommunityRecipeListRow[], limit) });
 }
 
 export async function POST(req: Request) {
