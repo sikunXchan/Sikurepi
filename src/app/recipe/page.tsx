@@ -842,7 +842,10 @@ export default function RecipePage() {
           </div>
           <div
             className={styles.recipeTrayGallery}
-            style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+            style={{
+              backgroundImage: `url("${selectedTray.asset}")`,
+              backgroundSize: selectedTray.backgroundSize,
+            }}
           >
             <div className={`${styles.recipeDishGrid} ${mealStyle === 'single' ? styles.recipeDishGridSingle : ''} ${recipes.length === 1 ? styles.recipeDishGridSolo : ''}`}>
               {recipes.map((recipe, index) => (
@@ -975,7 +978,10 @@ export default function RecipePage() {
             <div className={styles.recipeDetailScroll}>
               <div
                 className={styles.recipeDetailHero}
-                style={{ backgroundImage: `url("${selectedTray.asset}")` }}
+                style={{
+                  backgroundImage: `url("${selectedTray.asset}")`,
+                  backgroundSize: selectedTray.backgroundSize,
+                }}
               >
                 <RecipeThumbnail
                   genre={detailRecipe.genre}

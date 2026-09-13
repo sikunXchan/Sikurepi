@@ -363,14 +363,13 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                       else setProfile(prev => ({ ...prev, trayTheme: theme.id as TrayThemeId }));
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={theme.asset}
-                      alt=""
-                      width={190}
-                      height={80}
-                      loading="eager"
+                    <span
                       className={styles.trayPreview}
+                      aria-hidden="true"
+                      style={{
+                        backgroundImage: `url("${theme.asset}")`,
+                        backgroundSize: theme.backgroundSize,
+                      }}
                     />
                     <span>{label}</span>
                     {active && <Check size={14} className={styles.trayCheck} />}
