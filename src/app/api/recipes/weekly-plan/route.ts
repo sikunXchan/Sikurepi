@@ -14,14 +14,7 @@ import {
   RecipeProfile,
   Language,
 } from '@/lib/ai';
-import {
-  validateRecipeShape,
-  validateRecipeLogic,
-  buildValidationRetryNote,
-  ValidatedRecipe,
-  FeasibilityContext,
-  summarizeInventoryForFeasibility,
-} from '@/lib/recipeValidation';
+import { validateRecipeShape, validateRecipeLogic, buildValidationRetryNote, ValidatedRecipe, FeasibilityContext } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import {
@@ -65,7 +58,6 @@ export async function POST(req: Request) {
       profile,
       climate,
       recentHistory,
-      mode,
     } = body;
     language = body.language === 'en' ? 'en' : 'ja';
 
@@ -93,7 +85,6 @@ export async function POST(req: Request) {
     }
 
     const actualProfile = userProfile || profile;
-    const isFreeMode = mode === 'free';
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
     const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
     const excludedIngredients: string[] = [...new Set([
@@ -101,43 +92,17 @@ export async function POST(req: Request) {
       ...(Array.isArray(actualProfile?.allergies) ? actualProfile.allergies : []),
     ])];
 
-    // 通常のレシピ生成と同様、在庫モードを在庫不足時に暗黙で自由作成へ
-    // 切り替えない。AIを呼ぶ前に理由を返し、ユーザーに選択を委ねる。
-    if (!isFreeMode && (!Array.isArray(ingredients) || ingredients.length === 0)) {
-      return NextResponse.json({
-        plan: [],
-        feasibility: {
-          feasible: false,
-          reason: language === 'en'
-            ? 'There are no ingredients in stock to build a weekly plan from. Add at least one main ingredient, or switch to free creation.'
-            : '在庫に献立の軸になる食材がありません。食材を1つ以上追加するか、自由作成に切り替えてください。',
-          missingKeyIngredients: [],
-        },
-      });
-    }
+    // 週間献立は常に自由作成。在庫は献立を制限する条件ではなく、購入量を
+    // 減らすために使えるものを優先する参考情報としてだけ扱う。
+    const inventoryNames = Array.isArray(ingredients)
+      ? ingredients.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+      : [];
+    const ingredientsSection = inventoryNames.length > 0
+      ? `【作成方針】\n週間献立は自由作成です。必要な食材は在庫外から追加して構いません。\n【現在の在庫食材（参考情報）】\n${inventoryNames.join(', ')}\n※ 在庫だけで完成させる必要はありません。献立の品質や栄養バランスを損なわない範囲で、在庫食材を先の日付から優先して活用し、購入する食材を減らしてください。\n`
+      : `【作成方針】\n週間献立は自由作成です。在庫に縛られず、おいしさ・食事制限・栄養バランスを満たす食材を選んでください。\n`;
 
-    if (!isFreeMode) {
-      const inventorySummary = summarizeInventoryForFeasibility(ingredients, true);
-      if (inventorySummary.nonStapleCount === 0) {
-        return NextResponse.json({
-          plan: [],
-          feasibility: {
-            feasible: false,
-            reason: language === 'en'
-              ? 'Only seasonings are available. Add at least one substantive ingredient before planning from your pantry.'
-              : '在庫が調味料だけのため献立として成立しません。肉・魚・野菜・卵・主食など、軸になる食材を1つ以上追加してください。',
-            missingKeyIngredients: [],
-          },
-        });
-      }
-    }
-
-    const ingredientsSection = isFreeMode
-      ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
-      : `【現在の在庫食材(これが全てです)】\n${ingredients.join(', ')}\n\n【最優先で厳守：在庫食材だけで完成させる】ユーザーは「今ある食材だけで作れる献立」を求めています。上記リストに無い食材を、肉・魚・野菜・主食・卵・乳製品などの主要な具材として勝手に追加しないでください。\n・追加してよいのは、下記【調味料・味付けの前提】で許可された基本調味料だけです。それ以外の食材は、少量・彩り・栄養調整という理由でも追加できません。\n・選択された全食で十分な変化を作れない場合は、無理にレシピを作らず feasibility.feasible を false にし、足りない主要食材を missingKeyIngredients に入れてください。\n`;
-
-    const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
-      ? `\n【ピン留め食材（これらを必ずどこかのレシピで使用してください！）】\n${pinnedIngredients.join(', ')}\n`
+    const pinnedSection = pinnedIngredients && pinnedIngredients.length > 0
+      ? `\n【在庫内の優先食材（これらを必ずどこかのレシピで使用してください）】\n${pinnedIngredients.join(', ')}\n`
       : '';
 
     const climateSection = buildClimateSection(climate);
@@ -199,7 +164,7 @@ ${slotLines}
 ${ingredientsSection}
 ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
 【重要・厳守事項】
-0. ${isFreeMode ? '在庫に縛られず、条件に合う食材を選んでください。' : '"ingredients"配列に載せてよいのは、在庫食材リストにある食材と、常備調味料の前提で許可されている基本調味料だけです。在庫にない主要食材を1つでも追加した献立は不採用になります。'}
+0. 週間献立は自由作成です。在庫外の食材も使えます。在庫食材は、品質や栄養バランスを損なわない範囲で優先してください。
 1. 上記の日付・食事枠それぞれに必ず1品ずつ、過不足なくレシピを割り当ててください。
 2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。
 3. ピン留め食材がある場合、1週間のどこかのレシピで必ず使用してください。
@@ -209,13 +174,8 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 7. 【手順の具体性】各ステップには温度・火加減・時間・視覚的なキューを含めてください。
 8. ${DISH_LOAD_INSTRUCTION}
 9. 【提出前の自己監査】各材料が手順内で使われているか、分量・所要時間・PFCとcaloriesが矛盾していないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含め、味は塩分だけでなく旨味・酸味・香り・食感の組み合わせを確認してください。
-10. 【成立可否も同時判定】在庫モードで、在庫食材だけでは選択された食事数の献立が成立しない場合は、無理に生成せず"feasibility.feasible"をfalse、"plan"を空配列にしてください。成立する場合と自由作成モードではtrueにしてください。以下のJSON構造だけを返してください。
+10. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
 {
-  "feasibility": {
-    "feasible": true,
-    "reason": "作れない場合だけ理由を1〜2文で記載。作れる場合は空文字",
-    "missingKeyIngredients": ["成立に不足する主要食材。作れる場合は空配列"]
-  },
   "plan": [
     {
       "date": "2026-09-02",
@@ -235,11 +195,11 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 }
 genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
-    // 通常のレシピ生成と同じ成立可否・在庫限定・食事制限・安全性・品質の
+    // 自由作成として扱いつつ、通常レシピと同じ食事制限・安全性・品質の
     // 各ゲートを週間献立にも適用する。
     const feasibilityContext: FeasibilityContext = {
-      mode: isFreeMode ? 'free' : 'inventory',
-      inventoryNames: Array.isArray(ingredients) ? ingredients : [],
+      mode: 'free',
+      inventoryNames: [],
       assumeSeasoningsAvailable,
       dietaryRestrictions,
       excludedIngredients,
@@ -273,26 +233,6 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         continue;
       }
 
-      const rawFeasibility = json.feasibility;
-      if (
-        !isFreeMode
-        && rawFeasibility
-        && typeof rawFeasibility === 'object'
-        && !Array.isArray(rawFeasibility)
-        && (rawFeasibility as Record<string, unknown>).feasible === false
-      ) {
-        const feasibility = rawFeasibility as Record<string, unknown>;
-        return NextResponse.json({
-          plan: [],
-          feasibility: {
-            feasible: false,
-            reason: typeof feasibility.reason === 'string' ? feasibility.reason : '',
-            missingKeyIngredients: Array.isArray(feasibility.missingKeyIngredients)
-              ? feasibility.missingKeyIngredients.filter((name): name is string => typeof name === 'string')
-              : [],
-          },
-        });
-      }
       const planArray: unknown[] = Array.isArray(json.plan) ? json.plan : [];
 
       const shapeErrors = planArray.length > 0
@@ -333,7 +273,6 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
 
       return NextResponse.json({
         ...json,
-        feasibility: { feasible: true, reason: '', missingKeyIngredients: [] },
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
       });
     }
@@ -342,8 +281,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     return NextResponse.json({
       code: 'validation_failed',
       error: language === 'en'
-        ? 'The AI could not produce a plan that satisfies your conditions. Retry, review the selected meals, or switch to free creation.'
-        : '条件を満たす献立を生成できませんでした。同じ条件で再試行するか、食事枠を減らす・自由作成へ切り替える操作を選べます。',
+        ? 'The AI could not produce a plan that satisfies your conditions. Retry or review the selected meals.'
+        : '条件を満たす献立を生成できませんでした。同じ条件で再試行するか、選択する食事枠を見直してください。',
     }, { status: 422 });
 
   } catch (error: unknown) {
