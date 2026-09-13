@@ -11,7 +11,6 @@ import ClimateBar from "@/components/ClimateBar";
 import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
-import RecipeFeedbackPanel from "@/components/RecipeFeedbackPanel";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import PremiumPaywall from "@/components/PremiumPaywall";
@@ -44,7 +43,6 @@ import {
   incrementFreeRecipeGeneration,
 } from "@/lib/storage";
 import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
-import { shareGeneratedRecipes } from "@/lib/communityRecipes";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
@@ -68,6 +66,8 @@ type Recipe = {
   tips: string;
   image_url: string | null;
   nutrition?: NutritionData | null;
+  source?: 'generated' | 'community' | 'daily-pick';
+  sourceRecipeId?: string;
 };
 
 type CookingTip = {
@@ -169,7 +169,7 @@ export default function RecipePage() {
       setSavedSet(new Set(cached.savedIndices));
       setCreationMode(cached.creationMode);
       setMealStyle(cached.mealStyle || (cached.recipes.length > 1 ? 'set' : 'single'));
-      setInstruction(cached.instruction);
+      // リクエスト・気分は一時的な入力なので、前回結果と一緒には復元しない。
       setSelectedIngredientIds(cached.selectedIngredientIds);
       setSessionServings(cached.servings);
       setResultOrigin('restored');
@@ -287,7 +287,7 @@ export default function RecipePage() {
           savedIndices,
           creationMode,
           mealStyle,
-          instruction,
+          instruction: '',
           selectedIngredientIds: validSelectedIngredientIds,
           servings: sessionServings,
         };
@@ -349,11 +349,6 @@ export default function RecipePage() {
         setResultOrigin('generated');
         if (!isPremium) incrementFreeRecipeGeneration(mealStyle);
 
-        // 無料版は常に、Plusは設定がONの時だけ、完成レシピ本文を自動共有する。
-        // 個人設定・在庫・自由記述は送信しない。
-        if (!isPremium || userProfile.shareGeneratedRecipes !== false) {
-          void shareGeneratedRecipes(data.recipes);
-        }
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -376,7 +371,8 @@ export default function RecipePage() {
         savedIndices: [],
         creationMode,
         mealStyle,
-        instruction,
+        // リクエスト・気分の自由記述は結果キャッシュへ保存しない。
+        instruction: '',
         selectedIngredientIds: validSelectedIngredientIds,
         servings: sessionServings,
         savedAt: new Date().toISOString(),
@@ -924,6 +920,9 @@ export default function RecipePage() {
             title={recipes[cookingRecipeIndex].title}
             steps={recipes[cookingRecipeIndex].steps}
             ingredients={recipes[cookingRecipeIndex].ingredients}
+            completionRecipe={recipes[cookingRecipeIndex]}
+            source={recipes[cookingRecipeIndex].source || 'generated'}
+            sourceRecipeId={recipes[cookingRecipeIndex].sourceRecipeId}
             onClose={() => setCookingRecipeIndex(null)}
           />
         )}
@@ -934,6 +933,8 @@ export default function RecipePage() {
         {cookedModalRecipe && (
           <CookedModal
             recipe={cookedModalRecipe}
+            source={cookedModalRecipe.source || 'generated'}
+            sourceRecipeId={cookedModalRecipe.sourceRecipeId}
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadLocalData();
@@ -1027,10 +1028,6 @@ export default function RecipePage() {
                     ))}
                   </div>
                 )}
-              </div>
-
-              <div className={styles.recipeFeedbackWrap}>
-                <RecipeFeedbackPanel recipe={detailRecipe} source="generation" />
               </div>
 
               <div className={styles.recipeDetailContent}>

@@ -2,7 +2,8 @@
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
+  right: 0;
+  width: auto;
   background: rgba(255, 253, 249, 0.94);
   border-top: 1px solid var(--line-soft);
   display: flex;
@@ -12,6 +13,10 @@
   z-index: 1000;
   box-shadow: 0 -10px 30px rgba(94, 61, 45, 0.08);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
 }
 
 /* レシート解析中など、離脱すると処理が失われる画面ではタブ移動をロックする */
