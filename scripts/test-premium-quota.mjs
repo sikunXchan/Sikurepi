@@ -11,6 +11,7 @@ import {
   normalizeDailyFeatureUsage,
   normalizeFreeGenerationUsage,
 } from "../src/lib/premiumQuota.ts";
+import { verifyPremiumTestPassword } from "../src/lib/premium/testAccess.ts";
 
 const monday = new Date(2026, 8, 7, 12);
 const sunday = new Date(2026, 8, 13, 23, 59);
@@ -53,5 +54,9 @@ assert.deepEqual(normalizeDailyFeatureUsage({ date: "2026-09-07", count: 2 }, ne
   date: "2026-09-14",
   count: 0,
 });
+
+assert.equal(await verifyPremiumTestPassword("Hello Sikurepi"), true);
+assert.equal(await verifyPremiumTestPassword("hello sikurepi"), false);
+assert.equal(await verifyPremiumTestPassword("Hello Sikurepi "), false);
 
 console.log("Premium weekly quota: all tests passed.");

@@ -1,12 +1,13 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 2147483000;
   display: grid;
   place-items: center;
   padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
   background: rgba(61, 43, 38, 0.46);
   backdrop-filter: blur(8px);
+  isolation: isolate;
 }
 
 .dialog {
@@ -164,6 +165,18 @@
 .message { background: #fff3f4; color: #bd3e5f; line-height: 1.5; }
 .activeState { background: rgba(255, 213, 102, 0.22); color: #8b5b14; }
 
+.deactivateTestButton {
+  min-height: 38px;
+  margin: -4px auto 0;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
 .purchaseButton {
   display: flex;
   align-items: center;
@@ -206,10 +219,40 @@
   line-height: 1.45;
 }
 
+.testDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 13px 0 10px;
+  color: #ad9b96;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.testDivider::before,
+.testDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(111, 78, 59, 0.1);
+}
+
+.testAccessForm { text-align: left; }
+.testAccessForm > label { display: block; margin-bottom: 6px; color: var(--ink-soft); font-size: 11px; font-weight: 850; }
+.testAccessForm > small { display: block; margin-top: 5px; color: #aa9a95; font-size: 8px; font-weight: 650; line-height: 1.45; }
+.testPasswordRow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; overflow: hidden; border: 1px solid rgba(111,78,59,.13); border-radius: 14px; background: #fff; }
+.testPasswordRow > span { display: grid; place-items: center; color: #9b817a; }
+.testPasswordRow input { min-width: 0; height: 43px; padding: 0 7px 0 0; border: 0; background: transparent; color: var(--ink); font-size: 12px; box-shadow: none; outline: none; }
+.testPasswordRow:focus-within { border-color: rgba(224,70,110,.36); box-shadow: 0 0 0 3px rgba(224,70,110,.07); }
+.testPasswordRow button { min-width: auto; min-height: 35px; margin-right: 4px; padding: 7px 10px; border: 0; border-radius: 10px; background: #725b60; color: #fff; font-size: 10px; font-weight: 850; box-shadow: none; }
+.testPasswordRow button:disabled { opacity: .42; }
+
 @media (max-width: 390px) {
   .dialog { padding-inline: 17px; border-radius: 25px; }
   .planList { grid-template-columns: 1fr; }
   .planOption { min-height: 60px; }
+  .testPasswordRow { grid-template-columns: 31px minmax(0, 1fr) auto; }
+  .testPasswordRow button { padding-inline: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

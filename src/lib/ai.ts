@@ -83,6 +83,7 @@ export type FlavorFeedbackSummary = {
   wouldCookAgain?: boolean;
   rating?: 'positive' | 'negative';
   note?: string;
+  comment?: string;
 };
 
 export type RecipeProfile = {
@@ -177,7 +178,12 @@ export function buildProfileSection(profile: RecipeProfile | null | undefined): 
         .slice(0, 12)
         .map(item => {
           const rating = item.rating === 'positive' ? '高評価' : item.rating === 'negative' ? '低評価' : '';
-          const details = [rating, ...item.tags, item.note ? `改善点: ${item.note}` : ''].filter(Boolean);
+          const details = [
+            rating,
+            ...item.tags,
+            item.note ? `改善点: ${item.note}` : '',
+            item.comment ? `コメント: ${item.comment}` : '',
+          ].filter(Boolean);
           return `${item.recipeTitle}=[${details.join('、')}]${item.wouldCookAgain ? '（また作りたい）' : ''}`;
         })
         .join(' / ')}\n  「薄い」は塩だけを増やさず旨味・香り・酸味を先に補い、「塩辛い」は塩分、「甘すぎる」は糖分、「重い」は油脂を控えてください。「おいしい」「また作りたい」の味の系統は、新しい料理にも応用してください。\n`
