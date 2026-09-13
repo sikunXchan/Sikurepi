@@ -45,6 +45,8 @@ type FlavorFeedbackSummary = {
   recipeTitle: string;
   tags: string[];
   wouldCookAgain: boolean;
+  rating?: 'positive' | 'negative';
+  note?: string;
 };
 
 type DailyPickPersonalization = {
@@ -113,6 +115,8 @@ function cleanFlavorFeedback(value: unknown): FlavorFeedbackSummary[] {
       recipeTitle,
       tags: cleanStringList(entry.tags, 6),
       wouldCookAgain: entry.wouldCookAgain === true,
+      rating: entry.rating === 'positive' || entry.rating === 'negative' ? entry.rating : undefined,
+      note: typeof entry.note === 'string' ? entry.note.normalize('NFKC').trim().slice(0, 500) : undefined,
     }];
   });
 }
@@ -195,7 +199,7 @@ ${JSON.stringify(personalization)}
 - tastePreferences、cookingStyles、preferredGenres、kitchenAppliancesは可能な範囲で優先する。
 - targetCaloriesは1日分の目標なので、指定されていれば1人分をその約3分の1に近づける。
 - targetProteinも1日分の目標なので、指定されていれば1人分をその約3分の1に近づける。
-- flavorFeedbackの「bland」は塩だけでなく旨味・香り・酸味を補い、「salty」「too_sweet」「heavy」は該当要素を控える。「delicious」「また作りたい」の傾向は別の料理にも応用する。
+- flavorFeedbackの「bland」は塩だけでなく旨味・香り・酸味を補い、「salty」「too_sweet」「heavy」は該当要素を控える。「delicious」「また作りたい」「positive」の傾向は別の料理にも応用する。「negative」と改善点(note)は同じ失敗を繰り返さないための具体的な修正条件として扱う。
 ${dietaryDetails ? `\n食事制限の具体的な定義:\n${dietaryDetails}\n` : ''}
 `
     : '';

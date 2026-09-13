@@ -1,18 +1,7 @@
-export type ShareableRecipe = {
-  title: string;
-  time: string;
-  ingredients: { name: string; amount: string }[];
-  steps: string[];
-  tips: string;
-  genre?: string | null;
-  dish_badge?: string | null;
-  nutrition?: {
-    calories: number;
-    protein_g: number;
-    fat_g: number;
-    carbs_g: number;
-  } | null;
-};
+import { getOrCreateDeviceId, type RecipeFeedbackRating } from './storage';
+import type { CommunityRecipe } from './communityRecipeSchema';
+
+export type ShareableRecipe = CommunityRecipe;
 
 type QueuedCommunityRecipe = {
   id: string;
@@ -95,4 +84,60 @@ export async function shareGeneratedRecipes(recipes: ShareableRecipe[]): Promise
     }
   }
   return flushCommunityRecipeOutbox();
+}
+
+export type RecipeFeedbackSubmission = {
+  recipe: CommunityFeedbackRecipe;
+  rating: RecipeFeedbackRating;
+  note?: string;
+  source: 'generation' | 'completion';
+};
+
+export type CommunityFeedbackRecipe = {
+  title: string;
+  time?: string;
+  ingredients: { name: string; amount?: string }[];
+  steps?: string[];
+  tips?: string;
+  genre?: string | null;
+  dish_badge?: string | null;
+  nutrition?: ShareableRecipe['nutrition'];
+};
+
+export type RecipeFeedbackSubmissionResult = 'saved' | 'local-only' | 'failed';
+
+// タイトルだけの古い履歴など、公開レシピとして成立する本文を持たない場合も
+// 個人の好み学習は端末内で継続し、ランキング送信だけを安全に省略する。
+export async function submitCommunityRecipeFeedback({
+  recipe,
+  rating,
+  note = '',
+  source,
+}: RecipeFeedbackSubmission): Promise<RecipeFeedbackSubmissionResult> {
+  if (!recipe.time || !Array.isArray(recipe.steps) || typeof recipe.tips !== 'string') return 'local-only';
+  const deviceId = getOrCreateDeviceId();
+  if (!deviceId) return 'local-only';
+
+  try {
+    const response = await fetch('/api/community-recipes/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipe: {
+          ...recipe,
+          ingredients: recipe.ingredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+        },
+        deviceId,
+        rating: rating === 'positive' ? 1 : -1,
+        note: note.slice(0, 500),
+        source,
+        publish: rating === 'positive',
+      }),
+    });
+    if (!response.ok) return 'failed';
+    const data = await response.json();
+    return data?.rankingUpdated === false ? 'local-only' : 'saved';
+  } catch {
+    return 'failed';
+  }
 }

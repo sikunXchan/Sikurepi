@@ -47,10 +47,27 @@ export type NutritionData = {
 };
 
 export type FlavorFeedbackTag = 'delicious' | 'bland' | 'salty' | 'too_sweet' | 'heavy';
+export type RecipeFeedbackRating = 'positive' | 'negative';
 
 export type CookingFeedback = {
   tags: FlavorFeedbackTag[];
   wouldCookAgain: boolean;
+  rating?: RecipeFeedbackRating;
+  note?: string;
+};
+
+export type RecipeFeedbackInput = {
+  title: string;
+  ingredients?: { name: string; amount?: string }[];
+};
+
+export type LocalRecipeFeedback = {
+  recipeKey: string;
+  recipeTitle: string;
+  rating: RecipeFeedbackRating;
+  note: string;
+  source: 'generation' | 'completion';
+  createdAt: string;
 };
 
 export type RescuedIngredientSnapshot = {
@@ -417,6 +434,7 @@ const KEYS = {
   FREE_RECEIPT_USAGE: 'lily_app_free_receipt_usage_v1',
   LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
   RECIPE_GENERATION_CACHE: 'lily_app_recipe_generation_cache_v2',
+  RECIPE_FEEDBACK: 'lily_app_recipe_feedback_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -878,7 +896,9 @@ export function recordLocalCookingDone(
     total_protein: (stats.total_protein || 0) + addProtein,
     total_fat: (stats.total_fat || 0) + addFat,
     total_carbs: (stats.total_carbs || 0) + addCarbs,
-    cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 50),
+    // 食材図鑑は調理履歴から復元できる設計なので、全300種を十分集められ、
+    // 最上位ランク(555回)へ到達しても初期の発見が消えない件数を保持する。
+    cooked_records: [newRecord, ...(stats.cooked_records || [])].slice(0, 750),
   };
   setStorage(KEYS.STATS, updated);
   return updated;
@@ -888,18 +908,97 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
   recipeTitle: string;
   tags: FlavorFeedbackTag[];
   wouldCookAgain: boolean;
+  rating?: RecipeFeedbackRating;
+  note?: string;
 }[] {
-  return getLocalUserStats().cooked_records
+  const cookedFeedback = getLocalUserStats().cooked_records
     .filter((record) => record.feedback && (
       (Array.isArray(record.feedback.tags) && record.feedback.tags.length > 0)
       || record.feedback.wouldCookAgain === true
+      || record.feedback.rating === 'positive'
+      || record.feedback.rating === 'negative'
+      || Boolean(record.feedback.note?.trim())
     ))
-    .slice(0, Math.max(0, limit))
     .map((record) => ({
       recipeTitle: record.recipeTitle,
       tags: Array.isArray(record.feedback?.tags) ? record.feedback.tags : [],
       wouldCookAgain: record.feedback?.wouldCookAgain === true,
+      rating: record.feedback?.rating,
+      note: record.feedback?.note?.trim() || undefined,
+      createdAt: record.date,
     }));
+
+  const generatedFeedback = getLocalRecipeFeedbackList().map((entry) => ({
+    recipeTitle: entry.recipeTitle,
+    tags: [] as FlavorFeedbackTag[],
+    wouldCookAgain: entry.rating === 'positive',
+    rating: entry.rating,
+    note: entry.note || undefined,
+    createdAt: entry.createdAt,
+  }));
+
+  const seenTitles = new Set<string>();
+  return [...cookedFeedback, ...generatedFeedback]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .filter((entry) => {
+      const key = entry.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase();
+      if (!key || seenTitles.has(key)) return false;
+      seenTitles.add(key);
+      return true;
+    })
+    .slice(0, Math.max(0, limit))
+    .map((entry) => ({
+      recipeTitle: entry.recipeTitle,
+      tags: entry.tags,
+      wouldCookAgain: entry.wouldCookAgain,
+      rating: entry.rating,
+      note: entry.note,
+    }));
+}
+
+export function createLocalRecipeFeedbackKey(recipe: RecipeFeedbackInput): string {
+  const title = recipe.title.normalize('NFKC').trim().toLocaleLowerCase();
+  const ingredients = (recipe.ingredients || [])
+    .map((item) => [
+      item.name.normalize('NFKC').trim().toLocaleLowerCase(),
+      (item.amount || '').normalize('NFKC').trim().toLocaleLowerCase(),
+    ])
+    .filter(([name]) => Boolean(name));
+  return JSON.stringify([title, ingredients]);
+}
+
+export function getLocalRecipeFeedbackList(): LocalRecipeFeedback[] {
+  return getStorage<LocalRecipeFeedback[]>(KEYS.RECIPE_FEEDBACK, []).filter((entry) =>
+    Boolean(entry?.recipeKey && entry?.recipeTitle)
+    && (entry.rating === 'positive' || entry.rating === 'negative')
+  );
+}
+
+export function getLocalRecipeFeedback(recipe: RecipeFeedbackInput): LocalRecipeFeedback | null {
+  const key = createLocalRecipeFeedbackKey(recipe);
+  return getLocalRecipeFeedbackList().find((entry) => entry.recipeKey === key) || null;
+}
+
+export function saveLocalRecipeFeedback(
+  recipe: RecipeFeedbackInput,
+  rating: RecipeFeedbackRating,
+  note = '',
+  source: 'generation' | 'completion' = 'generation',
+): LocalRecipeFeedback {
+  const recipeKey = createLocalRecipeFeedbackKey(recipe);
+  const next: LocalRecipeFeedback = {
+    recipeKey,
+    recipeTitle: recipe.title.normalize('NFKC').trim().slice(0, 160),
+    rating,
+    note: note.normalize('NFKC').trim().slice(0, 500),
+    source,
+    createdAt: new Date().toISOString(),
+  };
+  setStorage(KEYS.RECIPE_FEEDBACK, [
+    next,
+    ...getLocalRecipeFeedbackList().filter((entry) => entry.recipeKey !== recipeKey),
+  ].slice(0, 150));
+  return next;
 }
 
 // 自炊記録(cooked_records)から誤って記録された1件を削除する(履歴の横スライド削除用)。
@@ -1099,6 +1198,7 @@ export type AppBackupPayload = {
   climate: ClimateState;
   tips?: SavedTip[];
   weekPlan?: WeeklyPlanEntry[];
+  recipeFeedback?: LocalRecipeFeedback[];
 };
 
 // アカウント同期(SyncManager)でも同じ形のスナップショットを使うため、
@@ -1115,6 +1215,7 @@ export function buildBackupPayload(): AppBackupPayload {
     climate: getLocalClimateState(),
     tips: getLocalSavedTips(),
     weekPlan: getLocalWeekPlan(),
+    recipeFeedback: getLocalRecipeFeedbackList(),
   };
 }
 
@@ -1153,6 +1254,7 @@ export function applyBackupPayload(data: unknown): void {
   if (payload.climate && typeof payload.climate === 'object') setStorage(KEYS.CLIMATE, payload.climate);
   if (Array.isArray(payload.tips)) setStorage(KEYS.TIPS, payload.tips);
   if (Array.isArray(payload.weekPlan)) setStorage(KEYS.WEEK_PLAN, payload.weekPlan);
+  if (Array.isArray(payload.recipeFeedback)) setStorage(KEYS.RECIPE_FEEDBACK, payload.recipeFeedback);
 
   window.dispatchEvent(new Event('storage-updated'));
 }
