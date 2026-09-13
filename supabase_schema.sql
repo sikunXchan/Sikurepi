@@ -63,9 +63,21 @@ create policy "daily_picks_insert_all"
 create table if not exists public.community_recipes (
   id uuid primary key default gen_random_uuid(),
   recipe jsonb not null,
+  recipe_key text,
   likes_count integer not null default 0,
+  positive_ratings_count integer not null default 0,
+  negative_ratings_count integer not null default 0,
+  ranking_score integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+-- 既存環境へこのSQLを再実行しても安全に評価機能を追加できるようにする。
+alter table public.community_recipes add column if not exists recipe_key text;
+alter table public.community_recipes add column if not exists positive_ratings_count integer not null default 0;
+alter table public.community_recipes add column if not exists negative_ratings_count integer not null default 0;
+alter table public.community_recipes add column if not exists ranking_score integer not null default 0;
+create index if not exists community_recipes_recipe_key_idx on public.community_recipes(recipe_key);
+create index if not exists community_recipes_ranking_idx on public.community_recipes(ranking_score desc, likes_count desc, created_at desc);
 
 alter table public.community_recipes enable row level security;
 
@@ -102,13 +114,76 @@ create policy "community_recipe_likes_insert_all"
   on public.community_recipe_likes for insert
   with check (true);
 
+-- 生成直後・料理完了時の評価。自由記述はランキング一覧には返さず、
+-- レシピ改善用の非表示データとしてだけ保持する。
+create table if not exists public.community_recipe_feedback (
+  recipe_id uuid not null references public.community_recipes(id) on delete cascade,
+  device_id text not null,
+  rating smallint not null check (rating in (-1, 1)),
+  note text,
+  source text not null default 'generation' check (source in ('generation', 'completion')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (recipe_id, device_id)
+);
+
+alter table public.community_recipe_feedback enable row level security;
+
+drop policy if exists "community_recipe_feedback_insert_all" on public.community_recipe_feedback;
+create policy "community_recipe_feedback_insert_all"
+  on public.community_recipe_feedback for insert
+  with check (true);
+
+drop policy if exists "community_recipe_feedback_update_all" on public.community_recipe_feedback;
+create policy "community_recipe_feedback_update_all"
+  on public.community_recipe_feedback for update
+  using (true)
+  with check (true);
+
+create or replace function public.refresh_community_recipe_rating()
+returns trigger as $$
+declare
+  target_recipe_id uuid;
+  positive_count integer;
+  negative_count integer;
+begin
+  if TG_OP = 'DELETE' then
+    target_recipe_id := old.recipe_id;
+  else
+    target_recipe_id := new.recipe_id;
+  end if;
+  select
+    count(*) filter (where rating = 1),
+    count(*) filter (where rating = -1)
+  into positive_count, negative_count
+  from public.community_recipe_feedback
+  where recipe_id = target_recipe_id;
+
+  update public.community_recipes
+    set positive_ratings_count = positive_count,
+        negative_ratings_count = negative_count,
+        ranking_score = likes_count + positive_count * 2 - negative_count * 2
+    where id = target_recipe_id;
+  if TG_OP = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_community_recipe_feedback_change on public.community_recipe_feedback;
+create trigger on_community_recipe_feedback_change
+  after insert or update or delete on public.community_recipe_feedback
+  for each row execute function public.refresh_community_recipe_rating();
+
 -- いいねが増えたら community_recipes.likes_count を自動で+1する
 -- (クライアント側からのカウント更新は許可せず、トリガーで一貫性を保つ)。
 create or replace function public.increment_community_recipe_likes()
 returns trigger as $$
 begin
   update public.community_recipes
-    set likes_count = likes_count + 1
+    set likes_count = likes_count + 1,
+        ranking_score = ranking_score + 1
     where id = new.recipe_id;
   return new;
 end;

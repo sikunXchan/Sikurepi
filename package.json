@@ -11,6 +11,7 @@
     "benchmark:recipes": "node scripts/benchmark-recipe-generation.mjs",
     "test:dietary": "node --no-warnings --experimental-strip-types scripts/test-dietary-rules.mjs",
     "test:premium": "node --no-warnings --experimental-strip-types scripts/test-premium-quota.mjs",
+    "test:feedback": "node --no-warnings --experimental-strip-types scripts/test-recipe-feedback.mjs",
     "test:recipe-cache": "node --no-warnings --experimental-strip-types scripts/test-recipe-cache.mjs",
     "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
     "qa:dishes:world-02": "node scripts/build-icon-contact-sheet.mjs public/dishes/icons .tmp/world-cuisines-02-contact-sheet.png --manifest-group=world_cuisines_02"

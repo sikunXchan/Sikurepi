@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Flame, Leaf } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Flame, Leaf } from "lucide-react";
 import { getChefLevelProgress, getLocalUserStats, UserStats } from "@/lib/storage";
+import { buildIngredientCollection } from "@/lib/ingredientCollection";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import styles from "./ChefProfileBadge.module.css";
@@ -70,6 +71,10 @@ export default function ChefProfileBadge() {
   const remainingToNext = levelProgress.nextThreshold === null
     ? null
     : Math.max(0, levelProgress.nextThreshold - stats.total_cooked);
+  const collection = useMemo(
+    () => buildIngredientCollection(stats.cooked_records || []),
+    [stats.cooked_records],
+  );
 
   return (
     <div className={`${styles.badgeContainer} ${isPremium ? styles.badgePremium : ''}`}>
@@ -96,6 +101,11 @@ export default function ChefProfileBadge() {
         <div className={styles.metricItem} title={t.chefBadge.streakTitle}>
           <Flame className={styles.streakIcon} size={15} />
           <span className={styles.metricValue}>{t.chefBadge.streakLabel(stats.streak_days)}</span>
+        </div>
+
+        <div className={styles.metricItem} title={t.chefBadge.collectionTitle}>
+          <BookOpen className={styles.collectionIcon} size={14} />
+          <span className={styles.metricValue}>{t.chefBadge.collectionLabel(collection.completionPercent)}</span>
         </div>
 
         {stats.saved_food_count > 0 && (

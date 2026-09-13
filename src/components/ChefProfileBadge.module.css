@@ -124,6 +124,10 @@
   color: #0f8f68;
 }
 
+.collectionIcon {
+  color: #b7782c;
+}
+
 .metricValue {
   font-size: 13px;
   font-weight: 800;

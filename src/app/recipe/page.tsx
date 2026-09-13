@@ -11,6 +11,7 @@ import ClimateBar from "@/components/ClimateBar";
 import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import RecipeFeedbackPanel from "@/components/RecipeFeedbackPanel";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import PremiumPaywall from "@/components/PremiumPaywall";
@@ -981,6 +982,10 @@ export default function RecipePage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className={styles.recipeFeedbackWrap}>
+                <RecipeFeedbackPanel recipe={detailRecipe} source="generation" />
               </div>
 
               <div className={styles.recipeDetailContent}>

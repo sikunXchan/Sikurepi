@@ -1172,6 +1172,11 @@
   box-shadow: 0 8px 20px rgba(91, 51, 30, 0.09);
 }
 
+.recipeFeedbackWrap {
+  width: min(calc(100% - 16px), 710px);
+  margin: 12px auto 0;
+}
+
 .recipeDetailContent {
   position: relative;
   display: flex;
@@ -1252,6 +1257,7 @@
     height: clamp(220px, 62vw, 248px) !important;
   }
   .recipeDetailSummary { width: calc(100% - 12px); padding: 14px 16px; border-radius: 18px; }
+  .recipeFeedbackWrap { width: calc(100% - 12px); }
   .recipeDetailContent { width: calc(100% - 12px); padding: 16px; border-radius: 20px; }
   .detailSectionHeading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .recipeTitle { font-size: 15px; line-height: 1.35; }
