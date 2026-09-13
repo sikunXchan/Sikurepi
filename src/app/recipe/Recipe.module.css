@@ -288,6 +288,49 @@
   }
 }
 
+.generationError {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgba(221, 85, 89, 0.2);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 246, 244, 0.96), rgba(255, 237, 239, 0.86));
+  box-shadow: 0 12px 30px rgba(161, 62, 68, 0.08);
+}
+
+.generationErrorHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.generationErrorIcon {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(224, 75, 81, 0.1);
+  color: #d64d53;
+}
+
+.generationErrorCopy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.generationErrorCopy strong { color: var(--foreground); font-size: 14px; font-weight: 900; }
+.generationErrorCopy span { color: var(--text-muted); font-size: 11px; font-weight: 700; line-height: 1.45; }
+.generationErrorMessage { margin: 0; padding: 9px 11px; border-radius: 12px; background: rgba(255, 255, 255, 0.64); color: #ad4850; font-size: 11px; font-weight: 750; line-height: 1.55; }
+.generationErrorActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.generationErrorActions button, .errorTertiary { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border-radius: 13px; font-size: 12px; font-weight: 900; cursor: pointer; }
+.errorPrimary { border: 0; background: linear-gradient(135deg, #e75c78, #f28ba1); color: white; box-shadow: 0 8px 18px rgba(220, 75, 111, 0.18); }
+.errorSecondary { border: 1px solid rgba(166, 88, 100, 0.16); background: rgba(255, 255, 255, 0.88); color: #7c555b; }
+.errorTertiary { width: 100%; border: 0; background: transparent; color: #a84a61; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 440px) {
+  .generationErrorActions { grid-template-columns: 1fr; }
+}
+
 .recipeIcon {
   width: 56px;
   height: 56px;

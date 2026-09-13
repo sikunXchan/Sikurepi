@@ -304,13 +304,6 @@ export default function MealPlanPage() {
         title={t.mealPlan.title}
         subtitle={t.mealPlan.subtitle}
         mascot="bear_itadakimasu"
-        actions={
-          isPremium ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: '#b45309', background: 'rgba(245, 158, 11, 0.14)', padding: '5px 11px', borderRadius: 20 }}>
-              <Crown size={13} /> {t.mealPlan.premiumBadge}
-            </span>
-          ) : undefined
-        }
       />
       <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
         <div className={styles.plannerTopline}>

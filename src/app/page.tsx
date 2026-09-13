@@ -3,9 +3,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, Heart, ChevronRight, ThumbsDown, ThumbsUp, CircleDot } from "lucide-react";
-import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import { Crown, ChevronRight } from "lucide-react";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
+import CommunityRecipesScreen, { CommunityRecipeRowCard, type CommunityRecipeRow } from "@/components/CommunityRecipesScreen";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
@@ -19,7 +19,6 @@ import {
   getLocalSavedRecipes,
   getLocalIngredients,
   getLocalUserProfile,
-  getOrCreateDeviceId,
   getCachedDailyPick,
   getTodayLocalDateKey,
   setCachedDailyPick,
@@ -37,7 +36,7 @@ import {
 import styles from "./Home.module.css";
 import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
 import { flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
-import { localizeCommunityRecipe, type CommunityRecipe } from "@/lib/communityRecipeSchema";
+import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -52,25 +51,6 @@ type DailyPickRecipe = {
   nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
 };
 
-type CommunityRecipeRow = {
-  id: string;
-  likes_count: number;
-  positive_ratings_count?: number;
-  negative_ratings_count?: number;
-  ranking_score?: number;
-  recipe: CommunityRecipe;
-};
-
-type CommunitySentiment = 'positive' | 'negative' | 'mixed' | 'new';
-
-function getCommunitySentiment(row: CommunityRecipeRow): CommunitySentiment {
-  const positive = Math.max(0, row.likes_count || 0) + Math.max(0, row.positive_ratings_count || 0);
-  const negative = Math.max(0, row.negative_ratings_count || 0);
-  if (positive === 0 && negative === 0) return 'new';
-  if (positive === negative) return 'mixed';
-  return positive > negative ? 'positive' : 'negative';
-}
-
 function pickText(value: BilingualText | undefined, language: "ja" | "en"): string {
   if (!value) return "";
   return (language === "en" ? value.en : value.ja) || value.ja || value.en || "";
@@ -84,7 +64,6 @@ export default function HomePage() {
   const { t, language } = useLanguage();
   const { isPremium } = usePremium();
   const router = useRouter();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
   const [rescueTarget, setRescueTarget] = useState<Ingredient | null>(null);
@@ -119,7 +98,7 @@ export default function HomePage() {
   const dailyPickLoading = !visibleDailyPick && dailyPickSettledKey !== dailyPickConstraintKey;
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [communityAllOpen, setCommunityAllOpen] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
@@ -201,11 +180,11 @@ export default function HomePage() {
 
   useEffect(() => {
     void flushCommunityRecipeOutbox();
-    fetch(`/api/community-recipes?limit=${isPremium ? 10 : FREE_COMMUNITY_RECIPE_ITEMS}`)
+    fetch(`/api/community-recipes?limit=${FREE_COMMUNITY_RECIPE_ITEMS}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
       .catch(() => setCommunityRecipes([]));
-  }, [isPremium]);
+  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 || hour >= 18 ? t.home.greetingEvening : hour < 11 ? t.home.greetingMorning : t.home.greetingAfternoon;
@@ -230,30 +209,6 @@ export default function HomePage() {
       nutrition: visibleDailyPick.nutrition,
     });
     router.push("/recipe");
-  };
-
-  const handleLike = async (id: string) => {
-    if (likedIds.has(id)) return;
-    const deviceId = getOrCreateDeviceId();
-    if (!deviceId) return;
-    // 楽観的に即反映し、サーバーからの実際のカウントで後から補正する
-    setLikedIds(prev => new Set(prev).add(id));
-    setCommunityRecipes(prev => prev.map(r => r.id === id ? { ...r, likes_count: r.likes_count + 1 } : r));
-    try {
-      const res = await fetch(`/api/community-recipes/${id}/like`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (typeof data.likes_count === "number") {
-          setCommunityRecipes(prev => prev.map(r => r.id === id ? { ...r, likes_count: data.likes_count } : r));
-        }
-      }
-    } catch {
-      // 通信失敗時も楽観的な表示のままにする(見た目上は「いいね済み」で困らないため)
-    }
   };
 
   const handleOpenCommunityRecipe = (row: CommunityRecipeRow) => {
@@ -285,12 +240,12 @@ export default function HomePage() {
         </div>
         <div className={styles.greetingTextCol}>
           <p className={styles.greetingEyebrow}>SIKUREPI KITCHEN</p>
-          <p className={styles.greetingTitle}>{greeting}</p>
+          <div className={styles.greetingTitleRow}>
+            <p className={styles.greetingTitle}>{greeting}</p>
+            {isPremium && <span className={styles.greetingPlusBadge}><Crown size={12} aria-hidden="true" />Plus</span>}
+          </div>
           <p className={styles.greetingSubtitle}>{t.home.greetingSubtitle}</p>
         </div>
-        <button type="button" className={styles.settingsBtn} onClick={() => setIsSettingsOpen(true)} title={t.home.settingsButtonTitle}>
-          <Settings size={18} />
-        </button>
       </header>
 
       <ChefProfileBadge />
@@ -381,55 +336,22 @@ export default function HomePage() {
       <div className={`${styles.card} ${styles.cardCommunity}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
-          <span className={styles.communityScope}>{isPremium ? t.home.communityAll : t.home.communityTopOne}</span>
+          <button
+            type="button"
+            className={styles.communityHeaderAction}
+            onClick={() => isPremium ? setCommunityAllOpen(true) : setShowPaywall(true)}
+          >
+            {isPremium ? t.home.communitySeeAll : t.home.communityTopOne}
+            {isPremium && <ChevronRight size={14} />}
+          </button>
         </div>
         {communityRecipes.length === 0 ? (
           <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
         ) : (
           <div className={styles.communityList}>
-            {communityRecipes.map(row => {
-              const recipe = localizeCommunityRecipe(row.recipe, language);
-              const sentiment = getCommunitySentiment(row);
-              const sentimentLabel = sentiment === 'positive'
-                ? t.home.communityHighRating
-                : sentiment === 'negative'
-                  ? t.home.communityLowRating
-                  : sentiment === 'mixed'
-                    ? t.home.communityMixedRating
-                    : t.home.communityNewRating;
-              const SentimentIcon = sentiment === 'positive'
-                ? ThumbsUp
-                : sentiment === 'negative'
-                  ? ThumbsDown
-                  : CircleDot;
-              return (
-                <div key={row.id} className={styles.communityRow}>
-                  <button type="button" className={styles.communityOpen} onClick={() => handleOpenCommunityRecipe(row)}>
-                    <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={52} />
-                    <span className={styles.communityRowInfo}>
-                      <span className={styles.communityIdentity}>{t.home.communityAnonymousAuthor}</span>
-                      <span className={styles.communityRowTitle}>{recipe.title}</span>
-                      {recipe.creator_comment && <span className={styles.communityComment}>{recipe.creator_comment}</span>}
-                    </span>
-                  </button>
-                  <span className={styles.communityActions}>
-                    <span className={`${styles.communitySentiment} ${styles[`communitySentiment_${sentiment}`]}`}>
-                      <SentimentIcon size={12} />{sentimentLabel}
-                    </span>
-                    <button
-                      type="button"
-                      className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
-                      onClick={() => handleLike(row.id)}
-                      title={t.home.communityLikeTitle}
-                      aria-label={t.home.communityLikeTitle}
-                      aria-pressed={likedIds.has(row.id)}
-                    >
-                      <Heart size={16} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
-                    </button>
-                  </span>
-                </div>
-              );
-            })}
+            {communityRecipes.slice(0, FREE_COMMUNITY_RECIPE_ITEMS).map(row => (
+              <CommunityRecipeRowCard key={row.id} row={row} onSelect={handleOpenCommunityRecipe} />
+            ))}
           </div>
         )}
         {!isPremium && (
@@ -480,7 +402,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <CommunityRecipesScreen
+        open={communityAllOpen}
+        onClose={() => setCommunityAllOpen(false)}
+        onSelect={handleOpenCommunityRecipe}
+      />
       <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );

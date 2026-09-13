@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -116,6 +116,7 @@ export default function RecipePage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const requestCardRef = useRef<HTMLDivElement>(null);
   const [expandedIndex, setExpandedIndex] = useState<number>(-1);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
@@ -392,6 +393,24 @@ export default function RecipePage() {
     }
   };
 
+  const scrollToGenerationForm = () => {
+    requestAnimationFrame(() => {
+      requestCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleReviewGenerationConditions = () => {
+    setErrorMsg("");
+    if (creationMode === "inventory") setIngredientPickerExpanded(true);
+    scrollToGenerationForm();
+  };
+
+  const handleSwitchToFreeFromError = () => {
+    setErrorMsg("");
+    setCreationMode("free");
+    scrollToGenerationForm();
+  };
+
   const handleSaveRecipe = (index: number) => {
     const r = recipes[index];
     if (!r) return;
@@ -545,7 +564,7 @@ export default function RecipePage() {
       </div>
 
       {/* 設定・リクエストフォーム */}
-      <div className={`card ${styles.requestCard}`}>
+      <div ref={requestCardRef} className={`card ${styles.requestCard}`}>
         {/* 補助テンプレート */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--foreground)', marginBottom: 8 }}>
@@ -726,9 +745,29 @@ export default function RecipePage() {
       )}
 
       {errorMsg && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: 12, color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
-          {errorMsg}
-        </div>
+        <section className={styles.generationError} role="alert">
+          <div className={styles.generationErrorHead}>
+            <span className={styles.generationErrorIcon}><CircleAlert size={21} /></span>
+            <span className={styles.generationErrorCopy}>
+              <strong>{t.recipe.errorGuideTitle}</strong>
+              <span>{t.recipe.errorGuideBody}</span>
+            </span>
+          </div>
+          <p className={styles.generationErrorMessage}>{errorMsg}</p>
+          <div className={styles.generationErrorActions}>
+            <button type="button" className={styles.errorPrimary} onClick={() => void handleGenerate(true)}>
+              <RefreshCw size={16} />{t.recipe.retryGenerate}
+            </button>
+            <button type="button" className={styles.errorSecondary} onClick={handleReviewGenerationConditions}>
+              <SlidersHorizontal size={16} />{t.recipe.reviewConditions}
+            </button>
+          </div>
+          {creationMode === "inventory" && (
+            <button type="button" className={styles.errorTertiary} onClick={handleSwitchToFreeFromError}>
+              {t.recipe.switchToFreeFromError}
+            </button>
+          )}
+        </section>
       )}
 
       {/* 生成前の成立可否判定でNGだった場合の警告(要件8): エラーではなく、
