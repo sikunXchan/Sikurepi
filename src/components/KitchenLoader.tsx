@@ -8,21 +8,25 @@ type Props = {
   phaseMessages?: string[];
   compact?: boolean;
   className?: string;
-  variant?: "cooking" | "stirring" | "mixing" | "chopping" | "frying" | "plating" | "serving" | "delivering" | "reading" | "basket";
+  variant?: "cooking" | "stirring" | "mixing" | "chopping" | "kneading" | "frying" | "tasting" | "plating" | "serving" | "delivering" | "reading" | "basket";
 };
 
 const COOKING_ASSETS = [
-  "/animations/bear-mixing.webp",
+  "/animations/bear-mixing-v2.webp",
   "/animations/bear-chopping.webp",
+  "/animations/bear-kneading.webp",
   "/animations/bear-pan-toss.webp",
+  "/animations/bear-tasting.webp",
   "/animations/bear-plating.webp",
 ];
 
 const VARIANT_ASSETS: Omit<Record<NonNullable<Props["variant"]>, string>, "cooking"> = {
-  stirring: "/animations/bear-mixing.webp",
-  mixing: "/animations/bear-mixing.webp",
+  stirring: "/animations/bear-mixing-v2.webp",
+  mixing: "/animations/bear-mixing-v2.webp",
   chopping: "/animations/bear-chopping.webp",
+  kneading: "/animations/bear-kneading.webp",
   frying: "/animations/bear-pan-toss.webp",
+  tasting: "/animations/bear-tasting.webp",
   plating: "/animations/bear-plating.webp",
   serving: "/mascot/bear_serving.png",
   delivering: "/mascot/bear_delivering.png",
@@ -31,6 +35,7 @@ const VARIANT_ASSETS: Omit<Record<NonNullable<Props["variant"]>, string>, "cooki
 };
 
 const PHASE_THRESHOLDS_MS = [0, 1200, 3000, 6000];
+const COOKING_SCENE_DURATION_MS = 2650;
 
 export default function KitchenLoader({ text, phaseMessages, compact = false, className = "", variant = "cooking" }: Props) {
   const [cookingFrame, setCookingFrame] = useState(0);
@@ -40,7 +45,7 @@ export default function KitchenLoader({ text, phaseMessages, compact = false, cl
     if (variant !== "cooking") return;
     const timer = window.setInterval(() => {
       setCookingFrame(current => (current + 1) % COOKING_ASSETS.length);
-    }, 3200);
+    }, COOKING_SCENE_DURATION_MS);
     return () => window.clearInterval(timer);
   }, [variant]);
 

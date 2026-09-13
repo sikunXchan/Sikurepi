@@ -19,6 +19,7 @@ import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import {
   qualityGateErrors,
+  reconcileRecipeTime,
   sanitizeServings,
   validateWeeklyPlan,
   WeeklyRecipe,
@@ -30,6 +31,8 @@ const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
 const WEEKLY_PLAN_MODEL_ORDER = [
   [FAST_AI_MODEL, QUALITY_AI_MODEL],
   [QUALITY_AI_MODEL, FAST_AI_MODEL],
+  [FAST_AI_MODEL, QUALITY_AI_MODEL],
+  [QUALITY_AI_MODEL, FAST_AI_MODEL],
 ] as const;
 const MAX_VALIDATION_ATTEMPTS = WEEKLY_PLAN_MODEL_ORDER.length;
 
@@ -39,21 +42,36 @@ function slotKey(entry: { date?: unknown; meal_slot?: unknown }): string {
 
 function repairIndicesFromErrors(errors: string[], planLength: number): number[] {
   const indices = new Set<number>();
-  let hasPlanWideError = false;
+  let needsFullPlanRepair = false;
+  let hasNutritionTotalError = false;
 
   for (const error of errors) {
     const match = error.match(/^plan\[(\d+)\]/);
     if (!match) {
-      hasPlanWideError = true;
+      if (/^weekly (calories|protein_g|fat_g|carbs_g) total/.test(error)) {
+        hasNutritionTotalError = true;
+      } else {
+        needsFullPlanRepair = true;
+      }
       continue;
     }
     const index = Number(match[1]);
     if (Number.isInteger(index) && index >= 0 && index < planLength) indices.add(index);
   }
 
-  if (hasPlanWideError || indices.size === 0) {
+  if (needsFullPlanRepair) {
     return Array.from({ length: planLength }, (_, index) => index);
   }
+  if (hasNutritionTotalError) {
+    // 合計PFCだけが外れた場合、合格済みの全レシピを捨てず、最大4食を
+    // 調整対象にして週間合計を戻す。既存の不合格食も優先して含める。
+    const spreadOrder = [planLength - 1, 0, Math.floor(planLength / 2), planLength - 2, 1];
+    for (const index of spreadOrder) {
+      if (index >= 0 && index < planLength) indices.add(index);
+      if (indices.size >= Math.min(4, planLength)) break;
+    }
+  }
+  if (indices.size === 0) return Array.from({ length: planLength }, (_, index) => index);
   return [...indices].sort((a, b) => a - b);
 }
 
@@ -180,7 +198,7 @@ export async function POST(req: Request) {
 ※ 栄養値は推定値なので、個々のレシピは目安から前後して構いません。指定された全レシピの合計は週間目安のプラスマイナス30%程度を目標にし、夕食はやや多め、昼食はやや控えめに調整してください。\n`;
     const languageSection = buildLanguageSection(language);
 
-    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに1品ずつ、家庭で再現できる料理を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
+    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに、主食を含めて1食として完結する一皿料理を1品ずつ提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
 
 【生成が必要な日付・食事枠一覧（合計${requestedSlots.length}件）】
 ${slotLines}
@@ -198,7 +216,9 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 7. 【手順の具体性】各ステップには温度・火加減・時間・視覚的なキューを含めてください。
 8. ${DISH_LOAD_INSTRUCTION}
 9. 【提出前の自己監査】各材料が手順内で使われているか、分量・所要時間・PFCとcaloriesが矛盾していないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含め、味は塩分だけでなく旨味・酸味・香り・食感の組み合わせを確認してください。
-10. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
+   "time"には浸水・漬け込み・炊飯・焼成・休ませる時間も含めてください。同じ手順内に複数の連続する所要時間を書く場合、それらの合計より"time"を短くしないでください。
+10. 【一食として完結】各料理には米・パン・麺・いも類等の主食を必ず材料と手順に含め、nutritionには主菜だけでなく主食を含む一食全体の値を記載してください。丼、ワンプレート、パスタ、麺料理等、アプリ上は一つの料理名と一つの料理アイコンで表現できる形にしてください。
+11. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
 {
   "plan": [
     {
@@ -213,7 +233,7 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
       ],
       "steps": ["手順1", "手順2", "手順3..."],
       "tips": "調理のコツ・アドバイス",
-      "nutrition": { "calories": 420, "protein_g": 28, "fat_g": 14, "carbs_g": 35 }
+      "nutrition": { "calories": 650, "protein_g": 30, "fat_g": 20, "carbs_g": 85 }
     }
   ]
 }
@@ -281,7 +301,7 @@ ${buildValidationRetryNote(lastErrors)}
 前回案は次のJSONです。
 ${JSON.stringify({ plan: previousPlan })}
 ${targetedRepair
-  ? `品質検証に合格済みの料理は変更せず、次の${repairEntries.length}食だけを修正してください。前回案全体との料理ジャンル・主材料・PFCのバランスも保ってください。\n修正対象: ${JSON.stringify(repairEntries.map((entry) => ({ date: (entry as Record<string, unknown>)?.date, meal_slot: (entry as Record<string, unknown>)?.meal_slot })))}\n出力するplan配列には修正対象の${repairEntries.length}食だけを、同じdateとmeal_slotで格納してください。合格済みの料理は出力しないでください。`
+  ? `品質検証に合格済みの料理は変更せず、次の${repairEntries.length}食だけを修正してください。前回案全体との料理ジャンル・主材料・PFCのバランスも保ってください。\n修正対象: ${JSON.stringify(repairEntries.map((entry) => ({ date: (entry as Record<string, unknown>)?.date, meal_slot: (entry as Record<string, unknown>)?.meal_slot })))}\n出力するplan配列には修正対象の${repairEntries.length}食だけを、同じdateとmeal_slotで格納してください。合格済みの料理は出力しないでください。\n各修正レシピは提出前に、(1)材料欄の全食材名が手順内に明記されている、(2)各加熱工程に火加減・時間・見た目の完了条件がある、(3)肉類には中心75℃で1分以上または同等の安全確認がある、(4)塩味だけに頼らず酸味または自然な甘味・香り・食感の設計がある、の4点を一つずつ照合してください。`
   : `前回案全体を、上記の不採用理由をすべて解消するよう修正してください。出力するplan配列には依頼された${requestedSlots.length}食すべてを格納してください。`}`;
 
       const models = [...WEEKLY_PLAN_MODEL_ORDER[attempt]];
@@ -290,6 +310,7 @@ ${targetedRepair
         contents: [{ role: 'user', parts: [{ text: attemptPrompt }] }],
         config: {
           responseMimeType: 'application/json',
+          maxOutputTokens: 24576,
           thinkingConfig: { thinkingLevel },
         }
       }, models, 2);
@@ -327,6 +348,15 @@ ${targetedRepair
           continue;
         }
       }
+
+      planArray = planArray.map((entry) => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+        const recipe = entry as Partial<ValidatedRecipe>;
+        if (typeof recipe.time !== 'string' || !Array.isArray(recipe.steps) || !recipe.steps.every((step) => typeof step === 'string')) {
+          return entry;
+        }
+        return reconcileRecipeTime(entry as ValidatedRecipe);
+      });
 
       const validationErrors = validateCandidatePlan(planArray);
       if (validationErrors.length > 0) {

@@ -3,6 +3,7 @@ import {
   assessRecipeQuality,
   parseRecipeMinutes,
   qualityGateErrors,
+  reconcileRecipeTime,
   sanitizeServings,
   validateRequiredIngredients,
   validateSetMeal,
@@ -36,6 +37,11 @@ assert.equal(parseRecipeMinutes('1時間20分'), 80);
 assert.equal(parseRecipeMinutes('about 35 minutes'), 35);
 assert.equal(sanitizeServings('3', 2), 3);
 assert.equal(sanitizeServings(99, 2), 15);
+assert.equal(reconcileRecipeTime({
+  ...goodChicken,
+  time: '45分',
+  steps: ['米を30分浸水させてから炊飯器で55分炊く。'],
+}).time, '85分');
 
 const goodAssessment = assessRecipeQuality(goodChicken, { servings: 2 });
 assert.deepEqual(goodAssessment.errors, []);
@@ -70,6 +76,10 @@ assert.equal(assessRecipeQuality(overSalted, { servings: 2 }).errors.some((error
 assert.equal(assessRecipeQuality({
   ...goodChicken,
   ingredients: goodChicken.ingredients.map((item, index) => index === 2 ? { ...item, amount: 'ふたつまみ（下味用）' } : item),
+}).errors.some((error) => error.includes('not measurable')), false);
+assert.equal(assessRecipeQuality({
+  ...goodChicken,
+  ingredients: goodChicken.ingredients.map((item, index) => index === 2 ? { ...item, amount: 'ふた振り' } : item),
 }).errors.some((error) => error.includes('not measurable')), false);
 assert.equal(assessRecipeQuality({ ...goodChicken, title: 'おすすめ料理🍳' }).errors.some((error) => error.includes('emoji')), true);
 
@@ -113,6 +123,23 @@ const englishChicken = {
   tips: 'Brown the chicken well for a golden edge and a tender center.',
 };
 assert.equal(assessRecipeQuality(englishChicken).errors.some((error) => error.includes('never used')), false);
+
+const annotatedIngredients = {
+  ...goodChicken,
+  ingredients: [
+    { name: '鶏もも肉（皮なし）', amount: '300g' },
+    { name: 'パプリカ（赤・黄）', amount: '各1/2個' },
+    { name: '木綿豆腐（水切り済み）', amount: '150g' },
+    { name: '醤油', amount: '大さじ1' },
+    { name: 'レモン汁', amount: '大さじ1' },
+  ],
+  steps: [
+    '鶏肉、パプリカ、豆腐を一口大に切る。',
+    '鶏肉を中火で片面3分ずつ焼き、パプリカと豆腐を加えて4分炒める。',
+    '醤油とレモン汁を加え、鶏肉の中心温度75℃を1分保って仕上げる。',
+  ],
+};
+assert.equal(assessRecipeQuality(annotatedIngredients).errors.some((error) => error.includes('never used')), false);
 
 const dessert = {
   title: 'はちみつヨーグルトプリン',
@@ -224,6 +251,18 @@ assert.deepEqual(validateWeeklyPlan(
   ['鮭'],
   weeklyTargets,
 ), []);
+assert.equal(validateWeeklyPlan(
+  [
+    { ...goodChicken, title: '牛肉の野菜炒め丼', ingredients: [{ name: '牛肉', amount: '200g' }, ...goodChicken.ingredients.slice(1)], date: '2026-09-13', meal_slot: 'dinner' },
+    { ...dessert, title: '白身魚のミルクスープパスタ', ingredients: [{ name: '白身魚', amount: '2切れ' }, { name: '牛乳', amount: '200ml' }, { name: 'パスタ', amount: '160g' }], date: '2026-09-14', meal_slot: 'dinner' },
+  ],
+  [
+    { date: '2026-09-13', mealSlot: 'dinner' },
+    { date: '2026-09-14', mealSlot: 'dinner' },
+  ],
+  [],
+  { calories: 800, protein_g: 64, fat_g: 28, carbs_g: 73 },
+).some((error) => error.includes('adjacent meals')), false);
 assert.equal(validateWeeklyPlan(
   weeklyPlan,
   [{ date: '2026-09-13', mealSlot: 'dinner' }],
