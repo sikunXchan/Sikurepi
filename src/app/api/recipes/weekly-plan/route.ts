@@ -33,6 +33,30 @@ const WEEKLY_PLAN_MODEL_ORDER = [
 ] as const;
 const MAX_VALIDATION_ATTEMPTS = WEEKLY_PLAN_MODEL_ORDER.length;
 
+function slotKey(entry: { date?: unknown; meal_slot?: unknown }): string {
+  return `${String(entry.date || '')}:${String(entry.meal_slot || '')}`;
+}
+
+function repairIndicesFromErrors(errors: string[], planLength: number): number[] {
+  const indices = new Set<number>();
+  let hasPlanWideError = false;
+
+  for (const error of errors) {
+    const match = error.match(/^plan\[(\d+)\]/);
+    if (!match) {
+      hasPlanWideError = true;
+      continue;
+    }
+    const index = Number(match[1]);
+    if (Number.isInteger(index) && index >= 0 && index < planLength) indices.add(index);
+  }
+
+  if (hasPlanWideError || indices.size === 0) {
+    return Array.from({ length: planLength }, (_, index) => index);
+  }
+  return [...indices].sort((a, b) => a - b);
+}
+
 // 厚生労働省「日本人の食事摂取基準」の目安（たんぱく質エネルギー比13〜20%中央値15%、脂質20〜30%中央値25%、
 // 炭水化物は残り約60%）を用いて、目標値未設定時のデフォルトPFCを算出する。
 // 1日3食を基準に、依頼された食事枠1件あたりの目安値として按分する。
@@ -206,9 +230,59 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       templateKey: null,
     };
 
+    const validateCandidatePlan = (planArray: unknown[]): string[] => {
+      const shapeErrors = planArray.length > 0
+        ? planArray.flatMap((item, i) => {
+            const errs = validateRecipeShape(item, `plan[${i}]`);
+            const entry = item as Record<string, unknown>;
+            if (typeof entry?.date !== 'string' || !entry.date) errs.push(`plan[${i}].date is missing`);
+            if (entry?.meal_slot !== 'lunch' && entry?.meal_slot !== 'dinner') {
+              errs.push(`plan[${i}].meal_slot must be "lunch" or "dinner"`);
+            }
+            return errs;
+          })
+        : ['plan must be a non-empty array'];
+
+      if (shapeErrors.length > 0) return shapeErrors;
+
+      const typedPlan = planArray as ValidatedRecipe[];
+      const logicErrors = typedPlan.flatMap((item, index) =>
+        validateRecipeLogic(item, feasibilityContext).map((error) => `plan[${index}]: ${error}`)
+      );
+      logicErrors.push(...typedPlan.flatMap((item, index) =>
+        qualityGateErrors(item, {
+          servings: targetServings,
+          targetCaloriesPerServing: perMealCalories,
+          targetProteinPerServing: perMealProtein,
+        }, `plan[${index}]`)
+      ));
+      logicErrors.push(...validateWeeklyPlan(
+        typedPlan as WeeklyRecipe[],
+        requestedSlots,
+        Array.isArray(pinnedIngredients) ? pinnedIngredients : [],
+        { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
+      ));
+      return logicErrors;
+    };
+
     let lastErrors: string[] = [];
+    let previousPlan: unknown[] = [];
     for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
-      const attemptPrompt = attempt === 0 ? prompt : `${prompt}\n${buildValidationRetryNote(lastErrors)}`;
+      const repairIndices = attempt > 0 && previousPlan.length === requestedSlots.length
+        ? repairIndicesFromErrors(lastErrors, previousPlan.length)
+        : [];
+      const targetedRepair = repairIndices.length > 0 && repairIndices.length < previousPlan.length;
+      const repairEntries = targetedRepair ? repairIndices.map((index) => previousPlan[index]) : [];
+      const attemptPrompt = attempt === 0
+        ? prompt
+        : `${prompt}
+${buildValidationRetryNote(lastErrors)}
+【最終修正指示（上記の出力件数指定よりこちらを優先）】
+前回案は次のJSONです。
+${JSON.stringify({ plan: previousPlan })}
+${targetedRepair
+  ? `品質検証に合格済みの料理は変更せず、次の${repairEntries.length}食だけを修正してください。前回案全体との料理ジャンル・主材料・PFCのバランスも保ってください。\n修正対象: ${JSON.stringify(repairEntries.map((entry) => ({ date: (entry as Record<string, unknown>)?.date, meal_slot: (entry as Record<string, unknown>)?.meal_slot })))}\n出力するplan配列には修正対象の${repairEntries.length}食だけを、同じdateとmeal_slotで格納してください。合格済みの料理は出力しないでください。`
+  : `前回案全体を、上記の不採用理由をすべて解消するよう修正してください。出力するplan配列には依頼された${requestedSlots.length}食すべてを格納してください。`}`;
 
       const models = [...WEEKLY_PLAN_MODEL_ORDER[attempt]];
       const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
@@ -233,46 +307,41 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         continue;
       }
 
-      const planArray: unknown[] = Array.isArray(json.plan) ? json.plan : [];
+      let planArray: unknown[] = Array.isArray(json.plan) ? json.plan : [];
 
-      const shapeErrors = planArray.length > 0
-        ? planArray.flatMap((item, i) => {
-            const errs = validateRecipeShape(item, `plan[${i}]`);
-            const entry = item as Record<string, unknown>;
-            if (typeof entry?.date !== 'string' || !entry.date) errs.push(`plan[${i}].date is missing`);
-            if (entry?.meal_slot !== 'lunch' && entry?.meal_slot !== 'dinner') {
-              errs.push(`plan[${i}].meal_slot must be "lunch" or "dinner"`);
-            }
-            return errs;
-          })
-        : ['plan must be a non-empty array'];
+      if (attempt > 0 && targetedRepair) {
+        const requestedRepairKeys = new Set(repairEntries.map((entry) => slotKey(entry as Record<string, unknown>)));
+        const repairBySlot = new Map(
+          planArray.map((entry) => [slotKey(entry as Record<string, unknown>), entry] as const)
+        );
+        const hasExactRepairSet = planArray.length === requestedRepairKeys.size
+          && repairBySlot.size === requestedRepairKeys.size
+          && [...requestedRepairKeys].every((key) => repairBySlot.has(key));
 
-      if (shapeErrors.length > 0) {
-        lastErrors = shapeErrors;
-        continue;
+        if (hasExactRepairSet) {
+          planArray = previousPlan.map((entry) =>
+            repairBySlot.get(slotKey(entry as Record<string, unknown>)) || entry
+          );
+        } else if (planArray.length !== requestedSlots.length) {
+          lastErrors = ['repair response must contain exactly the requested repair slots'];
+          continue;
+        }
       }
 
-      const logicErrors = (planArray as ValidatedRecipe[]).flatMap((item) => validateRecipeLogic(item, feasibilityContext));
-      logicErrors.push(...(planArray as ValidatedRecipe[]).flatMap((item, index) =>
-        qualityGateErrors(item, {
-          servings: targetServings,
-          targetCaloriesPerServing: perMealCalories,
-          targetProteinPerServing: perMealProtein,
-        }, `plan[${index}]`)
-      ));
-      logicErrors.push(...validateWeeklyPlan(
-        planArray as WeeklyRecipe[],
-        requestedSlots,
-        Array.isArray(pinnedIngredients) ? pinnedIngredients : [],
-        { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
-      ));
-      if (logicErrors.length > 0) {
-        lastErrors = logicErrors;
+      const validationErrors = validateCandidatePlan(planArray);
+      if (validationErrors.length > 0) {
+        previousPlan = planArray;
+        lastErrors = validationErrors;
+        console.warn('[WEEKLY_PLAN_VALIDATION]', JSON.stringify({
+          attempt: attempt + 1,
+          repairedRecipes: targetedRepair ? repairIndices.length : 0,
+          errors: validationErrors,
+        }));
         continue;
       }
 
       return NextResponse.json({
-        ...json,
+        plan: planArray,
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
       });
     }
