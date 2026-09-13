@@ -2,6 +2,13 @@
 
 import { toHiragana } from './kana';
 import type { TrayThemeId } from './trayThemes';
+import {
+  FREE_WEEKLY_PLAN_GENERATIONS,
+  normalizeFreeGenerationUsage,
+  type FreeGenerationUsage,
+} from './premiumQuota';
+
+export { FREE_WEEKLY_PLAN_GENERATIONS, getGenerationWeekKey } from './premiumQuota';
 
 export type Ingredient = {
   id: number;
@@ -115,11 +122,11 @@ export type UserProfile = {
 // 常備調味料と前提としているもの（AIプロンプトのSEASONING_SECTIONと対応）。
 // 在庫に無くても「不足」扱いにはしない。
 export const PANTRY_STAPLES = [
-  '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
+  '水', '湯', '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
   '酢', 'サラダ油', 'ごま油', 'バター', 'だし', 'コンソメ', '鶏がらスープ',
   'ケチャップ', 'マヨネーズ', 'にんにく', 'ニンニク', 'しょうが', '生姜',
-  'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
-  'vegetable oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
+  'water', 'hot water', 'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
+  'vegetable oil', 'salad oil', 'cooking oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
   'mayonnaise', 'garlic', 'ginger',
 ];
 
@@ -391,6 +398,7 @@ const KEYS = {
   WEEK_PLAN: 'lily_app_week_plan',
   FREE_GENERATIONS_USED: 'lily_app_free_generations_used',
   LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
+  RECIPE_GENERATION_CACHE: 'lily_app_recipe_generation_cache_v2',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -699,11 +707,20 @@ export type LastRecipeGeneration = {
   expandedIndex: number;
   savedIndices: number[];
   creationMode: 'inventory' | 'free';
+  mealStyle?: 'single' | 'set';
   instruction: string;
   selectedIngredientIds: number[];
   servings: number;
   savedAt: string;
+  requestKey?: string;
 };
+
+type RecipeGenerationCacheEntry = LastRecipeGeneration & {
+  requestKey: string;
+};
+
+const RECIPE_GENERATION_CACHE_LIMIT = 6;
+export const RECIPE_GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export function getLocalLastRecipeGeneration(): LastRecipeGeneration | null {
   return getStorage<LastRecipeGeneration | null>(KEYS.LAST_RECIPE_GENERATION, null);
@@ -711,6 +728,29 @@ export function getLocalLastRecipeGeneration(): LastRecipeGeneration | null {
 
 export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
   setStorage(KEYS.LAST_RECIPE_GENERATION, data);
+}
+
+export function getLocalCachedRecipeGeneration(
+  requestKey: string,
+  maxAgeMs = RECIPE_GENERATION_CACHE_TTL_MS,
+): LastRecipeGeneration | null {
+  const now = Date.now();
+  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const entry = entries.find((candidate) =>
+    candidate.requestKey === requestKey
+    && Number.isFinite(Date.parse(candidate.savedAt))
+    && now - Date.parse(candidate.savedAt) <= maxAgeMs
+  );
+  return entry || null;
+}
+
+export function setLocalCachedRecipeGeneration(data: LastRecipeGeneration & { requestKey: string }): void {
+  const entries = getStorage<RecipeGenerationCacheEntry[]>(KEYS.RECIPE_GENERATION_CACHE, []);
+  const next = [
+    data,
+    ...entries.filter((entry) => entry.requestKey !== data.requestKey),
+  ].slice(0, RECIPE_GENERATION_CACHE_LIMIT);
+  setStorage(KEYS.RECIPE_GENERATION_CACHE, next);
 }
 
 // --- 統計 ＆ PFC記録 (Stats) ---
@@ -886,17 +926,26 @@ export function clearLocalWeekPlanRange(dates: string[]): void {
 
 // --- プレミアムプラン無料枠 (アプリ版のみ有効。Web版は無制限) ---
 
-// アプリ版で「週間献立の自動生成」を無料で使える回数。これを超えるとプレミアムプラン加入を促す。
-export const FREE_WEEKLY_PLAN_GENERATIONS = 3;
-
-export function getFreeGenerationsUsed(): number {
-  return getStorage<number>(KEYS.FREE_GENERATIONS_USED, 0);
+function getFreeGenerationUsage(now: Date = new Date()): FreeGenerationUsage {
+  const stored = getStorage<unknown>(KEYS.FREE_GENERATIONS_USED, null);
+  const usage = normalizeFreeGenerationUsage(stored, now);
+  setStorage(KEYS.FREE_GENERATIONS_USED, usage);
+  return usage;
 }
 
-export function incrementFreeGenerationsUsed(): number {
-  const next = getFreeGenerationsUsed() + 1;
-  setStorage(KEYS.FREE_GENERATIONS_USED, next);
+export function getFreeGenerationsUsed(now: Date = new Date()): number {
+  return getFreeGenerationUsage(now).count;
+}
+
+export function incrementFreeGenerationsUsed(now: Date = new Date()): number {
+  const usage = getFreeGenerationUsage(now);
+  const next = usage.count + 1;
+  setStorage(KEYS.FREE_GENERATIONS_USED, { ...usage, count: next });
   return next;
+}
+
+export function getFreeGenerationsRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed(now));
 }
 
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---

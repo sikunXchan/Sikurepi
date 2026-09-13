@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -10,6 +10,7 @@ import PageHeader from "@/components/PageHeader";
 import CookedModal from "@/components/CookedModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -21,6 +22,7 @@ import {
   setLocalWeekPlanEntries,
   removeLocalWeekPlanEntry,
   getFreeGenerationsUsed,
+  getFreeGenerationsRemaining,
   incrementFreeGenerationsUsed,
   isIngredientMissing,
   FREE_WEEKLY_PLAN_GENERATIONS,
@@ -29,7 +31,8 @@ import {
   MealSlot,
   WeeklyPlanEntry,
 } from "@/lib/storage";
-import { isNativeApp, hasPremiumEntitlement, purchasePremium } from "@/lib/purchases";
+import { isNativeApp } from "@/lib/purchases";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
@@ -54,6 +57,7 @@ function buildDays(weekday: string[]): DayInfo[] {
 
 export default function MealPlanPage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const SLOT_LABEL: Record<MealSlot, string> = { lunch: t.mealPlan.slotLunch, dinner: t.mealPlan.slotDinner };
   const days = useMemo(() => buildDays(t.mealPlan.weekdayShort), [t.mealPlan.weekdayShort]);
   const [active, setActive] = useState<Record<string, boolean>>(() => {
@@ -77,18 +81,12 @@ export default function MealPlanPage() {
   // 献立から生成された料理も、レシピ生成画面(recipe/page.tsx)と同じ
   // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
   const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
-  const [purchaseError, setPurchaseError] = useState("");
 
   useEffect(() => {
     loadData();
     const handleUpdate = () => loadData();
     window.addEventListener("storage-updated", handleUpdate);
-    if (isNativeApp()) {
-      hasPremiumEntitlement().then(setIsPremium);
-    }
     return () => window.removeEventListener("storage-updated", handleUpdate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -208,24 +206,11 @@ export default function MealPlanPage() {
     }
   };
 
-  const handlePurchasePremium = async () => {
-    setPurchasing(true);
-    setPurchaseError("");
-    try {
-      const result = await purchasePremium();
-      if (result.success) {
-        setIsPremium(true);
-        setShowPaywall(false);
-        showToast(t.mealPlan.premiumWelcomeToast);
-      } else if (result.error) {
-        setPurchaseError(result.error);
-      }
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
   const handleRegenerateSlot = async (date: string, mealSlot: MealSlot) => {
+    if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+      setShowPaywall(true);
+      return;
+    }
     const key = `${date}_${mealSlot}`;
     setRegeneratingKey(key);
     setErrorMsg("");
@@ -240,6 +225,7 @@ export default function MealPlanPage() {
       const r = (data.plan || [])[0];
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries([mapPlanItem(r)]);
+      if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
       loadData();
       showToast(t.mealPlan.regeneratedToast);
     } catch (err: unknown) {
@@ -385,7 +371,7 @@ export default function MealPlanPage() {
         </button>
         {isNativeApp() && !isPremium && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
-            {t.mealPlan.freeRemaining(Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed()))}
+            {t.mealPlan.freeRemaining(getFreeGenerationsRemaining())}
           </p>
         )}
       </section>
@@ -605,61 +591,11 @@ export default function MealPlanPage() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showPaywall && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 }}
-            onClick={() => !purchasing && setShowPaywall(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ position: 'relative', background: 'var(--card-bg-solid, #fff)', borderRadius: 20, padding: 24, maxWidth: 360, width: '100%', textAlign: 'center' }}
-            >
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                disabled={purchasing}
-                style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={18} />
-              </button>
-              <Crown size={40} color="#f59e0b" style={{ marginBottom: 8 }} />
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>{t.mealPlan.paywallTitle}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
-                {t.mealPlan.paywallText(FREE_WEEKLY_PLAN_GENERATIONS)}
-              </p>
-              {purchaseError && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 13, marginBottom: 12 }}>
-                  {purchaseError}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handlePurchasePremium}
-                disabled={purchasing}
-                className="btn-primary"
-                style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 700 }}
-              >
-                {purchasing ? (<><Loader2 className="spinner" size={16} />{t.mealPlan.purchaseProcessing}</>) : (<><Crown size={16} />{t.mealPlan.purchaseButton}</>)}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                disabled={purchasing}
-                style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', padding: 8 }}
-              >
-                {t.mealPlan.purchaseLater}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PremiumPaywall
+        open={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onActivated={() => showToast(t.mealPlan.premiumWelcomeToast)}
+      />
     </div>
   );
 }

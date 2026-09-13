@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, X } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -26,6 +26,8 @@ import {
   isIngredientMissing,
   getLocalLastRecipeGeneration,
   setLocalLastRecipeGeneration,
+  getLocalCachedRecipeGeneration,
+  setLocalCachedRecipeGeneration,
   consumePendingDailyPickHandoff,
   DEFAULT_USER_PROFILE,
   CATEGORY_ORDER,
@@ -34,6 +36,7 @@ import {
   UserProfile,
   NutritionData
 } from "@/lib/storage";
+import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
 import { setNavLocked } from "@/lib/navLock";
@@ -116,6 +119,7 @@ export default function RecipePage() {
   const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [resultOrigin, setResultOrigin] = useState<'generated' | 'cache' | 'restored' | null>(null);
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   // マイページの人数設定はデフォルト値として使うが、生成のたびに個別に変えられるようにする
   const [sessionServings, setSessionServings] = useState<number>(2);
@@ -152,9 +156,11 @@ export default function RecipePage() {
       setExpandedIndex(-1);
       setSavedSet(new Set(cached.savedIndices));
       setCreationMode(cached.creationMode);
+      setMealStyle(cached.mealStyle || (cached.recipes.length > 1 ? 'set' : 'single'));
       setInstruction(cached.instruction);
       setSelectedIngredientIds(cached.selectedIngredientIds);
       setSessionServings(cached.servings);
+      setResultOrigin('restored');
     }
   }, []);
 
@@ -185,8 +191,10 @@ export default function RecipePage() {
     const handoff = consumePendingDailyPickHandoff();
     if (!handoff) return;
     setRecipes([{ ...handoff, image_url: null, nutrition: handoff.nutrition || null }]);
+    setMealStyle('single');
     setExpandedIndex(0);
     setSavedSet(new Set());
+    setResultOrigin('generated');
   }, []);
 
   const loadLocalData = () => {
@@ -210,7 +218,81 @@ export default function RecipePage() {
     setInstruction(query);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (forceRefresh = false) => {
+    const selectedNames = creationMode === 'inventory'
+      ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
+      : [];
+
+    const currentClimate = getLocalClimateState();
+    const recentRecipes = getRecentLocalRecipeNames(5);
+    // 「気に入って保存した」という明示的なシグナルから、この人の好みの傾向を
+    // AIに伝え、より本人好みで美味しく感じられる提案につなげる
+    const likedRecipeSummary = getLocalSavedRecipes()
+      .slice(0, 15)
+      .map(r => ({ title: r.title, genre: r.genre }));
+
+    // 入力欄のテキストが選択中テンプレートの定型文と完全一致する場合だけ、
+    // そのテンプレートを「絶対条件」としてサーバーに伝える(要件7)。
+    const activeTemplate = TEMPLATES.find(tmpl => tmpl.query === instruction);
+
+    const payload = {
+      ingredients: selectedNames,
+      pinnedIngredients: creationMode === 'inventory'
+        ? (validSelectedIngredientIds.length > 0
+            ? selectedNames
+            : ingredients.filter((item) => item.is_pinned).map((item) => item.name))
+        : [],
+      instruction: instruction.trim() || undefined,
+      templateKey: activeTemplate?.key,
+      servings: sessionServings,
+      userProfile: {
+        ...userProfile,
+        tastePreferences: userProfile.tastePreferences || [],
+        excludedIngredients: userProfile.excludedIngredients || [],
+        cookingStyles: userProfile.cookingStyles || [],
+        dietaryRestrictions: userProfile.dietaryRestrictions || [],
+        preferredGenres: userProfile.preferredGenres || [],
+        flavorFeedback: getRecentFlavorFeedbackSummary(12),
+      },
+      climate: userProfile.enableClimate !== false ? currentClimate : undefined,
+      recentHistory: recentRecipes,
+      likedRecipeSummary,
+      mode: creationMode === 'free' ? 'free' : 'inventory',
+      mealStyle,
+      language,
+    };
+    const requestKey = createRecipeGenerationRequestKey(payload);
+
+    if (!forceRefresh) {
+      const cached = getLocalCachedRecipeGeneration(requestKey);
+      if (cached && cached.recipes.length > 0) {
+        const savedTitles = new Set(getLocalSavedRecipes().map((recipe) => recipe.title));
+        const savedIndices = cached.recipes
+          .map((recipe, index) => savedTitles.has(recipe.title) ? index : -1)
+          .filter((index) => index >= 0);
+        const restored = {
+          ...cached,
+          savedIndices,
+          creationMode,
+          mealStyle,
+          instruction,
+          selectedIngredientIds: validSelectedIngredientIds,
+          servings: sessionServings,
+        };
+        setErrorMsg("");
+        setFeasibilityWarning(null);
+        setRecipes(restored.recipes);
+        setCookingTips(restored.cookingTips);
+        setShowTips(restored.cookingTips.length > 0);
+        setExpandedIndex(-1);
+        setSavedSet(new Set(savedIndices));
+        setResultOrigin('cache');
+        setLocalLastRecipeGeneration(restored);
+        showToast(t.recipe.cacheHitToast);
+        return;
+      }
+    }
+
     setLoading(true);
     setNavLocked(true);
     setErrorMsg("");
@@ -218,55 +300,9 @@ export default function RecipePage() {
     setCookingTips([]);
     setSavedSet(new Set());
     setFeasibilityWarning(null);
+    setResultOrigin(null);
 
     try {
-      const selectedNames = creationMode === 'inventory'
-        ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
-        : [];
-
-      const currentClimate = getLocalClimateState();
-      const recentRecipes = getRecentLocalRecipeNames(5);
-      // 「気に入って保存した」という明示的なシグナルから、この人の好みの傾向を
-      // AIに伝え、より本人好みで美味しく感じられる提案につなげる
-      const likedRecipeSummary = getLocalSavedRecipes()
-        .slice(0, 15)
-        .map(r => ({ title: r.title, genre: r.genre }));
-
-      // 入力欄のテキストが選択中テンプレートの定型文と完全一致する場合だけ、
-      // そのテンプレートを「絶対条件」としてサーバーに伝える(要件7)。
-      // ユーザーが文章を書き換えた時点で一致しなくなり、自然に解除される。
-      const activeTemplate = TEMPLATES.find(tmpl => tmpl.query === instruction);
-
-      const payload = {
-        ingredients: selectedNames,
-        pinnedIngredients: creationMode === 'inventory'
-          ? (validSelectedIngredientIds.length > 0
-              ? selectedNames
-              : ingredients.filter((item) => item.is_pinned).map((item) => item.name))
-          : [],
-        instruction: instruction.trim() || undefined,
-        templateKey: activeTemplate?.key,
-        servings: sessionServings,
-        userProfile: {
-          ...userProfile,
-          tastePreferences: userProfile.tastePreferences || [],
-          excludedIngredients: userProfile.excludedIngredients || [],
-          cookingStyles: userProfile.cookingStyles || [],
-          dietaryRestrictions: userProfile.dietaryRestrictions || [],
-          preferredGenres: userProfile.preferredGenres || [],
-          flavorFeedback: getRecentFlavorFeedbackSummary(12),
-        },
-        climate: userProfile.enableClimate !== false ? currentClimate : undefined,
-        // 旧実装ではサーバー側が読む項目名(recentHistory)と送信側の項目名
-        // (recentRecipes)が一致しておらず、直近レシピの重複防止が機能して
-        // いなかったため、正しい項目名で送るよう修正
-        recentHistory: recentRecipes,
-        likedRecipeSummary,
-        mode: creationMode === 'free' ? 'free' : 'inventory',
-        mealStyle,
-        language,
-      };
-
       const res = await fetch("/api/recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -293,6 +329,7 @@ export default function RecipePage() {
       if (data.recipes && data.recipes.length > 0) {
         setRecipes(data.recipes);
         setExpandedIndex(-1);
+        setResultOrigin('generated');
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -308,17 +345,21 @@ export default function RecipePage() {
       }
 
       // 別タブへ移動しても前回の生成結果が消えないように保存しておく
-      setLocalLastRecipeGeneration({
+      const generationSnapshot = {
         recipes: data.recipes,
         cookingTips: tips,
         expandedIndex: -1,
         savedIndices: [],
         creationMode,
+        mealStyle,
         instruction,
         selectedIngredientIds: validSelectedIngredientIds,
         servings: sessionServings,
         savedAt: new Date().toISOString(),
-      });
+        requestKey,
+      };
+      setLocalLastRecipeGeneration(generationSnapshot);
+      setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : t.recipe.errorGeneric);
@@ -632,7 +673,7 @@ export default function RecipePage() {
 
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate(false)}
           disabled={loading}
           className="btn-primary"
           style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 700 }}
@@ -653,7 +694,7 @@ export default function RecipePage() {
       </div>
 
       {loading && (
-        <KitchenLoader text={t.recipe.loadingText} />
+        <KitchenLoader text={t.recipe.loadingText} phaseMessages={t.recipe.loadingPhases} />
       )}
 
       {errorMsg && (
@@ -713,10 +754,24 @@ export default function RecipePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className={styles.resultsBanner}>
             <img src="/mascot/bear_serving.png" alt="" width={52} height={52} />
-            <div>
+            <div className={styles.resultsBannerCopy}>
               <div className={styles.resultsBannerTitle}>{t.recipe.resultsBannerTitle(recipes.length)}</div>
               <div className={styles.resultsBannerSub}>{t.recipe.resultsBannerSub}</div>
             </div>
+            {resultOrigin === 'cache' && (
+              <div className={styles.cacheActions}>
+                <span className={styles.cacheBadge}>{t.recipe.cachedResultLabel}</span>
+                <button
+                  type="button"
+                  className={styles.regenerateFreshButton}
+                  onClick={() => void handleGenerate(true)}
+                  disabled={loading}
+                >
+                  <RefreshCw size={15} aria-hidden="true" />
+                  {t.recipe.regenerateFresh}
+                </button>
+              </div>
+            )}
           </div>
           <div
             className={styles.recipeTrayGallery}

@@ -7,6 +7,7 @@ import SyncManager from "@/components/SyncManager";
 import ImageInteractionGuard from "@/components/ImageInteractionGuard";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { PremiumProvider } from "@/lib/premium/PremiumContext";
 
 export const metadata: Metadata = {
   title: "Sikurepi",
@@ -37,14 +38,16 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <LanguageProvider>
-            <LanguageToggle />
-            <main className="container app-content">
-              {children}
-            </main>
-            <BottomNav />
-            <CookingCheerBear />
-            <SyncManager />
-            <ImageInteractionGuard />
+            <PremiumProvider>
+              <LanguageToggle />
+              <main className="container app-content">
+                {children}
+              </main>
+              <BottomNav />
+              <CookingCheerBear />
+              <SyncManager />
+              <ImageInteractionGuard />
+            </PremiumProvider>
           </LanguageProvider>
         </AuthProvider>
       </body>

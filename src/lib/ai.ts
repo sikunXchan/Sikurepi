@@ -32,7 +32,7 @@ export function getAiCallTelemetry(response: GenerateContentResponse): AiCallTel
   return aiCallTelemetry.get(response) || null;
 }
 
-const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または一般的にどの家庭にもある可能性が高い最小限のもの（塩・こしょう程度）に留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
+const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n水・お湯は使用できます。塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または最小限の塩・こしょうに留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
 
 // ユーザーが「調味料は常備している」を前提にするかどうかで文面を切り替える。
 // falseの場合、常備調味料も通常の食材と同じくAIに明示させる。
@@ -43,7 +43,7 @@ export function buildSeasoningSection(
   if (!assumeSeasoningsAvailable) return SEASONING_NOT_ASSUMED_SECTION;
 
   const restricted = new Set(dietaryRestrictions);
-  const seasonings = ['塩', 'こしょう', '砂糖', '酢', 'サラダ油', 'ケチャップ', 'にんにく', 'しょうが'];
+  const seasonings = ['水・お湯', '塩', 'こしょう', '砂糖', '酢', 'サラダ油', 'ケチャップ', 'にんにく', 'しょうが'];
   if (!restricted.has('大豆不使用')) {
     seasonings.push(restricted.has('グルテンフリー') ? 'グルテンフリー醤油・小麦不使用の味噌' : '醤油・味噌');
   }
