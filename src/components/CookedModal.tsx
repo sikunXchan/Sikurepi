@@ -85,6 +85,7 @@ export default function CookedModal({
   const [rescueCandidates] = useState(() => getRescueEligibleIngredients());
   const [feedbackTags, setFeedbackTags] = useState<Set<FlavorFeedbackTag>>(new Set());
   const [wouldCookAgain, setWouldCookAgain] = useState(false);
+  const [cookingComment, setCookingComment] = useState("");
   const [initialRecipeFeedback] = useState(() => getLocalRecipeFeedback(feedbackRecipe));
   const [recipeRating, setRecipeRating] = useState<RecipeFeedbackRating | null>(initialRecipeFeedback?.rating || null);
   const [recipeFeedbackNote, setRecipeFeedbackNote] = useState(initialRecipeFeedback?.note || "");
@@ -152,12 +153,13 @@ export default function CookedModal({
       if (recipeRating) {
         saveLocalRecipeFeedback(feedbackRecipe, recipeRating, recipeFeedbackNote, 'completion');
       }
-      const feedback = feedbackTags.size > 0 || wouldCookAgain || recipeRating || recipeFeedbackNote.trim()
+      const feedback = feedbackTags.size > 0 || wouldCookAgain || recipeRating || recipeFeedbackNote.trim() || cookingComment.trim()
         ? {
             tags: Array.from(feedbackTags),
             wouldCookAgain,
             rating: recipeRating || undefined,
             note: recipeFeedbackNote.normalize('NFKC').trim().slice(0, 500) || undefined,
+            comment: cookingComment.normalize('NFKC').trim().slice(0, 500) || undefined,
           }
         : undefined;
       const updatedStats = recordLocalCookingDone(
@@ -299,20 +301,21 @@ export default function CookedModal({
                 </button>
               </div>
 
-              <p className={styles.desc}>
-                {t.cookingSession.cookedDescription}
-              </p>
+              <div className={styles.scrollContent}>
+                <p className={styles.desc}>
+                  {t.cookingSession.cookedDescription}
+                </p>
 
-              <RecipeFeedbackPanel
-                recipe={feedbackRecipe}
-                source="completion"
-                onChange={(nextRating, nextNote) => {
-                  setRecipeRating(nextRating);
-                  setRecipeFeedbackNote(nextNote);
-                }}
-              />
+                <RecipeFeedbackPanel
+                  recipe={feedbackRecipe}
+                  source="completion"
+                  onChange={(nextRating, nextNote) => {
+                    setRecipeRating(nextRating);
+                    setRecipeFeedbackNote(nextNote);
+                  }}
+                />
 
-              <div className={styles.feedbackSection}>
+                <div className={styles.feedbackSection}>
                 <div className={styles.feedbackHeading}>
                   <strong>{t.cookingSession.feedbackTitle}</strong>
                   <span>{t.cookingSession.feedbackHint}</span>
@@ -344,9 +347,24 @@ export default function CookedModal({
                     {t.cookingSession.feedbackCookAgain}
                   </button>
                 </div>
-              </div>
+                </div>
 
-              <div className={styles.itemList}>
+                <label className={styles.commentField}>
+                  <span>
+                    <strong>{t.cookingSession.feedbackCommentLabel}</strong>
+                    <small>{t.cookingSession.feedbackCommentHint}</small>
+                  </span>
+                  <textarea
+                    value={cookingComment}
+                    maxLength={500}
+                    rows={3}
+                    placeholder={t.cookingSession.feedbackCommentPlaceholder}
+                    onChange={(event) => setCookingComment(event.target.value)}
+                  />
+                  <i>{cookingComment.length}/500</i>
+                </label>
+
+                <div className={styles.itemList}>
                 {rawIngredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
                   const isRescueCandidate = !isIngredientMissing(item.name, rescueCandidates, false);
@@ -366,6 +384,7 @@ export default function CookedModal({
                     </label>
                   );
                 })}
+                </div>
               </div>
 
               <div className={styles.actions}>

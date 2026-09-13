@@ -54,6 +54,7 @@ export type CookingFeedback = {
   wouldCookAgain: boolean;
   rating?: RecipeFeedbackRating;
   note?: string;
+  comment?: string;
 };
 
 export type RecipeFeedbackInput = {
@@ -910,6 +911,7 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
   wouldCookAgain: boolean;
   rating?: RecipeFeedbackRating;
   note?: string;
+  comment?: string;
 }[] {
   const cookedFeedback = getLocalUserStats().cooked_records
     .filter((record) => record.feedback && (
@@ -918,6 +920,7 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
       || record.feedback.rating === 'positive'
       || record.feedback.rating === 'negative'
       || Boolean(record.feedback.note?.trim())
+      || Boolean(record.feedback.comment?.trim())
     ))
     .map((record) => ({
       recipeTitle: record.recipeTitle,
@@ -925,6 +928,7 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
       wouldCookAgain: record.feedback?.wouldCookAgain === true,
       rating: record.feedback?.rating,
       note: record.feedback?.note?.trim() || undefined,
+      comment: record.feedback?.comment?.trim() || undefined,
       createdAt: record.date,
     }));
 
@@ -934,6 +938,7 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
     wouldCookAgain: entry.rating === 'positive',
     rating: entry.rating,
     note: entry.note || undefined,
+    comment: undefined,
     createdAt: entry.createdAt,
   }));
 
@@ -953,6 +958,7 @@ export function getRecentFlavorFeedbackSummary(limit = 12): {
       wouldCookAgain: entry.wouldCookAgain,
       rating: entry.rating,
       note: entry.note,
+      comment: entry.comment,
     }));
 }
 
