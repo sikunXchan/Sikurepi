@@ -1,0 +1,260 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  background: rgba(61, 43, 38, 0.46);
+  backdrop-filter: blur(8px);
+  isolation: isolate;
+}
+
+.dialog {
+  position: relative;
+  width: min(100%, 380px);
+  max-height: min(720px, calc(100dvh - 40px));
+  overflow-y: auto;
+  padding: 24px 22px 20px;
+  border: 1px solid rgba(224, 70, 110, 0.14);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 221, 177, 0.34), transparent 34%),
+    radial-gradient(circle at 100% 14%, rgba(180, 235, 225, 0.28), transparent 30%),
+    #fffdfb;
+  box-shadow: 0 24px 70px rgba(77, 47, 42, 0.24);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(111, 78, 59, 0.07);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.mascotWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 4px;
+  border-radius: 28px;
+  background: rgba(255, 240, 243, 0.82);
+}
+
+.mascotWrap img { object-fit: contain; }
+
+.mascotWrap span {
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 3px solid #fffdfb;
+  border-radius: 50%;
+  background: #ffd566;
+  color: #8b5b14;
+}
+
+.eyebrow {
+  margin: 8px 0 3px;
+  color: var(--primary-text);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.15em;
+}
+
+.title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.description {
+  margin: 8px auto 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.benefits {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 15px;
+  padding: 12px 14px;
+  border: 1px solid rgba(93, 148, 139, 0.13);
+  border-radius: 18px;
+  background: rgba(238, 248, 244, 0.68);
+  list-style: none;
+  text-align: left;
+}
+
+.benefits li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.benefits svg { flex: 0 0 auto; color: #31998f; }
+
+.planList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.planOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid rgba(111, 78, 59, 0.12);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.82);
+  color: var(--ink);
+  box-shadow: none;
+  text-align: left;
+}
+
+.planOptionSelected {
+  border-color: rgba(224, 70, 110, 0.52);
+  background: #fff3f6;
+  box-shadow: 0 7px 20px rgba(224, 70, 110, 0.1);
+}
+
+.planName { font-size: 11px; font-weight: 850; color: var(--text-muted); }
+.planPrice { margin-top: 2px; font-size: 16px; font-weight: 950; color: var(--ink); }
+.planOption small { margin-top: 1px; font-size: 9px; font-weight: 700; color: var(--primary-text); }
+
+.loadingPlans,
+.message,
+.activeState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 45px;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.loadingPlans { background: rgba(111, 78, 59, 0.05); color: var(--text-muted); }
+.message { background: #fff3f4; color: #bd3e5f; line-height: 1.5; }
+.activeState { background: rgba(255, 213, 102, 0.22); color: #8b5b14; }
+
+.deactivateTestButton {
+  min-height: 38px;
+  margin: -4px auto 0;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.purchaseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 49px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #eb527d, #ff8ca9);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(224, 70, 110, 0.22);
+}
+
+.purchaseButton:disabled { opacity: 0.48; box-shadow: none; }
+
+.restoreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 750;
+  box-shadow: none;
+}
+
+.legal {
+  margin: 2px auto 0;
+  color: #aa9a95;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.testDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 13px 0 10px;
+  color: #ad9b96;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.testDivider::before,
+.testDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(111, 78, 59, 0.1);
+}
+
+.testAccessForm { text-align: left; }
+.testAccessForm > label { display: block; margin-bottom: 6px; color: var(--ink-soft); font-size: 11px; font-weight: 850; }
+.testAccessForm > small { display: block; margin-top: 5px; color: #aa9a95; font-size: 8px; font-weight: 650; line-height: 1.45; }
+.testPasswordRow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; overflow: hidden; border: 1px solid rgba(111,78,59,.13); border-radius: 14px; background: #fff; }
+.testPasswordRow > span { display: grid; place-items: center; color: #9b817a; }
+.testPasswordRow input { min-width: 0; height: 43px; padding: 0 7px 0 0; border: 0; background: transparent; color: var(--ink); font-size: 12px; box-shadow: none; outline: none; }
+.testPasswordRow:focus-within { border-color: rgba(224,70,110,.36); box-shadow: 0 0 0 3px rgba(224,70,110,.07); }
+.testPasswordRow button { min-width: auto; min-height: 35px; margin-right: 4px; padding: 7px 10px; border: 0; border-radius: 10px; background: #725b60; color: #fff; font-size: 10px; font-weight: 850; box-shadow: none; }
+.testPasswordRow button:disabled { opacity: .42; }
+
+@media (max-width: 390px) {
+  .dialog { padding-inline: 17px; border-radius: 25px; }
+  .planList { grid-template-columns: 1fr; }
+  .planOption { min-height: 60px; }
+  .testPasswordRow { grid-template-columns: 31px minmax(0, 1fr) auto; }
+  .testPasswordRow button { padding-inline: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop { backdrop-filter: none; }
+}

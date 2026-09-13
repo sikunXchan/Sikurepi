@@ -337,3 +337,10 @@
   .reviewSelect { grid-column: 1 / -1; grid-row: 2; }
   .reviewDelete { grid-column: 2; grid-row: 1; }
 }
+.quotaHint {
+  margin: -4px 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}

@@ -168,9 +168,17 @@
   box-shadow: none;
 }
 
-.particle {
+.flyingIngredient {
   position: fixed;
-  z-index: 9999;
+  z-index: 10000;
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 22px;
+  background: rgba(255, 250, 244, 0.96);
+  box-shadow: 0 12px 30px rgba(74, 91, 101, 0.22);
   pointer-events: none;
 }
 

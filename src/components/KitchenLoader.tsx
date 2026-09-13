@@ -5,23 +5,28 @@ import styles from "./KitchenLoader.module.css";
 
 type Props = {
   text: string;
+  phaseMessages?: string[];
   compact?: boolean;
   className?: string;
-  variant?: "cooking" | "stirring" | "mixing" | "chopping" | "frying" | "plating" | "serving" | "delivering" | "reading" | "basket";
+  variant?: "cooking" | "stirring" | "mixing" | "chopping" | "kneading" | "frying" | "tasting" | "plating" | "serving" | "delivering" | "reading" | "basket";
 };
 
 const COOKING_ASSETS = [
-  "/animations/bear-mixing.webp",
+  "/animations/bear-mixing-v2.webp",
   "/animations/bear-chopping.webp",
+  "/animations/bear-kneading.webp",
   "/animations/bear-pan-toss.webp",
+  "/animations/bear-tasting.webp",
   "/animations/bear-plating.webp",
 ];
 
 const VARIANT_ASSETS: Omit<Record<NonNullable<Props["variant"]>, string>, "cooking"> = {
-  stirring: "/animations/bear-mixing.webp",
-  mixing: "/animations/bear-mixing.webp",
+  stirring: "/animations/bear-mixing-v2.webp",
+  mixing: "/animations/bear-mixing-v2.webp",
   chopping: "/animations/bear-chopping.webp",
+  kneading: "/animations/bear-kneading.webp",
   frying: "/animations/bear-pan-toss.webp",
+  tasting: "/animations/bear-tasting.webp",
   plating: "/animations/bear-plating.webp",
   serving: "/mascot/bear_serving.png",
   delivering: "/mascot/bear_delivering.png",
@@ -29,18 +34,37 @@ const VARIANT_ASSETS: Omit<Record<NonNullable<Props["variant"]>, string>, "cooki
   basket: "/mascot/bear_basket.png",
 };
 
-export default function KitchenLoader({ text, compact = false, className = "", variant = "cooking" }: Props) {
+const PHASE_THRESHOLDS_MS = [0, 1200, 3000, 6000];
+const COOKING_SCENE_DURATION_MS = 2650;
+
+export default function KitchenLoader({ text, phaseMessages, compact = false, className = "", variant = "cooking" }: Props) {
   const [cookingFrame, setCookingFrame] = useState(0);
+  const [phaseIndex, setPhaseIndex] = useState(0);
 
   useEffect(() => {
     if (variant !== "cooking") return;
     const timer = window.setInterval(() => {
       setCookingFrame(current => (current + 1) % COOKING_ASSETS.length);
-    }, 3200);
+    }, COOKING_SCENE_DURATION_MS);
     return () => window.clearInterval(timer);
   }, [variant]);
 
+  useEffect(() => {
+    if (!phaseMessages || phaseMessages.length < 2) return;
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const nextIndex = Math.min(
+        phaseMessages.length - 1,
+        PHASE_THRESHOLDS_MS.filter((threshold) => elapsed >= threshold).length - 1,
+      );
+      setPhaseIndex(nextIndex);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [phaseMessages]);
+
   const asset = variant === "cooking" ? COOKING_ASSETS[cookingFrame] : VARIANT_ASSETS[variant];
+  const activeText = phaseMessages?.[phaseIndex] || text;
 
   return (
     <div
@@ -54,22 +78,33 @@ export default function KitchenLoader({ text, compact = false, className = "", v
         <span className={`${styles.steam} ${styles.steamThree}`} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={asset}
           className={`${styles.bear} ${!COOKING_ASSETS.includes(asset) ? styles[`bear_${variant}`] || "" : styles.cookingBear}`}
           src={asset}
           alt=""
           width={362}
           height={362}
+          draggable={false}
         />
-        <span className={styles.counter} />
       </div>
       <div className={styles.copy}>
-        <span>{text}</span>
+        <span key={activeText} className={styles.phaseCopy}>{activeText}</span>
         <span className={styles.dots} aria-hidden="true">
           <i />
           <i />
           <i />
         </span>
       </div>
+      {phaseMessages && phaseMessages.length > 1 && (
+        <div className={styles.phaseRail} aria-hidden="true">
+          {phaseMessages.map((message, index) => (
+            <span
+              key={message}
+              className={`${styles.phasePip} ${index <= phaseIndex ? styles.phasePipActive : ""}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

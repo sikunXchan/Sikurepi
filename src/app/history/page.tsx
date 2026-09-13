@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus } from "lucide-react";
+import Link from "next/link";
+import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -11,7 +12,9 @@ import UiIcon from "@/components/UiIcon";
 import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
@@ -20,10 +23,13 @@ import {
   isIngredientMissing,
   computeIngredientFulfillment,
   getLocalUserProfile,
+  getLocalUserStats,
+  CookedRecord,
   SavedRecipe,
   Ingredient,
   UserProfile
 } from "@/lib/storage";
+import { FREE_HISTORY_ITEMS } from "@/lib/storage";
 import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
@@ -31,6 +37,7 @@ const GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS);
 
 export default function HistoryPage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const TIME_OPTIONS = t.history.timeOptions;
   const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +50,8 @@ export default function HistoryPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
+  const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -55,6 +64,11 @@ export default function HistoryPage() {
     setAllRecipes(getLocalSavedRecipes());
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
+    setRescueRecords(
+      getLocalUserStats().cooked_records
+        .filter((record) => (record.rescuedIngredients?.length || 0) > 0)
+        .slice(0, 8)
+    );
     setLoading(false);
   }
 
@@ -82,7 +96,9 @@ export default function HistoryPage() {
   };
 
   // Client-side filtering
-  const filteredRecipes = allRecipes.filter(recipe => {
+  const accessibleRecipes = isPremium ? allRecipes : allRecipes.slice(0, FREE_HISTORY_ITEMS);
+  const visibleRescueRecords = isPremium ? rescueRecords : rescueRecords.slice(0, FREE_HISTORY_ITEMS);
+  const filteredRecipes = accessibleRecipes.filter(recipe => {
     if (searchText) {
       const q = searchText.toLowerCase();
       const inTitle = recipe.title.toLowerCase().includes(q);
@@ -183,8 +199,38 @@ export default function HistoryPage() {
         mascot="bear_reading"
       />
 
+      {!loading && rescueRecords.length > 0 && (
+        <section className={styles.rescueShelf}>
+          <div className={styles.rescueShelfHeader}>
+            <div>
+              <h2>{t.history.rescueShelfTitle}</h2>
+              <p>{t.history.rescueShelfSubtitle}</p>
+            </div>
+          </div>
+          <div className={styles.rescueRecordScroll}>
+            {visibleRescueRecords.map((record, recordIndex) => {
+              const rescued = record.rescuedIngredients || [];
+              return (
+                <article key={`${record.date}-${recordIndex}`} className={styles.rescueRecord}>
+                  <div className={styles.rescueRecordIcons}>
+                    {rescued.slice(0, 3).map((item) => (
+                      <span key={item.name}><IngredientIcon name={item.name} size={48} /></span>
+                    ))}
+                  </div>
+                  <strong>{rescued.map((item) => item.name).join("・")}</strong>
+                  <span className={styles.rescueRecordRecipe}>{t.history.rescueRecordRecipe(record.recipeTitle)}</span>
+                  <span className={styles.rescueRecordMeta}>
+                    {t.history.rescueRecordCount(rescued.length)} · {formatDate(record.date)}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Search & Filter */}
-      <div className={styles.searchSection}>
+      {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>
         <div className={styles.searchBar}>
           <Search size={16} className={styles.searchIcon} />
           <input
@@ -243,10 +289,10 @@ export default function HistoryPage() {
 
         {hasFilters && (
           <p className={styles.filterResult}>
-            {t.history.filterResultCount(filteredRecipes.length, allRecipes.length)}
+            {t.history.filterResultCount(filteredRecipes.length, accessibleRecipes.length)}
           </p>
         )}
-      </div>
+      </div>}
 
       <AnimatePresence>
         {modalOpen && (
@@ -288,6 +334,12 @@ export default function HistoryPage() {
 
       {!loading && (
         <>
+          {!isPremium && allRecipes.length > FREE_HISTORY_ITEMS && (
+            <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
+              <Crown size={20} />
+              <span><strong>{t.history.plusLimitTitle}</strong>{t.history.plusLimitBody(allRecipes.length - FREE_HISTORY_ITEMS)}</span>
+            </button>
+          )}
           {sortedRecipes.map((recipe) => {
             const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
@@ -417,10 +469,16 @@ export default function HistoryPage() {
                       </ol>
                     </div>
 
-                    {recipe.tips && (
+                    {recipe.tips && isPremium && (
                       <div className={styles.tipsBox}>
                         <strong>{t.history.tipsPrefix}</strong> {recipe.tips}
                       </div>
+                    )}
+                    {recipe.tips && !isPremium && (
+                      <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
+                        <Crown size={18} />
+                        <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                      </button>
                     )}
                   </div>
                 )}
@@ -428,7 +486,7 @@ export default function HistoryPage() {
             );
           })}
 
-          {filteredRecipes.length === 0 && allRecipes.length > 0 && (
+          {filteredRecipes.length === 0 && accessibleRecipes.length > 0 && (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}><Search size={32} /></div>
               <p>{t.history.noFilterResults}</p>
@@ -440,6 +498,7 @@ export default function HistoryPage() {
             <div className={styles.emptyState}>
               <img src="/mascot/bear_reading.png" alt="" width={112} height={112} />
               <p>{t.history.emptyState}</p>
+              <Link href="/recipe" className={styles.emptyStateCta}>{t.history.emptyStateCta}</Link>
             </div>
           )}
         </>
@@ -458,6 +517,8 @@ export default function HistoryPage() {
           />
         )}
       </AnimatePresence>
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
 
       {/* クッキングセッション */}
       <AnimatePresence>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, X, Check, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus, AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -10,16 +10,19 @@ import PageHeader from "@/components/PageHeader";
 import CookedModal from "@/components/CookedModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import {
   getLocalIngredients,
   getLocalUserProfile,
   getLocalClimateState,
   getRecentLocalRecipeNames,
+  getRecentFlavorFeedbackSummary,
   addLocalShoppingItem,
   getLocalWeekPlan,
   setLocalWeekPlanEntries,
   removeLocalWeekPlanEntry,
   getFreeGenerationsUsed,
+  getFreeGenerationsRemaining,
   incrementFreeGenerationsUsed,
   isIngredientMissing,
   FREE_WEEKLY_PLAN_GENERATIONS,
@@ -28,7 +31,8 @@ import {
   MealSlot,
   WeeklyPlanEntry,
 } from "@/lib/storage";
-import { isNativeApp, hasPremiumEntitlement, purchasePremium } from "@/lib/purchases";
+import { usePremium } from "@/lib/premium/PremiumContext";
+import { shareGeneratedRecipes } from "@/lib/communityRecipes";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
@@ -53,6 +57,7 @@ function buildDays(weekday: string[]): DayInfo[] {
 
 export default function MealPlanPage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const SLOT_LABEL: Record<MealSlot, string> = { lunch: t.mealPlan.slotLunch, dinner: t.mealPlan.slotDinner };
   const days = useMemo(() => buildDays(t.mealPlan.weekdayShort), [t.mealPlan.weekdayShort]);
   const [active, setActive] = useState<Record<string, boolean>>(() => {
@@ -76,18 +81,13 @@ export default function MealPlanPage() {
   // 献立から生成された料理も、レシピ生成画面(recipe/page.tsx)と同じ
   // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
   const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
-  const [purchaseError, setPurchaseError] = useState("");
+  const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     loadData();
     const handleUpdate = () => loadData();
     window.addEventListener("storage-updated", handleUpdate);
-    if (isNativeApp()) {
-      hasPremiumEntitlement().then(setIsPremium);
-    }
     return () => window.removeEventListener("storage-updated", handleUpdate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -136,10 +136,11 @@ export default function MealPlanPage() {
         cookingStyles: profile.cookingStyles || [],
         dietaryRestrictions: profile.dietaryRestrictions || [],
         preferredGenres: profile.preferredGenres || [],
+        flavorFeedback: getRecentFlavorFeedbackSummary(12),
       },
       climate: profile.enableClimate !== false ? currentClimate : undefined,
       recentHistory,
-      mode: ingredients.length > 0 ? 'inventory' : 'free',
+      mode: 'free',
       language,
     };
   };
@@ -178,7 +179,7 @@ export default function MealPlanPage() {
       setErrorMsg(t.mealPlan.errorNoSlots);
       return;
     }
-    if (isNativeApp() && !isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+    if (!isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
       setShowPaywall(true);
       return;
     }
@@ -194,9 +195,13 @@ export default function MealPlanPage() {
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorGenerateFailed);
 
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
+      if (entries.length === 0) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
-      if (isNativeApp() && !isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium || profile.shareGeneratedRecipes !== false) {
+        void shareGeneratedRecipes(entries.map((entry) => entry.recipe));
+      }
       loadData();
       showToast(t.mealPlan.generatedToast(entries.length));
     } catch (err: unknown) {
@@ -206,24 +211,11 @@ export default function MealPlanPage() {
     }
   };
 
-  const handlePurchasePremium = async () => {
-    setPurchasing(true);
-    setPurchaseError("");
-    try {
-      const result = await purchasePremium();
-      if (result.success) {
-        setIsPremium(true);
-        setShowPaywall(false);
-        showToast(t.mealPlan.premiumWelcomeToast);
-      } else if (result.error) {
-        setPurchaseError(result.error);
-      }
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
   const handleRegenerateSlot = async (date: string, mealSlot: MealSlot) => {
+    if (!isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
+      setShowPaywall(true);
+      return;
+    }
     const key = `${date}_${mealSlot}`;
     setRegeneratingKey(key);
     setErrorMsg("");
@@ -237,7 +229,12 @@ export default function MealPlanPage() {
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorRegenFailed);
       const r = (data.plan || [])[0];
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
-      setLocalWeekPlanEntries([mapPlanItem(r)]);
+      const entry = mapPlanItem(r);
+      setLocalWeekPlanEntries([entry]);
+      if (!isPremium) incrementFreeGenerationsUsed();
+      if (!isPremium || profile.shareGeneratedRecipes !== false) {
+        void shareGeneratedRecipes([entry.recipe]);
+      }
       loadData();
       showToast(t.mealPlan.regeneratedToast);
     } catch (err: unknown) {
@@ -292,6 +289,11 @@ export default function MealPlanPage() {
 
   const selectedMealCount = activeSlots().length;
 
+  const reviewMealSlots = () => {
+    setErrorMsg("");
+    plannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className={styles.container}>
       {toastMessage && (
@@ -309,15 +311,8 @@ export default function MealPlanPage() {
         title={t.mealPlan.title}
         subtitle={t.mealPlan.subtitle}
         mascot="bear_itadakimasu"
-        actions={
-          isNativeApp() && isPremium ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 800, color: '#b45309', background: 'rgba(245, 158, 11, 0.14)', padding: '5px 11px', borderRadius: 20 }}>
-              <Crown size={13} /> {t.mealPlan.premiumBadge}
-            </span>
-          ) : undefined
-        }
       />
-      <section className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
+      <section ref={plannerRef} className={`${styles.planner} ${generating ? styles.plannerBusy : ''}`} aria-busy={generating}>
         <div className={styles.plannerTopline}>
           <div>
             <span className={styles.plannerEyebrow}>WEEKLY TABLE</span>
@@ -381,9 +376,9 @@ export default function MealPlanPage() {
             </>
           )}
         </button>
-        {isNativeApp() && !isPremium && (
+        {!isPremium && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
-            {t.mealPlan.freeRemaining(Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed()))}
+            {t.mealPlan.freeRemaining(getFreeGenerationsRemaining())}
           </p>
         )}
       </section>
@@ -393,9 +388,21 @@ export default function MealPlanPage() {
       )}
 
       {errorMsg && (
-        <div className={styles.errorCard} role="alert">
-          {errorMsg}
-        </div>
+        <section className={styles.errorCard} role="alert">
+          <div className={styles.errorHeading}>
+            <AlertTriangle size={20} />
+            <span><strong>{t.mealPlan.errorGuideTitle}</strong><small>{t.mealPlan.errorGuideBody}</small></span>
+          </div>
+          <p>{errorMsg}</p>
+          <div className={styles.errorActions}>
+            <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
+              <RefreshCw size={15} />{t.mealPlan.retryGenerate}
+            </button>
+            <button type="button" onClick={reviewMealSlots}>
+              <SlidersHorizontal size={15} />{t.mealPlan.reviewSelection}
+            </button>
+          </div>
+        </section>
       )}
 
       {plan.length > 0 && (
@@ -490,14 +497,14 @@ export default function MealPlanPage() {
                                 exit={{ height: 0, opacity: 0 }}
                                 style={{ overflow: 'hidden' }}
                               >
-                                <div className={`${recipeStyles.cardContent} ${styles.planCardContent}`}>
+                                <div className={styles.planCardContent}>
                                   {entry.recipe.nutrition && (
                                     <div className={recipeStyles.nutritionSection}>
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
                                   <div className={recipeStyles.section}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <div className={recipeStyles.detailSectionHeading}>
                                       <h3>{t.mealPlan.ingredientsTitle}</h3>
                                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.ingredientsHint}</span>
                                     </div>
@@ -544,11 +551,17 @@ export default function MealPlanPage() {
                                       ))}
                                     </ol>
                                   </div>
-                                  {entry.recipe.tips && (
+                                  {entry.recipe.tips && isPremium && (
                                     <div className={recipeStyles.tipsBox} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                       <UiIcon slug="tips_idea" size={32} alt="" />
                                       <span>{entry.recipe.tips}</span>
                                     </div>
+                                  )}
+                                  {entry.recipe.tips && !isPremium && (
+                                    <button type="button" className={recipeStyles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
+                                      <Crown size={18} />
+                                      <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
+                                    </button>
                                   )}
 
                                   {/* 料理完了ボタン (在庫消費 & PFC累積) : レシピ生成画面と同じ導線・見た目にする */}
@@ -603,61 +616,11 @@ export default function MealPlanPage() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showPaywall && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 }}
-            onClick={() => !purchasing && setShowPaywall(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ position: 'relative', background: 'var(--card-bg-solid, #fff)', borderRadius: 20, padding: 24, maxWidth: 360, width: '100%', textAlign: 'center' }}
-            >
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                disabled={purchasing}
-                style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={18} />
-              </button>
-              <Crown size={40} color="#f59e0b" style={{ marginBottom: 8 }} />
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>{t.mealPlan.paywallTitle}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
-                {t.mealPlan.paywallText(FREE_WEEKLY_PLAN_GENERATIONS)}
-              </p>
-              {purchaseError && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 10, padding: 10, fontSize: 13, marginBottom: 12 }}>
-                  {purchaseError}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handlePurchasePremium}
-                disabled={purchasing}
-                className="btn-primary"
-                style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 700 }}
-              >
-                {purchasing ? (<><Loader2 className="spinner" size={16} />{t.mealPlan.purchaseProcessing}</>) : (<><Crown size={16} />{t.mealPlan.purchaseButton}</>)}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                disabled={purchasing}
-                style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', padding: 8 }}
-              >
-                {t.mealPlan.purchaseLater}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PremiumPaywall
+        open={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onActivated={() => showToast(t.mealPlan.premiumWelcomeToast)}
+      />
     </div>
   );
 }

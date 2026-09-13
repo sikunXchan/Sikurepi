@@ -21,12 +21,12 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   broccoli: ["ブロッコリー"],
   cauliflower: ["カリフラワー"],
   spinach: ["ほうれんそう", "ほうれん草"],
-  corn2: ["とうもろこし", "コーン", "トウモロコシ", "ポレンタ"],
-  negi: ["ねぎ", "レモングラス", "スカリオン"],
+  corn2: ["とうもろこし", "コーン", "トウモロコシ"],
+  negi: ["ねぎ", "スカリオン"],
   naganegi: ["長ねぎ", "白ねぎ", "長葱"],
   aonegi: ["青ねぎ", "小ねぎ", "万能ねぎ", "刻みねぎ"],
   garlic: ["にんにく", "ニンニク", "大蒜", "おろしにんにく", "ガーリック"],
-  ginger: ["しょうが", "ショウガ", "生姜", "おろし生姜", "ガランガル"],
+  ginger: ["しょうが", "ショウガ", "生姜", "おろし生姜"],
   shiitake: ["しいたけ", "椎茸", "生しいたけ"],
   driedshiitake: ["干ししいたけ", "干し椎茸"],
   enoki2: ["えのき", "えのきたけ", "エノキ"],
@@ -47,6 +47,8 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   edamame2: ["えだまめ", "枝豆"],
   chickpea: ["ひよこ豆", "チャナ豆"],
   lentil: ["レンズ豆", "レンティル"],
+  blackeyedpea: ["黒目豆", "ブラックアイドピー", "black-eyed pea", "black eyed pea", "cowpea"],
+  cannellinibean: ["カネリーニ豆", "白いんげん豆", "白インゲン豆", "cannellini bean", "white kidney bean"],
   beansprout2: ["もやし", "スプラウト", "カイワレ", "かいわれ大根", "かいわれ"],
   toumyou: ["豆苗"],
   shiso: ["しそ", "大葉", "シソ"],
@@ -62,12 +64,12 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   hakusai: ["白菜", "はくさい"],
   zucchini: ["ズッキーニ"],
   kabu: ["かぶ", "カブ", "蕪", "ルタバガ"],
-  satsumaimo: ["さつまいも", "サツマイモ", "薩摩芋", "キャッサバ", "ユカ"],
+  satsumaimo: ["さつまいも", "サツマイモ", "薩摩芋"],
   ingen: ["いんげん", "さやいんげん", "インゲン"],
-  leafygreen: ["ケール", "葉物野菜", "ルッコラ", "クレソン", "スイスチャード"],
+  leafygreen: ["葉物野菜", "クレソン", "スイスチャード"],
   shungiku: ["春菊"],
   goya: ["ゴーヤ", "にがうり", "苦瓜"],
-  celery: ["セロリ", "フェンネル"],
+  celery: ["セロリ"],
   leaflettuce: ["レタス", "サニーレタス", "サラダ菜", "チコリ", "エンダイブ"],
   kimchi: ["キムチ"],
   cuttomatocan: ["カットトマト缶", "カットトマト", "トマト缶"],
@@ -76,6 +78,23 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   basil: ["バジル"],
   cilantro: ["パクチー", "コリアンダー"],
   rosemary: ["ローズマリー"],
+
+  // --- 世界の料理でよく使う野菜・果物・香草 ---
+  plantain: ["プランテン", "プランテーン", "料理用バナナ", "plantain"],
+  cassava: ["キャッサバ", "ユカ芋", "ユカ", "マンジョッカ", "cassava", "yuca", "manioc"],
+  taro: ["タロイモ", "タロ芋", "taro root", "taro"],
+  coconut: ["ココナッツ", "ココヤシ", "coconut"],
+  dates: ["デーツ", "ナツメヤシ", "date fruit", "dates"],
+  lemongrass: ["レモングラス", "lemongrass", "lemon grass"],
+  galangal: ["ガランガル", "カー", "galangal"],
+  beetroot: ["ビーツ", "ビートルート", "テーブルビート", "beetroot", "beet"],
+  kale: ["ケール", "kale"],
+  arugula: ["ルッコラ", "ロケット菜", "arugula", "rocket leaves"],
+  fennel: ["フェンネル", "ウイキョウ", "fennel"],
+  leek: ["リーキ", "ポロネギ", "西洋ねぎ", "leek"],
+  dill: ["ディル", "イノンド", "dill"],
+  oregano: ["オレガノ", "oregano"],
+  thyme: ["タイム", "thyme"],
 
   // --- きのこ・海藻 ---
   wakame: ["わかめ", "ワカメ"],
@@ -102,11 +121,13 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   ham: ["ハム", "サラミ", "パストラミ"],
   prosciutto: ["生ハム", "プロシュート"],
   organmeat: ["レバー", "砂肝", "ホルモン"],
-  wiener: ["ウインナー", "ウィンナー", "ソーセージ", "チョリソー"],
+  wiener: ["ウインナー", "ウィンナー", "ソーセージ"],
   saladchicken: ["サラダチキン"],
   lamb: ["ラム肉", "マトン", "羊肉"],
   duck: ["鴨肉", "かも肉", "ダック"],
   turkey: ["七面鳥", "ターキー"],
+  goatmeat: ["ヤギ肉", "山羊肉", "ゴートミート", "goat meat", "chevon"],
+  chorizo: ["チョリソー", "チョリソ", "chorizo"],
   plantmeat: ["代替肉", "プラントベースミート", "大豆ミート"],
 
   // --- 魚介 ---
@@ -209,9 +230,22 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   blueberry: ["ブルーベリー"],
   persimmon: ["柿", "干し柿", "富有柿"],
   almond: ["アーモンド"],
+  peanut: ["ピーナッツ", "ピーナツ", "落花生", "peanut", "groundnut"],
+  walnut: ["くるみ", "クルミ", "胡桃", "ウォールナット", "walnut"],
+  cashew: ["カシューナッツ", "カシュー", "cashew"],
+  pecan: ["ピーカンナッツ", "ペカンナッツ", "pecan"],
+  macadamia: ["マカダミアナッツ", "マカダミア", "macadamia"],
+  chestnut: ["栗", "くり", "クリ", "甘栗", "マロン", "chestnut"],
+  sunflowerseed: ["ひまわりの種", "ヒマワリの種", "サンフラワーシード", "sunflower seed"],
+  pumpkinseed: ["かぼちゃの種", "カボチャの種", "パンプキンシード", "pumpkin seed", "pepita"],
+  chiaseed: ["チアシード", "chia seed"],
+  flaxseed: ["亜麻仁", "アマニ", "フラックスシード", "flaxseed", "linseed"],
   raisin: ["レーズン", "干しぶどう", "デーツ", "ナツメヤシ"],
   lime: ["ライム", "ライムリーフ"],
   dragonfruit: ["ドラゴンフルーツ"],
+  jackfruit: ["ジャックフルーツ", "パラミツ", "jackfruit"],
+  passionfruit: ["パッションフルーツ", "時計草の実", "passion fruit", "maracuja"],
+  durian: ["ドリアン", "durian"],
   pomegranate: ["ざくろ", "ザクロ"],
   fig: ["いちじく", "イチジク"],
   pistachio: ["ピスタチオ"],
@@ -244,7 +278,7 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   salt: ["塩", "しお"],
   sugar: ["砂糖", "さとう", "グラニュー糖", "上白糖", "三温糖", "きび砂糖", "粉砂糖"],
   vinegar: ["酢", "お酢", "ビネガー", "米酢", "穀物酢", "りんご酢", "黒酢"],
-  soysauce: ["しょうゆ", "醤油", "ナンプラー"],
+  soysauce: ["しょうゆ", "醤油"],
   soysauce2: ["濃口醤油", "薄口醤油"],
   miso: ["みそ", "味噌"],
   mirin: ["みりん", "本みりん"],
@@ -276,8 +310,18 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   sriracha: ["スリラチャ", "スイートチリソース"],
   pesto: ["ペスト"],
   thaicurrypaste: ["タイカレーペースト"],
+  fishsauce: ["ナンプラー", "魚醤", "しょっつる", "ニョクマム", "fish sauce", "nam pla", "nuoc mam"],
+  shrimppaste: ["シュリンプペースト", "えびペースト", "海老ペースト", "ベラチャン", "トラシ", "カピ", "shrimp paste", "belacan", "terasi"],
+  kecapmanis: ["ケチャップマニス", "ケチャップ・マニス", "kecap manis", "sweet soy sauce"],
+  molasses: ["モラセス", "糖蜜", "廃糖蜜", "molasses", "black treacle"],
+  condensedmilk: ["練乳", "コンデンスミルク", "加糖練乳", "condensed milk", "sweetened condensed milk"],
   cumin: ["クミン"],
-  turmeric: ["ターメリック", "うこん", "サフラン"],
+  turmeric: ["ターメリック", "うこん"],
+  bayleaf: ["ローリエ", "月桂樹", "ベイリーフ", "bay leaf"],
+  nutmeg: ["ナツメグ", "ナツメッグ", "nutmeg"],
+  smokedpaprika: ["スモークパプリカ", "パプリカパウダー", "パプリカ粉", "smoked paprika", "paprika powder"],
+  saffron: ["サフラン", "saffron"],
+  sumac: ["スマック", "スーマック", "sumac"],
   cinnamon: ["シナモン"],
   mustard: ["マスタード", "ディジョンマスタード", "粒マスタード"],
   mixedherbs: ["オレガノ", "タイム", "セージ", "ディル"],
@@ -330,6 +374,16 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   newpotato: ["新じゃが", "新じゃがいも"],
   mehijiki: ["芽ひじき"],
   blackgarlic: ["黒にんにく"],
+
+  // --- 世界の魚・豆・穀物・乳製品 ---
+  anchovy: ["アンチョビ", "カタクチイワシ", "anchovy", "anchovies"],
+  blackbeans: ["黒いんげん豆", "ブラックビーンズ", "黒豆缶", "black beans", "black bean"],
+  kidneybeans: ["キドニービーンズ", "赤いんげん豆", "レッドキドニー", "kidney beans", "kidney bean"],
+  mungbeans: ["緑豆", "ムング豆", "mung beans", "mung bean"],
+  bulgur: ["ブルグル", "ブルグア", "ひき割り小麦", "bulgur wheat", "bulgur"],
+  cornmeal: ["コーンミール", "ポレンタ粉", "ポレンタ", "cornmeal", "polenta"],
+  feta: ["フェタチーズ", "フェタ", "feta cheese", "feta"],
+  paneer: ["パニールチーズ", "パニール", "paneer cheese", "paneer"],
 
   // --- 追加魚介・乾物・大豆製品(2026-09) ---
   hokke: ["ホッケ", "ほっけ"],
@@ -415,6 +469,47 @@ export const ICON_ANCHOR_LIST: { keyword: string; slug: string }[] = FLAT;
 export const ICON_SLUGS: string[] = Object.keys(ICON_KEYWORDS);
 
 export const ICON_BASE_PATH = "/ingredients/";
+
+export type IngredientIconCategory =
+  | 'vegetable'
+  | 'mushroom_seaweed'
+  | 'meat'
+  | 'seafood'
+  | 'egg_dairy_soy'
+  | 'grain'
+  | 'fruit_nut'
+  | 'seasoning'
+  | 'sweet'
+  | 'drink'
+  | 'other';
+
+function containsJapanese(value: string): boolean {
+  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(value);
+}
+
+export function getIngredientIconDisplayName(slug: string, language: 'ja' | 'en' = 'ja'): string {
+  const keywords = ICON_KEYWORDS[slug] || [];
+  if (language === 'ja') return keywords.find(containsJapanese) || keywords[0] || slug;
+  const english = keywords.find((keyword) => /[a-z]/i.test(keyword) && !containsJapanese(keyword));
+  if (english) return english.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const readableSlug = slug.replace(/\d+$/, '').replace(/[_-]+/g, ' ');
+  return readableSlug.charAt(0).toUpperCase() + readableSlug.slice(1);
+}
+
+export function getIngredientIconCategory(slug: string): IngredientIconCategory {
+  const terms = `${slug} ${(ICON_KEYWORDS[slug] || []).join(' ')}`.toLocaleLowerCase();
+  if (/水|コーヒー|茶|ワイン|ビール|酒|ジュース|coffee|tea|wine|beer|juice|water/.test(terms)) return 'drink';
+  if (/ケーキ|菓子|クッキー|チョコ|アイス|プリン|キャンディ|飴|グミ|大福|団子|どら焼|たい焼|ジャム|クリーム|cake|cookie|candy|chocolate|icecream|pudding|gummy|daifuku|dorayaki|taiyaki/.test(terms)) return 'sweet';
+  if (/塩|砂糖|酢|醤油|しょうゆ|味噌|みそ|油|ソース|だし|こしょう|胡椒|スパイス|カレー粉|マスタード|ケチャップ|マヨ|みりん|ペースト|サフラン|クミン|ターメリック|シナモン|バニラ|麹|片栗粉|コーンスターチ|salt|sugar|vinegar|sauce|oil|spice|mustard|ketchup|mayonnaise|seasoning|starch/.test(terms)) return 'seasoning';
+  if (/豚|鶏|牛|肉|ベーコン|ハム|ソーセージ|ラム|マトン|鴨|七面鳥|ヤギ|レバー|ホルモン|pork|chicken|beef|meat|bacon|ham|sausage|lamb|duck|turkey|goat/.test(terms)) return 'meat';
+  if (/魚|鮭|まぐろ|ツナ|えび|海老|いか|たこ|鯖|さば|アジ|イワシ|サンマ|タラ|鯛|あさり|しじみ|かつお|かまぼこ|ちくわ|牡蠣|かに|ホタテ|しらす|たらこ|いくら|ぶり|うなぎ|fish|salmon|tuna|shrimp|squid|octopus|mackerel|oyster|crab|scallop|seafood/.test(terms)) return 'seafood';
+  if (/卵|牛乳|ミルク|チーズ|ヨーグルト|バター|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|おから|湯葉|egg|milk|cheese|yogurt|butter|tofu|natto|tempeh/.test(terms)) return 'egg_dairy_soy';
+  if (/米|ご飯|パン|うどん|そば|パスタ|マカロニ|春雨|麺|小麦|粉|餅|そうめん|キヌア|クスクス|トルティーヤ|ピタ|ナン|オートミール|シリアル|イースト|rice|bread|pasta|noodle|flour|quinoa|couscous|tortilla|oat|cereal|yeast|bulgur/.test(terms)) return 'grain';
+  if (/りんご|バナナ|レモン|オレンジ|みかん|いちご|ぶどう|パイン|すいか|メロン|マンゴー|キウイ|桃|チェリー|梨|ベリー|柿|アーモンド|ピーナッツ|くるみ|ナッツ|栗|種|レーズン|ライム|フルーツ|ざくろ|いちじく|ゆず|梅|ライチ|パパイヤ|プラム|apple|banana|lemon|orange|fruit|berry|nut|almond|peanut|walnut|seed|lime|coconut|dates/.test(terms)) return 'fruit_nut';
+  if (/しいたけ|えのき|しめじ|エリンギ|舞茸|マッシュルーム|なめこ|きくらげ|わかめ|もずく|めかぶ|ひじき|昆布|こんぶ|海苔|のり|mushroom|wakame|kombu|nori|seaweed/.test(terms)) return 'mushroom_seaweed';
+  if (/野菜|いも|芋|豆|玉ねぎ|にんじん|トマト|きゅうり|キャベツ|大根|なす|ピーマン|パプリカ|ブロッコリー|葉|ねぎ|にんにく|しょうが|ハーブ|バジル|パセリ|ミント|plantain|cassava|taro|vegetable|onion|carrot|tomato|cucumber|cabbage|pepper|broccoli|herb/.test(terms)) return 'vegetable';
+  return 'other';
+}
 
 export function getIngredientIconSlug(ingredientName: string): string | null {
   const name = ingredientName.trim();

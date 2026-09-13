@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plus, Pin, Settings } from "lucide-react";
+import { Plus, Pin, X } from "lucide-react";
 import confetti from "canvas-confetti";
-import ChefProfileBadge from "@/components/ChefProfileBadge";
-import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
@@ -41,8 +40,8 @@ function computeAgeDays(createdAt: string): number {
 // にならないようにする)。ダブルタップ自体も誤操作の入り口になり得るため、実際の
 // 削除は呼び出し元(親)が確認ダイアログを挟んでから行う(onRequestDeleteは
 // 「削除を確認したい」というリクエストであり、即削除ではない)。
-// 単発タップ(ダブルタップが完成しなかった場合)は、名前が省略表示されて判別
-// できない問題の対策として、フルネームをトーストで見せる(onTap)。
+// 単発タップ(ダブルタップが完成しなかった場合)は、名前が省略表示されても判別
+// できるよう、アイコンとフルネームを組み合わせたカードを見せる(onTap)。
 function ShelfItemChip({
   item,
   variant,
@@ -59,6 +58,7 @@ function ShelfItemChip({
   onTap: (item: Ingredient) => void;
 }) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef(false);
   const lastTapAtRef = useRef(0);
 
@@ -69,12 +69,26 @@ function ShelfItemChip({
     }
   };
 
+  const clearSingleTap = () => {
+    if (singleTapTimer.current) {
+      clearTimeout(singleTapTimer.current);
+      singleTapTimer.current = null;
+    }
+  };
+
+  useEffect(() => () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+  }, []);
+
   const handlePointerDown = () => {
     longPressFiredRef.current = false;
     clearLongPress();
     longPressTimer.current = setTimeout(() => {
       longPressTimer.current = null;
       longPressFiredRef.current = true;
+      clearSingleTap();
+      lastTapAtRef.current = 0;
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
       onTogglePin(item);
     }, LONG_PRESS_MS);
@@ -86,23 +100,33 @@ function ShelfItemChip({
     const now = Date.now();
     if (now - lastTapAtRef.current < DOUBLE_TAP_MS) {
       lastTapAtRef.current = 0;
+      clearSingleTap();
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
       onRequestDelete(item);
     } else {
       lastTapAtRef.current = now;
-      onTap(item);
+      clearSingleTap();
+      singleTapTimer.current = setTimeout(() => {
+        singleTapTimer.current = null;
+        lastTapAtRef.current = 0;
+        onTap(item);
+      }, DOUBLE_TAP_MS);
     }
   };
 
   const isCircle = variant === 'circle';
 
   return (
-    <div
+    <button
+      type="button"
       className={`${styles.shelfChip} ${isCircle ? styles.shelfChipCircle : styles.shelfChipSquare} ${item.is_pinned ? styles.shelfChipPinned : ""}`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
+      onContextMenu={(event) => event.preventDefault()}
+      aria-label={item.name}
+      data-inventory-item={item.name}
     >
       <span className={isForgotten ? styles.shelfChipForgottenIconWrap : undefined}>
         <div className={isCircle ? styles.shelfChipIconCircle : styles.shelfChipIconSquare}>
@@ -116,7 +140,7 @@ function ShelfItemChip({
         )}
         {item.name}
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -148,7 +172,7 @@ function ForgottenShelfAlert({
           <span className={styles.forgottenAlertBadge}>{t.inventory.forgottenBadge(ageDays)}</span>
         </div>
         <div className={styles.forgottenAlertTextSide}>
-          <img className={styles.forgottenAlertMascot} src="/mascot/bear_sleeping.png" alt="" width={30} height={30} />
+          <Image className={styles.forgottenAlertMascot} src="/mascot/bear_sleeping.png" alt="" width={30} height={30} />
           <span className={styles.forgottenAlertText}>{message}</span>
         </div>
       </div>
@@ -174,7 +198,6 @@ export default function InventoryPage() {
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [forgottenItems, setForgottenItems] = useState<Ingredient[]>([]);
   // 静的キーワードで判定できなかった食材名について、Enter押下後にAIへ判定を
   // 依頼している間だけtrueにする(判定中はフォームを操作不可にしてキャラクターの
@@ -183,6 +206,8 @@ export default function InventoryPage() {
   // ダブルタップ削除は誤操作が怖いという要望を受け、即削除ではなく
   // ここに削除対象を入れて確認ダイアログを挟む
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<Ingredient | null>(null);
+  // 1タップ時は名前だけの通知ではなく、食材アイコンと名前をまとめたカードで見せる。
+  const [previewItem, setPreviewItem] = useState<Ingredient | null>(null);
 
   useEffect(() => {
     loadIngredients();
@@ -262,6 +287,7 @@ export default function InventoryPage() {
   const handleConfirmDelete = () => {
     if (!confirmDeleteItem) return;
     handleDelete(confirmDeleteItem.id, confirmDeleteItem.name);
+    if (previewItem?.id === confirmDeleteItem.id) setPreviewItem(null);
     setConfirmDeleteItem(null);
   };
 
@@ -324,19 +350,7 @@ export default function InventoryPage() {
         title={t.inventory.title}
         subtitle={t.inventory.subtitle}
         mascot="bear_basket"
-        actions={
-          <button
-            type="button"
-            className={styles.settingsBtn}
-            onClick={() => setIsSettingsOpen(true)}
-            title={t.inventory.settingsButtonTitle}
-          >
-            <Settings size={18} />
-          </button>
-        }
       />
-
-      <ChefProfileBadge />
 
       {/* 食材追加フォーム: AI判定中(isJudging)は操作不可にし、下にローディング画面を出す */}
       <form onSubmit={handleAdd} className={styles.addFormWrapper}>
@@ -413,7 +427,7 @@ export default function InventoryPage() {
                           isForgotten={extraForgottenIds.has(item.id)}
                           onRequestDelete={setConfirmDeleteItem}
                           onTogglePin={handleTogglePin}
-                          onTap={(i) => showToast(i.name)}
+                          onTap={setPreviewItem}
                         />
                       ))}
                     </div>
@@ -425,19 +439,46 @@ export default function InventoryPage() {
               );
             })}
           </div>
+          <div className={styles.fridgeCrisper} aria-hidden="true">
+            <span />
+          </div>
         </div>
       )}
 
       {!loading && !hasIngredients && (
         <div className={styles.fridgeFrame}>
           <div className={styles.emptyStateCard}>
-            <img src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
+            <Image src="/mascot/bear_sleeping.png" alt="" width={88} height={88} />
             <p className={styles.emptyStateTitle}>{t.inventory.emptyTitle}</p>
             <p className={styles.emptyStateBody}>{t.inventory.emptyBody}</p>
             <button type="button" className={styles.emptyStateCta} onClick={() => router.push('/receipt')}>
               {t.inventory.emptyCta}
             </button>
           </div>
+          <div className={styles.fridgeCrisper} aria-hidden="true">
+            <span />
+          </div>
+        </div>
+      )}
+
+      {previewItem && !confirmDeleteItem && (
+        <div className={styles.itemPreviewCard} role="status" aria-live="polite">
+          <div className={styles.itemPreviewIcon}>
+            <IngredientIcon name={previewItem.name} size={58} />
+          </div>
+          <div className={styles.itemPreviewCopy}>
+            <strong>{previewItem.name}</strong>
+            <span>{t.category[previewItem.category] || previewItem.category}</span>
+            <small>{t.inventory.itemPreviewHint}</small>
+          </div>
+          <button
+            type="button"
+            className={styles.itemPreviewClose}
+            onClick={() => setPreviewItem(null)}
+            aria-label={t.inventory.itemPreviewClose}
+          >
+            <X size={18} />
+          </button>
         </div>
       )}
 
@@ -460,11 +501,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <ProfileSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSaved={loadIngredients}
-      />
     </div>
   );
 }

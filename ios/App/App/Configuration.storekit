@@ -15,7 +15,7 @@
     {
       "id" : "1BD3ECB8-4460-436B-B167-6BEEF734FC4B",
       "localizations" : [],
-      "name" : "Lily Cooking Premium",
+      "name" : "Sikurepi Plus",
       "subscriptions" : [
         {
           "adHocOffers" : [],
@@ -27,8 +27,8 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "週間献立の自動生成が無制限に使えます",
-              "displayName" : "プレミアムプラン（月額）",
+              "description" : "週間献立を回数を気にせず作り直せます",
+              "displayName" : "Sikurepi Plus（月額）",
               "locale" : "ja"
             }
           ],

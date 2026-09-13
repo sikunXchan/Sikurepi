@@ -2,21 +2,36 @@
 
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { BookOpen, Flame, Leaf, X, Sparkles, Loader2, Trash2 } from "lucide-react";
 import {
-  consumeLocalIngredients,
+  consumeLocalIngredientsDetailed,
+  getIngredientAgeDays,
   getLocalIngredients,
+  getLocalUserStats,
+  getRescueEligibleIngredients,
   isIngredientMissing,
   recordLocalCookingDone,
+  getLocalRecipeFeedback,
+  saveLocalRecipeFeedback,
+  FlavorFeedbackTag,
   NutritionData,
+  RecipeFeedbackRating,
+  RescuedIngredientSnapshot,
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import IngredientIcon from "./IngredientIcon";
+import RecipeFeedbackPanel from "./RecipeFeedbackPanel";
+import { buildIngredientCollection, STREAK_BADGE_MILESTONES } from "@/lib/ingredientCollection";
 import styles from "./CookedModal.module.css";
 
 type RecipeLike = {
   title: string;
+  time?: string;
   ingredients: { name: string; amount?: string }[];
+  steps?: string[];
+  tips?: string;
+  genre?: string | null;
+  dish_badge?: string | null;
   nutrition?: NutritionData | null;
 };
 
@@ -43,6 +58,7 @@ export default function CookedModal({
   const title = recipe?.title || propTitle || t.cookingSession.cookedDefaultTitle;
   const rawIngredients = recipe?.ingredients || propIngredients || [];
   const nutrition = recipe?.nutrition || propNutrition || null;
+  const feedbackRecipe: RecipeLike = recipe || { title, ingredients: rawIngredients, nutrition };
 
   // レシピには在庫に無い調味料や不足食材も含まれる。在庫に実在する材料だけを
   // 初期選択し、料理を記録しただけで無関係な在庫が消える事故を防ぐ。
@@ -57,6 +73,22 @@ export default function CookedModal({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [consumedCount, setConsumedCount] = useState(0);
+  const [rescuedIngredients, setRescuedIngredients] = useState<RescuedIngredientSnapshot[]>([]);
+  const [collectionReward, setCollectionReward] = useState<{
+    newDiscoveries: number;
+    completionPercent: number;
+    streakDays: number;
+    newStreakBadge: number | null;
+  } | null>(null);
+  // モーダルを開いた時点の対象を固定する。在庫更新後に対象が消えても、完了演出と
+  // 記録へ正しく引き継げるようにする。
+  const [rescueCandidates] = useState(() => getRescueEligibleIngredients());
+  const [feedbackTags, setFeedbackTags] = useState<Set<FlavorFeedbackTag>>(new Set());
+  const [wouldCookAgain, setWouldCookAgain] = useState(false);
+  const [cookingComment, setCookingComment] = useState("");
+  const [initialRecipeFeedback] = useState(() => getLocalRecipeFeedback(feedbackRecipe));
+  const [recipeRating, setRecipeRating] = useState<RecipeFeedbackRating | null>(initialRecipeFeedback?.rating || null);
+  const [recipeFeedbackNote, setRecipeFeedbackNote] = useState(initialRecipeFeedback?.note || "");
   // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
   // 同じJSタスク内で完結してしまい、Reactの再レンダーを待たずに終わる。
   // そのためstateのdisabled表示だけでは、素早い連打(ダブルタップ)で
@@ -88,28 +120,79 @@ export default function CookedModal({
     });
   };
 
+  const toggleFeedback = (tag: FlavorFeedbackTag) => {
+    setFeedbackTags((previous) => {
+      const next = new Set(previous);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  };
+
   const handleConfirm = (consume: boolean) => {
     if (submittedRef.current) return;
     submittedRef.current = true;
     setLoading(true);
     try {
+      const beforeStats = getLocalUserStats();
+      const beforeCollection = buildIngredientCollection(beforeStats.cooked_records || []);
+      const previouslyUnlocked = new Set(beforeCollection.entries.filter((entry) => entry.unlocked).map((entry) => entry.key));
       const toConsume = consume ? Array.from(selectedItems) : [];
       let nextConsumedCount = 0;
+      let nextRescuedIngredients: RescuedIngredientSnapshot[] = [];
+      let consumedIngredientNames: string[] = [];
       if (toConsume.length > 0) {
-        nextConsumedCount = consumeLocalIngredients(toConsume);
+        const consumedIngredients = consumeLocalIngredientsDetailed(toConsume);
+        const rescueCandidateIds = new Set(rescueCandidates.map((item) => item.id));
+        nextConsumedCount = consumedIngredients.length;
+        consumedIngredientNames = consumedIngredients.map((item) => item.name);
+        nextRescuedIngredients = consumedIngredients
+          .filter((item) => rescueCandidateIds.has(item.id))
+          .map((item) => ({ name: item.name, ageDays: getIngredientAgeDays(item) }));
       }
-      recordLocalCookingDone(nextConsumedCount, title, nutrition || undefined, rawIngredients.map((i) => i.name));
+      if (recipeRating) {
+        saveLocalRecipeFeedback(feedbackRecipe, recipeRating, recipeFeedbackNote, 'completion');
+      }
+      const feedback = feedbackTags.size > 0 || wouldCookAgain || recipeRating || recipeFeedbackNote.trim() || cookingComment.trim()
+        ? {
+            tags: Array.from(feedbackTags),
+            wouldCookAgain,
+            rating: recipeRating || undefined,
+            note: recipeFeedbackNote.normalize('NFKC').trim().slice(0, 500) || undefined,
+            comment: cookingComment.normalize('NFKC').trim().slice(0, 500) || undefined,
+          }
+        : undefined;
+      const updatedStats = recordLocalCookingDone(
+        nextConsumedCount,
+        title,
+        nutrition || undefined,
+        rawIngredients.map((i) => i.name),
+        feedback,
+        consumedIngredientNames,
+        nextRescuedIngredients,
+      );
+      const afterCollection = buildIngredientCollection(updatedStats.cooked_records || []);
+      const newStreakBadge = STREAK_BADGE_MILESTONES.find(
+        (milestone) => beforeCollection.bestStreak < milestone && afterCollection.bestStreak >= milestone,
+      ) || null;
 
       setConsumedCount(nextConsumedCount);
+      setRescuedIngredients(nextRescuedIngredients);
+      setCollectionReward({
+        newDiscoveries: afterCollection.entries.filter((entry) => entry.unlocked && !previouslyUnlocked.has(entry.key)).length,
+        completionPercent: afterCollection.completionPercent,
+        streakDays: updatedStats.streak_days,
+        newStreakBadge,
+      });
       setDone(true);
       window.dispatchEvent(new Event("storage-updated"));
       window.dispatchEvent(new Event("stats-updated"));
-      // 降ってくるアニメーションの最大所要時間(delay+duration)を待ってから閉じる
+      // アニメーションと獲得した図鑑・連続記録の報酬を読み切れる時間を確保する
       setTimeout(() => {
         if (onCompleted) onCompleted();
         if (onSuccess) onSuccess();
         onClose();
-      }, 3400);
+      }, 4200);
     } catch (e) {
       console.error(e);
       alert(t.cookingSession.cookedError);
@@ -167,8 +250,40 @@ export default function CookedModal({
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 16 }}
               />
-              <h3>{t.cookingSession.cookedDoneTitle}</h3>
-              <p>{t.cookingSession.cookedDoneMessage(consumedCount)}</p>
+              {rescuedIngredients.length > 0 && (
+                <div className={styles.rescuedIcons} aria-label={t.cookingSession.rescuedLabel}>
+                  {rescuedIngredients.slice(0, 4).map((item) => (
+                    <span key={item.name} className={styles.rescuedIcon}>
+                      <IngredientIcon name={item.name} size={46} />
+                    </span>
+                  ))}
+                </div>
+              )}
+              <h3>{rescuedIngredients.length > 0 ? t.cookingSession.rescuedDoneTitle : t.cookingSession.cookedDoneTitle}</h3>
+              <p>
+                {rescuedIngredients.length > 0
+                  ? t.cookingSession.rescuedDoneMessage(rescuedIngredients.map((item) => item.name))
+                  : t.cookingSession.cookedDoneMessage(consumedCount)}
+              </p>
+              {collectionReward && (
+                <div className={styles.rewardSummary}>
+                  <span>
+                    <BookOpen size={15} />
+                    {collectionReward.newDiscoveries > 0
+                      ? t.cookingSession.collectionNew(collectionReward.newDiscoveries)
+                      : t.cookingSession.collectionProgress(collectionReward.completionPercent)}
+                  </span>
+                  {rescuedIngredients.length > 0 && (
+                    <span className={styles.rescueReward}><Leaf size={15} />{t.cookingSession.collectionRescue(rescuedIngredients.length)}</span>
+                  )}
+                  <span className={collectionReward.newStreakBadge ? styles.streakReward : ""}>
+                    <Flame size={15} />
+                    {collectionReward.newStreakBadge
+                      ? t.cookingSession.streakBadgeEarned(collectionReward.newStreakBadge)
+                      : t.cookingSession.streakProgress(collectionReward.streakDays)}
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -186,13 +301,73 @@ export default function CookedModal({
                 </button>
               </div>
 
-              <p className={styles.desc}>
-                {t.cookingSession.cookedDescription}
-              </p>
+              <div className={styles.scrollContent}>
+                <p className={styles.desc}>
+                  {t.cookingSession.cookedDescription}
+                </p>
 
-              <div className={styles.itemList}>
+                <RecipeFeedbackPanel
+                  recipe={feedbackRecipe}
+                  source="completion"
+                  onChange={(nextRating, nextNote) => {
+                    setRecipeRating(nextRating);
+                    setRecipeFeedbackNote(nextNote);
+                  }}
+                />
+
+                <div className={styles.feedbackSection}>
+                <div className={styles.feedbackHeading}>
+                  <strong>{t.cookingSession.feedbackTitle}</strong>
+                  <span>{t.cookingSession.feedbackHint}</span>
+                </div>
+                <div className={styles.feedbackChips}>
+                  {([
+                    ['delicious', t.cookingSession.feedbackDelicious],
+                    ['bland', t.cookingSession.feedbackBland],
+                    ['salty', t.cookingSession.feedbackSalty],
+                    ['too_sweet', t.cookingSession.feedbackTooSweet],
+                    ['heavy', t.cookingSession.feedbackHeavy],
+                  ] as [FlavorFeedbackTag, string][]).map(([tag, label]) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`${styles.feedbackChip} ${feedbackTags.has(tag) ? styles.feedbackChipActive : ''}`}
+                      aria-pressed={feedbackTags.has(tag)}
+                      onClick={() => toggleFeedback(tag)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`${styles.feedbackChip} ${wouldCookAgain ? styles.feedbackChipActive : ''}`}
+                    aria-pressed={wouldCookAgain}
+                    onClick={() => setWouldCookAgain((value) => !value)}
+                  >
+                    {t.cookingSession.feedbackCookAgain}
+                  </button>
+                </div>
+                </div>
+
+                <label className={styles.commentField}>
+                  <span>
+                    <strong>{t.cookingSession.feedbackCommentLabel}</strong>
+                    <small>{t.cookingSession.feedbackCommentHint}</small>
+                  </span>
+                  <textarea
+                    value={cookingComment}
+                    maxLength={500}
+                    rows={3}
+                    placeholder={t.cookingSession.feedbackCommentPlaceholder}
+                    onChange={(event) => setCookingComment(event.target.value)}
+                  />
+                  <i>{cookingComment.length}/500</i>
+                </label>
+
+                <div className={styles.itemList}>
                 {rawIngredients.map((item, idx) => {
                   const isChecked = selectedItems.has(item.name);
+                  const isRescueCandidate = !isIngredientMissing(item.name, rescueCandidates, false);
                   return (
                     <label key={idx} className={`${styles.itemRow} ${isChecked ? styles.checkedRow : ""}`}>
                       <input
@@ -201,11 +376,15 @@ export default function CookedModal({
                         onChange={() => toggleItem(item.name)}
                         className={styles.checkbox}
                       />
-                      <span className={styles.itemName}>{item.name}</span>
+                      <span className={styles.itemName}>
+                        {item.name}
+                        {isRescueCandidate && <small className={styles.rescueBadge}>{t.cookingSession.rescueCandidate}</small>}
+                      </span>
                       {item.amount && <span className={styles.itemAmount}>{item.amount}</span>}
                     </label>
                   );
                 })}
+                </div>
               </div>
 
               <div className={styles.actions}>

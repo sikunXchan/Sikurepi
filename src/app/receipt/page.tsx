@@ -4,11 +4,18 @@ import { useState, useRef, useEffect } from "react";
 import { Camera, Upload, Loader2, CheckCircle, Trash2, Plus, Sparkles, Image as ImageIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
-import { addLocalIngredient, CATEGORY_ORDER } from "@/lib/storage";
+import {
+  addLocalIngredient,
+  CATEGORY_ORDER,
+  getFreeReceiptScansRemaining,
+  incrementFreeReceiptScan,
+} from "@/lib/storage";
 import { setNavLocked } from "@/lib/navLock";
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import styles from "./Receipt.module.css";
 
 type ExtractedItem = {
@@ -19,6 +26,7 @@ type ExtractedItem = {
 
 export default function ReceiptPage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,6 +35,7 @@ export default function ReceiptPage() {
   const [extractedList, setExtractedList] = useState<ExtractedItem[]>([]);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [success, setSuccess] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
@@ -62,6 +71,10 @@ export default function ReceiptPage() {
 
   const processImages = async () => {
     if (files.length === 0) return;
+    if (!isPremium && getFreeReceiptScansRemaining() <= 0) {
+      setShowPaywall(true);
+      return;
+    }
 
     setLoading(true);
     setErrorMsg("");
@@ -106,6 +119,7 @@ export default function ReceiptPage() {
       }
 
       setExtractedList(parsed);
+      if (!isPremium) incrementFreeReceiptScan();
     } catch (e: unknown) {
       console.error(e);
       setErrorMsg(e instanceof Error ? e.message : t.receipt.errorReadFailed);
@@ -339,9 +353,15 @@ export default function ReceiptPage() {
         </>
       )}
 
+      {!isPremium && !loading && !success && (
+        <p className={styles.quotaHint}>{t.receipt.freeDailyRemaining(getFreeReceiptScansRemaining())}</p>
+      )}
+
       {loading && (
         <KitchenLoader variant="delivering" text={t.receipt.analyzingText} />
       )}
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }

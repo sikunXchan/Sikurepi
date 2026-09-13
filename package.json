@@ -6,7 +6,15 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "audit:icons": "node --no-warnings --experimental-strip-types scripts/audit-icon-library.mjs",
+    "benchmark:recipes": "node scripts/benchmark-recipe-generation.mjs",
+    "test:dietary": "node --no-warnings --experimental-strip-types scripts/test-dietary-rules.mjs",
+    "test:premium": "node --no-warnings --experimental-strip-types scripts/test-premium-quota.mjs",
+    "test:feedback": "node --no-warnings --experimental-strip-types scripts/test-recipe-feedback.mjs",
+    "test:recipe-cache": "node --no-warnings --experimental-strip-types scripts/test-recipe-cache.mjs",
+    "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
+    "qa:dishes:world-02": "node scripts/build-icon-contact-sheet.mjs public/dishes/icons .tmp/world-cuisines-02-contact-sheet.png --manifest-group=world_cuisines_02"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
@@ -15,7 +23,6 @@
     "@capacitor/ios": "^8.5.1",
     "@google/genai": "^1.46.0",
     "@revenuecat/purchases-capacitor": "^13.4.2",
-    "@revenuecat/purchases-js": "^1.55.0",
     "@serwist/next": "^9.5.7",
     "@supabase/supabase-js": "^2.115.0",
     "@vercel/postgres": "^0.10.0",

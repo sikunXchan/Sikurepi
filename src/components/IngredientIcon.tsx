@@ -18,6 +18,7 @@ function PlaceholderIcon({ size, className }: { size: number; className?: string
       alt=""
       width={size}
       height={size}
+      draggable={false}
       className={className}
       style={{
         width: size,
@@ -70,6 +71,7 @@ export default function IngredientIcon({ name, size = 40, className }: Props) {
       alt={name}
       width={size}
       height={size}
+      draggable={false}
       className={className}
       style={{ objectFit: "contain", flexShrink: 0 }}
       onError={() => setLoadFailed(true)}

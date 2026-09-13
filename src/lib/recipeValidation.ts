@@ -1,11 +1,11 @@
-// AIが生成したレシピJSONを「レシピ生成前の成立可否判定」(在庫・カテゴリ・食事制限等の
-// 事前チェック)と「生成後の検証」(構造検証+料理としての論理検証)の両方に使う
-// 共通ロジック。プロンプトへの指示だけに頼らず、コード側でも機械的に検証することで、
+// AIが生成したレシピJSONを検証する共通ロジック。プロンプトへの指示だけに
+// 頼らず、コード側でも機械的に検証することで、
 // AIの出力ミス(在庫にない食材を勝手に使う、ヴィーガン指定なのに肉が入っている等)を
 // 検出し、採用前に再生成・修正させる。
 
 import { isPantryStaple } from "@/lib/storage";
 import { toHiragana } from "@/lib/kana";
+import { validateDietaryRestrictions, validateExcludedIngredients } from "@/lib/dietaryRules";
 
 export type ValidatedIngredient = { name: string; amount: string };
 
@@ -104,21 +104,6 @@ function fuzzyIncludes(haystack: string[], needle: string): boolean {
   });
 }
 
-// AIプロンプト側のDIETARY_RESTRICTION_INSTRUCTIONS(ai.ts)と対応する、
-// 各食事制限で使ってはならない食材の検出用パターン。プロンプトの指示文と
-// 意味がずれないよう、両方を変更する際は必ず一緒に見直すこと。
-export const DIETARY_FORBIDDEN_PATTERNS: Record<string, RegExp> = {
-  "ベジタリアン":
-    /肉|豚|牛(?!乳)|鶏|ラム|羊肉|マトン|ベーコン|ハム|ソーセージ|ウインナー|ひき肉|挽肉|鴨|ダック|七面鳥|ターキー|魚|鮭|サーモン|マグロ|ツナ|エビ|海老|イカ|タコ|貝|あさり|かに|カニ|ほたて|かつお|鰹|しらす|たらこ|明太子|いくら|うなぎ|かまぼこ|ちくわ|さつま揚げ|はんぺん/,
-  "ヴィーガン":
-    /肉|豚|牛(?!乳)|鶏|ラム|羊肉|マトン|ベーコン|ハム|ソーセージ|ウインナー|ひき肉|挽肉|鴨|ダック|七面鳥|ターキー|魚|鮭|サーモン|マグロ|ツナ|エビ|海老|イカ|タコ|貝|あさり|かに|カニ|ほたて|かつお|鰹|しらす|たらこ|明太子|いくら|うなぎ|かまぼこ|ちくわ|さつま揚げ|はんぺん|卵|たまご|玉子|牛乳|チーズ|ヨーグルト|バター|生クリーム|はちみつ|蜂蜜/,
-  "ハラール（イスラム教）": /豚|ベーコン|ハム|ソーセージ(?!パン)|ラード|みりん|料理酒|日本酒|清酒|ワイン|ビール/,
-  "コーシャ（ユダヤ教）": /豚|えび|海老|かに|カニ|貝|あさり|いか|タコ|たこ/,
-  "豚肉不可": /豚/,
-  "牛肉不可": /牛(?!乳)/,
-  "アルコール不可": /みりん|料理酒|日本酒|清酒|ワイン|ビール|紹興酒|梅酒/,
-};
-
 // 「スイーツ」「鍋・スープ」のように、料理カテゴリそのものを絶対条件として
 // 指定するテンプレート専用のチェック。他のテンプレート(お弁当・ガッツリ肉・
 // ヘルシー・洗い物ラク)は「属性」であって「カテゴリ」ではないため対象外にする。
@@ -168,26 +153,16 @@ export function validateRecipeLogic(
   const ingredientNames = recipe.ingredients.map((i) => i.name);
 
   // (a) 食事制限・宗教上の配慮への違反チェック
-  for (const restriction of context.dietaryRestrictions) {
-    const pattern = DIETARY_FORBIDDEN_PATTERNS[restriction];
-    if (!pattern) continue;
-    const violating = ingredientNames.filter((name) => pattern.test(name));
-    if (violating.length > 0) {
-      errors.push(
-        `dietary restriction "${restriction}" violated by ingredient(s): ${violating.join(", ")}`
-      );
-    }
-  }
+  const dietaryViolations = validateDietaryRestrictions(recipe, context.dietaryRestrictions);
+  errors.push(...dietaryViolations.map((violation) =>
+    `dietary restriction "${violation.restriction}" violated at ${violation.field}: ${violation.matchedTerm}`
+  ));
 
   // (b) 除外食材・アレルギーへの違反チェック
-  for (const excluded of context.excludedIngredients) {
-    const trimmed = excluded.trim();
-    if (!trimmed) continue;
-    const violating = ingredientNames.filter((name) => fuzzyIncludes([name], trimmed));
-    if (violating.length > 0) {
-      errors.push(`excluded ingredient "${trimmed}" found in: ${violating.join(", ")}`);
-    }
-  }
+  const excludedViolations = validateExcludedIngredients(recipe, context.excludedIngredients);
+  errors.push(...excludedViolations.map((violation) =>
+    `excluded ingredient "${violation.excluded}" found at ${violation.field}: ${violation.matchedTerm}`
+  ));
 
   // (c) 在庫モードでは「在庫食材＋許可された常備調味料」以外を1件も許可しない。
   //     在庫外食材をtipsで説明すれば通る旧例外は、ユーザーの明示したモードと
@@ -202,9 +177,9 @@ export function validateRecipeLogic(
       if (fuzzyIncludes(context.inventoryNames, name)) return false;
       if (context.assumeSeasoningsAvailable && isPantryStaple(name)) return false;
       if (!context.assumeSeasoningsAvailable) {
-        // 調味料を常備前提にしない設定でも、ごく基本的な塩・こしょうだけは
-        // プロンプト側が例外的に許可しているのでそれに合わせる
-        if (/^(塩|しお|こしょう|コショウ|胡椒)$/.test(name.trim())) return false;
+        // 調味料を常備前提にしない設定でも、水と最小限の塩・こしょうだけは
+        // プロンプト側が例外的に許可しているのでそれに合わせる。
+        if (/^(水|湯|お湯|water|hot water|塩|しお|こしょう|コショウ|胡椒)$/i.test(name.trim())) return false;
       }
       return true;
     });
@@ -233,10 +208,9 @@ export function buildValidationRetryNote(errors: string[]): string {
     .join("\n")}\n`;
 }
 
-// --- 3. 生成前の成立可否判定(フィード情報の整形) ------------------------------
-// 実際の判定(AIへの問い合わせ)は呼び出し側のAPI Routeで行うが、判定AIに渡す
-// 「在庫の要約」「常備調味料込みの実質的な食材数」等、判定材料の下ごしらえを
-// ここに集約しておく。
+// --- 3. 生成前の成立可否判定 -------------------------------------------------
+// AIを呼ぶ前に即座に止められる「在庫が空」「調味料しかない」ケースのため、
+// 在庫内の実質的な食材数を数える。
 
 export function summarizeInventoryForFeasibility(
   inventoryNames: string[],
