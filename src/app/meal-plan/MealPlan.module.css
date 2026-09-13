@@ -320,6 +320,8 @@
 }
 
 .planRecipeCard {
+  width: 100%;
+  min-width: 0;
   margin: 0 !important;
   overflow: hidden !important;
   border: 1px solid var(--line-soft) !important;
@@ -386,6 +388,10 @@
 .iconButton:hover { transform: none; box-shadow: none; background: rgba(111, 78, 59, 0.12); }
 
 .planCardContent {
+  width: 100%;
+  min-width: 0;
+  padding: 18px !important;
+  overflow-wrap: anywhere;
   margin: 0 !important;
   border: 0 !important;
   border-top: 1px solid var(--line-soft) !important;
@@ -404,6 +410,7 @@
   .planDish { width: 58px; height: 58px; border-radius: 18px; }
   .planDish img { width: 54px !important; height: 54px !important; }
   .planRecipeHeader { gap: 9px !important; padding: 11px !important; }
+  .planCardContent { padding: 14px !important; }
   .planHeaderActions { flex-direction: column !important; gap: 3px !important; }
   .planHeaderActions > svg { width: 15px; height: 15px; }
   .iconButton { width: 27px; height: 27px; }

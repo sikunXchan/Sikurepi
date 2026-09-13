@@ -497,14 +497,14 @@ export default function MealPlanPage() {
                                 exit={{ height: 0, opacity: 0 }}
                                 style={{ overflow: 'hidden' }}
                               >
-                                <div className={`${recipeStyles.cardContent} ${styles.planCardContent}`}>
+                                <div className={styles.planCardContent}>
                                   {entry.recipe.nutrition && (
                                     <div className={recipeStyles.nutritionSection}>
                                       <NutritionChart nutrition={entry.recipe.nutrition} />
                                     </div>
                                   )}
                                   <div className={recipeStyles.section}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <div className={recipeStyles.detailSectionHeading}>
                                       <h3>{t.mealPlan.ingredientsTitle}</h3>
                                       <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.ingredientsHint}</span>
                                     </div>
