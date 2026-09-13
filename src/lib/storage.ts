@@ -3,12 +3,25 @@
 import { toHiragana } from './kana';
 import type { TrayThemeId } from './trayThemes';
 import {
+  FREE_DAILY_RECEIPT_SCANS,
+  FREE_DAILY_RECIPE_CREDITS,
   FREE_WEEKLY_PLAN_GENERATIONS,
+  getRecipeGenerationCost,
+  normalizeDailyFeatureUsage,
   normalizeFreeGenerationUsage,
+  type DailyFeatureUsage,
   type FreeGenerationUsage,
 } from './premiumQuota';
 
-export { FREE_WEEKLY_PLAN_GENERATIONS, getGenerationWeekKey } from './premiumQuota';
+export {
+  FREE_COMMUNITY_RECIPE_ITEMS,
+  FREE_DAILY_RECEIPT_SCANS,
+  FREE_DAILY_RECIPE_CREDITS,
+  FREE_HISTORY_ITEMS,
+  FREE_WEEKLY_PLAN_GENERATIONS,
+  getGenerationWeekKey,
+  getRecipeGenerationCost,
+} from './premiumQuota';
 
 export type Ingredient = {
   id: number;
@@ -112,6 +125,9 @@ export type UserProfile = {
   preferredGenres: string[];
   // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
   trayTheme?: TrayThemeId;
+  // 生成したレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
+  // falseにして共有を停止できる。旧データは未定義=trueとして扱う。
+  shareGeneratedRecipes?: boolean;
   // 「そろそろ使って」通知をユーザーが明示的に非表示にした食材ID。
   // 食材を削除して再登録した場合は新IDになるため、再び通常判定へ戻る。
   ignoredForgottenIngredientIds?: number[];
@@ -397,6 +413,8 @@ const KEYS = {
   TIPS: 'lily_app_saved_tips',
   WEEK_PLAN: 'lily_app_week_plan',
   FREE_GENERATIONS_USED: 'lily_app_free_generations_used',
+  FREE_RECIPE_USAGE: 'lily_app_free_recipe_usage_v1',
+  FREE_RECEIPT_USAGE: 'lily_app_free_receipt_usage_v1',
   LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
   RECIPE_GENERATION_CACHE: 'lily_app_recipe_generation_cache_v2',
 };
@@ -756,7 +774,7 @@ export function setLocalCachedRecipeGeneration(data: LastRecipeGeneration & { re
 // --- 統計 ＆ PFC記録 (Stats) ---
 
 export const DEFAULT_USER_STATS: UserStats = {
-  streak_days: 1,
+  streak_days: 0,
   last_cooked_date: null,
   total_cooked: 0,
   saved_food_count: 0,
@@ -769,7 +787,15 @@ export const DEFAULT_USER_STATS: UserStats = {
 };
 
 export function getLocalUserStats(): UserStats {
-  return getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
+  const stats = getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
+  if (!stats.last_cooked_date || stats.streak_days === 0) return stats;
+
+  const lastCooked = new Date(`${stats.last_cooked_date}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!Number.isFinite(lastCooked.getTime())) return stats;
+  const diffDays = Math.floor((today.getTime() - lastCooked.getTime()) / (1000 * 3600 * 24));
+  return diffDays > 1 ? { ...stats, streak_days: 0 } : stats;
 }
 
 // ブリガード・ド・キュイジーヌの階級(Lv.1〜10)に必要な累計自炊回数のしきい値。
@@ -804,7 +830,7 @@ export function recordLocalCookingDone(
   rescuedIngredients: RescuedIngredientSnapshot[] = [],
 ): UserStats {
   const stats = getLocalUserStats();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocalDateKey();
   let newStreak = stats.streak_days;
 
   if (stats.last_cooked_date) {
@@ -929,7 +955,10 @@ export function clearLocalWeekPlanRange(dates: string[]): void {
 function getFreeGenerationUsage(now: Date = new Date()): FreeGenerationUsage {
   const stored = getStorage<unknown>(KEYS.FREE_GENERATIONS_USED, null);
   const usage = normalizeFreeGenerationUsage(stored, now);
-  setStorage(KEYS.FREE_GENERATIONS_USED, usage);
+  const current = stored as Partial<FreeGenerationUsage> | null;
+  if (current?.weekStart !== usage.weekStart || current?.count !== usage.count) {
+    setStorage(KEYS.FREE_GENERATIONS_USED, usage);
+  }
   return usage;
 }
 
@@ -948,6 +977,45 @@ export function getFreeGenerationsRemaining(now: Date = new Date()): number {
   return Math.max(0, FREE_WEEKLY_PLAN_GENERATIONS - getFreeGenerationsUsed(now));
 }
 
+function getDailyFeatureUsage(key: string, now: Date = new Date()): DailyFeatureUsage {
+  const stored = getStorage<unknown>(key, null);
+  const usage = normalizeDailyFeatureUsage(stored, now);
+  const current = stored as Partial<DailyFeatureUsage> | null;
+  if (current?.date !== usage.date || current?.count !== usage.count) {
+    setStorage(key, usage);
+  }
+  return usage;
+}
+
+function incrementDailyFeatureUsage(key: string, amount: number, now: Date = new Date()): number {
+  const usage = getDailyFeatureUsage(key, now);
+  const next = usage.count + Math.max(0, Math.floor(amount));
+  setStorage(key, { ...usage, count: next });
+  return next;
+}
+
+export function getFreeRecipeCreditsRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_DAILY_RECIPE_CREDITS - getDailyFeatureUsage(KEYS.FREE_RECIPE_USAGE, now).count);
+}
+
+export function canUseFreeRecipeGeneration(mealStyle: 'single' | 'set', now: Date = new Date()): boolean {
+  return getFreeRecipeCreditsRemaining(now) >= getRecipeGenerationCost(mealStyle);
+}
+
+export function incrementFreeRecipeGeneration(mealStyle: 'single' | 'set', now: Date = new Date()): number {
+  incrementDailyFeatureUsage(KEYS.FREE_RECIPE_USAGE, getRecipeGenerationCost(mealStyle), now);
+  return getFreeRecipeCreditsRemaining(now);
+}
+
+export function getFreeReceiptScansRemaining(now: Date = new Date()): number {
+  return Math.max(0, FREE_DAILY_RECEIPT_SCANS - getDailyFeatureUsage(KEYS.FREE_RECEIPT_USAGE, now).count);
+}
+
+export function incrementFreeReceiptScan(now: Date = new Date()): number {
+  incrementDailyFeatureUsage(KEYS.FREE_RECEIPT_USAGE, 1, now);
+  return getFreeReceiptScansRemaining(now);
+}
+
 // --- クッキングプロファイル (User Profile: 初期値は未入力) ---
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
@@ -964,6 +1032,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   dietaryRestrictions: [],
   preferredGenres: [],
   trayTheme: 'wood',
+  shareGeneratedRecipes: true,
   ignoredForgottenIngredientIds: [],
 };
 

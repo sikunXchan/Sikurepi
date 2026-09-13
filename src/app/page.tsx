@@ -10,7 +10,10 @@ import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
+import PremiumPaywall from "@/components/PremiumPaywall";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
+import { FREE_COMMUNITY_RECIPE_ITEMS } from "@/lib/premiumQuota";
 import {
   getLocalShoppingItems,
   getLocalSavedRecipes,
@@ -33,6 +36,7 @@ import {
 } from "@/lib/storage";
 import styles from "./Home.module.css";
 import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
+import { flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -50,7 +54,16 @@ type DailyPickRecipe = {
 type CommunityRecipeRow = {
   id: string;
   likes_count: number;
-  recipe: { title: string; time?: string; genre?: string | null; dish_badge?: string | null };
+  recipe: {
+    title: string;
+    time: string;
+    ingredients: { name: string; amount: string }[];
+    steps: string[];
+    tips: string;
+    genre?: string | null;
+    dish_badge?: string | null;
+    nutrition?: { calories: number; protein_g: number; fat_g: number; carbs_g: number } | null;
+  };
 };
 
 function pickText(value: BilingualText | undefined, language: "ja" | "en"): string {
@@ -64,6 +77,7 @@ const getServerHydrationSnapshot = () => false;
 
 export default function HomePage() {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
@@ -101,6 +115,7 @@ export default function HomePage() {
 
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipeRow[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     const loadLocal = () => {
@@ -180,11 +195,12 @@ export default function HomePage() {
   }, [dailyPickConstraintKey, isHydrated, todayDate]);
 
   useEffect(() => {
-    fetch("/api/community-recipes")
+    void flushCommunityRecipeOutbox();
+    fetch(`/api/community-recipes?limit=${isPremium ? 10 : FREE_COMMUNITY_RECIPE_ITEMS}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
       .catch(() => setCommunityRecipes([]));
-  }, []);
+  }, [isPremium]);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 || hour >= 18 ? t.home.greetingEvening : hour < 11 ? t.home.greetingMorning : t.home.greetingAfternoon;
@@ -233,6 +249,20 @@ export default function HomePage() {
     } catch {
       // 通信失敗時も楽観的な表示のままにする(見た目上は「いいね済み」で困らないため)
     }
+  };
+
+  const handleOpenCommunityRecipe = (row: CommunityRecipeRow) => {
+    setPendingDailyPickHandoff({
+      title: row.recipe.title,
+      time: row.recipe.time,
+      genre: row.recipe.genre || undefined,
+      dish_badge: row.recipe.dish_badge || undefined,
+      ingredients: row.recipe.ingredients || [],
+      steps: row.recipe.steps || [],
+      tips: row.recipe.tips || '',
+      nutrition: row.recipe.nutrition || null,
+    });
+    router.push('/recipe');
   };
 
   const handleDismissRescue = () => {
@@ -342,24 +372,41 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className={`${styles.card} ${styles.cardRecipes}`}>
+      <div className={`${styles.card} ${styles.cardCommunity}`}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitle}><UiIcon slug="teishoku" size={24} alt="" />{t.home.recentRecipesTitle}</span>
-          <Link href="/history" className={styles.cardSeeAll}>{t.home.recentRecipesSeeAll}<ChevronRight size={14} /></Link>
+          <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
+          <span className={styles.communityScope}>{isPremium ? t.home.communityAll : t.home.communityTopOne}</span>
         </div>
-        {recentRecipes.length === 0 ? (
-          <div className={styles.emptyRow}><img src="/mascot/bear_reading.png" alt="" width={52} height={52} /><p>{t.home.recentRecipesEmpty}</p></div>
+        {communityRecipes.length === 0 ? (
+          <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
         ) : (
-          <div className={styles.recentScroll}>
-            {recentRecipes.map(recipe => (
-              <Link key={recipe.id} href="/history" className={styles.recentCard}>
-                <div className={styles.recentThumbWrap}>
-                  <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
-                </div>
-                <span className={styles.recentCardTitle}>{recipe.title}</span>
-              </Link>
+          <div className={styles.communityList}>
+            {communityRecipes.map(row => (
+              <div key={row.id} className={styles.communityRow}>
+                <button type="button" className={styles.communityOpen} onClick={() => handleOpenCommunityRecipe(row)}>
+                  <RecipeThumbnail genre={row.recipe.genre} fallbackIngredientName={row.recipe.title} size={48} />
+                  <span className={styles.communityRowInfo}>
+                    <span className={styles.communityRowTitle}>{row.recipe.title}</span>
+                    <small>{t.home.todaysPickViewButton}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
+                  onClick={() => handleLike(row.id)}
+                  title={t.home.communityLikeTitle}
+                >
+                  <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
+                  {row.likes_count}
+                </button>
+              </div>
             ))}
           </div>
+        )}
+        {!isPremium && (
+          <button type="button" className={styles.communityPlusGate} onClick={() => setShowPaywall(true)}>
+            {t.home.communityUnlockAll}<ChevronRight size={14} />
+          </button>
         )}
       </div>
 
@@ -382,29 +429,22 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className={`${styles.card} ${styles.cardCommunity}`}>
+        <div className={`${styles.card} ${styles.cardRecipes}`}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
+            <span className={styles.cardTitle}><UiIcon slug="teishoku" size={24} alt="" />{t.home.recentRecipesTitle}</span>
+            <Link href="/history" className={styles.cardSeeAll}>{t.home.recentRecipesSeeAll}<ChevronRight size={14} /></Link>
           </div>
-          {communityRecipes.length === 0 ? (
-            <div className={styles.emptyRow}><UiIcon slug="main_dish" size={34} alt="" /><p>{t.home.communityEmpty}</p></div>
+          {recentRecipes.length === 0 ? (
+            <div className={styles.emptyRow}><img src="/mascot/bear_reading.png" alt="" width={52} height={52} /><p>{t.home.recentRecipesEmpty}</p></div>
           ) : (
-            <div className={styles.communityList}>
-              {communityRecipes.map(row => (
-                <div key={row.id} className={styles.communityRow}>
-                  <div className={styles.communityRowInfo}>
-                    <p className={styles.communityRowTitle}>{row.recipe.title}</p>
+            <div className={styles.recentScroll}>
+              {recentRecipes.map(recipe => (
+                <Link key={recipe.id} href="/history" className={styles.recentCard}>
+                  <div className={styles.recentThumbWrap}>
+                    <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
                   </div>
-                  <button
-                    type="button"
-                    className={`${styles.likeBtn} ${likedIds.has(row.id) ? styles.likeBtnActive : ""}`}
-                    onClick={() => handleLike(row.id)}
-                    title={t.home.communityLikeTitle}
-                  >
-                    <Heart size={13} fill={likedIds.has(row.id) ? "currentColor" : "none"} />
-                    {row.likes_count}
-                  </button>
-                </div>
+                  <span className={styles.recentCardTitle}>{recipe.title}</span>
+                </Link>
               ))}
             </div>
           )}
@@ -412,6 +452,7 @@ export default function HomePage() {
       </div>
 
       <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }

@@ -138,6 +138,9 @@ const ja = {
     communitySubtitle: "みんなが「いいね」したレシピ",
     communityEmpty: "まだ共有されたレシピがありません",
     communityLikeTitle: "いいね",
+    communityAll: "Plus・すべて表示",
+    communityTopOne: "無料・上位1件",
+    communityUnlockAll: "Plusですべてのレシピを見る",
     communityShareButton: "みんなのレシピに共有",
     communitySharedToast: "みんなのレシピに共有しました！",
     communityAlreadySharedToast: "すでに共有済みです",
@@ -190,6 +193,9 @@ const ja = {
     noIngredients: "冷蔵庫に食材がありません。「自由作成」モードをご利用いただくか、在庫画面から追加してください。",
     generateLoading: "AIシェフが絶品レシピを考案中...",
     generateButton: "AIにレシピを提案してもらう！",
+    freeDailyRemaining: (credits: number, mealStyle: string) => mealStyle === 'set'
+      ? `無料版：定食は1日1回（本日の残り枠 ${credits}/3）`
+      : `無料版：単品は1日3回（本日の残り ${credits}回）`,
     loadingAlt: "AIシェフが考案中",
     loadingText: "AIシェフが厨房で腕をふるっています…",
     loadingPhases: [
@@ -217,6 +223,8 @@ const ja = {
     tipsPrefix: "シェフのコツ: ",
     cookedButton: "この料理を作った！（在庫を減らしPFCを記録）",
     cookingTipsHeader: "料理のコツ & 豆知識（ライブラリに保存済み）",
+    tipsPlusTitle: "料理のコツ・豆知識はPlus限定",
+    tipsPlusBody: "味を仕上げるポイントを開く",
     savedToast: (title: string) => `「${title}」をレシピ履歴に保存しました！`,
     saveFailedToast: "保存に失敗しました",
     pinnedToShoppingToast: (name: string) => `「${name}」を買い物リストに追加しました！`,
@@ -276,11 +284,11 @@ const ja = {
     premiumWelcomeToast: "プレミアムプランへようこそ！これから週間献立を無制限に生成できます",
   },
   premium: {
-    title: "1週間の献立を、もっと気軽に",
-    description: "在庫と好みに合わせた週間献立を、回数を気にせず組み直せるプランです。",
-    benefitUnlimited: "週間献立を回数を気にせず生成",
-    benefitRegenerate: "気になる1食だけ何度でも作り直し",
-    benefitSafety: "食事制限の安全チェックは無料でも利用可能",
+    title: "毎日の自炊を、もっと自由に",
+    description: "生成回数を気にせず、すべての履歴・共有レシピ・カスタマイズを楽しめるプランです。",
+    benefitUnlimited: "単品・定食・週間献立を回数無制限で生成",
+    benefitRegenerate: "すべての履歴と、みんなのレシピを閲覧",
+    benefitSafety: "料理のコツ・限定トレー・自動共有OFF",
     planSelection: "プランを選択",
     planLabel: (type: string) => ({
       ANNUAL: "年額プラン",
@@ -308,16 +316,18 @@ const ja = {
     noOffering: "購入可能なプランがまだ設定されていません",
     legal: "定期購入は解約するまで自動更新されます。価格と期間は購入確認画面にも表示されます。",
     cardEyebrow: "SIKUREPI PLUS",
-    cardFreeTitle: "週間献立をもっと自由に",
-    cardFreeBody: "無料プランでは毎週3回まで。Plusなら回数を気にせず組み直せます。",
+    cardFreeTitle: "毎日の自炊をもっと自由に",
+    cardFreeBody: "Plusならレシピ生成・週間献立・履歴・限定トレーを制限なく楽しめます。",
     cardActiveTitle: "Plusプランを利用中",
-    cardActiveBody: "週間献立を回数を気にせず生成できます。",
+    cardActiveBody: "すべての生成・履歴・共有レシピ・限定トレーを利用できます。",
     cardAction: "プランを見る",
     cardManage: "プランを確認",
   },
   history: {
     title: "レシピ履歴・保存",
     subtitle: "お気に入りをふり返ろう",
+    plusLimitTitle: "無料版の履歴は最新3件まで",
+    plusLimitBody: (n: number) => `Plusにすると、ほかの${n}件も表示できます`,
     searchPlaceholder: "料理名・食材名で検索…",
     genreAll: "ジャンル: すべて",
     timeOptions: [
@@ -392,6 +402,7 @@ const ja = {
     selectPhotoHint: "レシート・冷蔵庫の中・食材",
     analyzeButton: (n: number) => `${n}枚の画像を解析する`,
     analyzingText: "AIが画像を解析して食材を抽出中...",
+    freeDailyRemaining: (n: number) => `無料版：画像解析は1日1回（本日の残り${n}回）`,
     manualEntryButton: "手入力で登録する",
   },
   // ブリガード・ド・キュイジーヌ(伝統的なフランス料理の厨房組織)にちなんだ
@@ -414,6 +425,8 @@ const ja = {
     streakLabel: (n: number) => `${n}日連続`,
     savedTitle: "食品ロス削減（使い切った食材数）",
     savedLabel: (n: number) => `${n}個救済`,
+    nextRank: (n: number) => `あと${n}品`,
+    maxRank: "最高ランク",
   },
   // タグ選択(優先ジャンル・味の好み・調理スタイル・食事制限)の表示ラベル。
   // 保存データの値は常にこの辞書のキー(日本語)のまま扱い、表示するときだけ変換する。

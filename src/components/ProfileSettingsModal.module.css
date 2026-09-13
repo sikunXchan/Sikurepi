@@ -226,6 +226,48 @@
   color: white;
 }
 
+.trayOptionLocked { opacity: 0.64; }
+.trayLock { position: absolute; top: 8px; right: 8px; color: #c15c79; }
+
+.shareToggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--card-bg-solid);
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.shareToggle > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.shareToggle strong { font-size: 13px; font-weight: 900; }
+.shareToggle small { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+.shareToggleTrack { position: relative; width: 38px; height: 22px; flex: 0 0 auto; border-radius: 999px; background: #d8d1ce; transition: background .2s; }
+.shareToggleTrack i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 2px 5px rgba(70, 45, 36, .16); }
+.shareToggleOn .shareToggleTrack { background: var(--secondary); }
+.shareToggleOn .shareToggleTrack i { transform: translateX(16px); }
+
+.premiumSettingsGate {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 111, 145, .24);
+  border-radius: 13px;
+  background: rgba(255, 240, 245, .82);
+  color: #a94464;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .tagGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

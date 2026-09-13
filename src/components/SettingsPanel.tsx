@@ -23,13 +23,16 @@ import {
   SavedTip,
   Ingredient
 } from "@/lib/storage";
-import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw } from "lucide-react";
+import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw, Crown } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { TRAY_THEMES, TrayThemeId } from "@/lib/trayThemes";
 import { DIETARY_RESTRICTION_OPTIONS } from "@/lib/dietaryRules";
+import { FREE_HISTORY_ITEMS } from "@/lib/premiumQuota";
+import { usePremium } from "@/lib/premium/PremiumContext";
+import PremiumPaywall from "./PremiumPaywall";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -129,6 +132,7 @@ type Props = {
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const { t, language } = useLanguage();
+  const { isPremium } = usePremium();
   const { user, isSupabaseConfigured, sendLoginCode, verifyLoginCode, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [accountEmail, setAccountEmail] = useState("");
@@ -150,10 +154,13 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const [openRecordSwipeIndex, setOpenRecordSwipeIndex] = useState<number | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const p = getLocalUserProfile();
+    // SSRと初回クライアント描画を一致させるため、端末データはマウント後に復元する。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProfile(p);
     setExcludedInput((p.excludedIngredients || []).join(", "));
     setStats(getLocalUserStats());
@@ -211,6 +218,8 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     const updated: UserProfile = {
       ...profile,
       excludedIngredients: excludedList,
+      trayTheme: isPremium ? profile.trayTheme : 'wood',
+      shareGeneratedRecipes: isPremium ? profile.shareGeneratedRecipes !== false : true,
     };
 
     setLocalUserProfile(updated);
@@ -303,7 +312,10 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         <button
           type="button"
           className={`${styles.tabBtn} ${activeTab === 'tips' ? styles.tabBtnActive : ''}`}
-          onClick={() => setActiveTab('tips')}
+          onClick={() => {
+            if (isPremium) setActiveTab('tips');
+            else setShowPaywall(true);
+          }}
         >
           <Lightbulb size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
           {t.settings.tabTips(tips.length)}
@@ -330,20 +342,26 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 {language === 'ja' ? '配膳トレー' : 'Serving tray'}
               </label>
               <span className={styles.trayAvailableBadge}>
-                {language === 'ja' ? 'すべて利用可能' : 'All available'}
+                {isPremium
+                  ? (language === 'ja' ? 'すべて利用可能' : 'All available')
+                  : (language === 'ja' ? 'Plusで追加' : 'More with Plus')}
               </span>
             </div>
             <div className={styles.trayGrid}>
               {TRAY_THEMES.map(theme => {
-                const active = (profile.trayTheme || 'wood') === theme.id;
+                const locked = theme.premiumOnly && !isPremium;
+                const active = !locked && (profile.trayTheme || 'wood') === theme.id;
                 const label = theme.name[language === 'ja' ? 'ja' : 'en'];
                 return (
                   <button
                     key={theme.id}
                     type="button"
                     aria-pressed={active}
-                    className={`${styles.trayOption} ${active ? styles.trayOptionActive : ''}`}
-                    onClick={() => setProfile(prev => ({ ...prev, trayTheme: theme.id as TrayThemeId }))}
+                    className={`${styles.trayOption} ${active ? styles.trayOptionActive : ''} ${locked ? styles.trayOptionLocked : ''}`}
+                    onClick={() => {
+                      if (locked) setShowPaywall(true);
+                      else setProfile(prev => ({ ...prev, trayTheme: theme.id as TrayThemeId }));
+                    }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -356,6 +374,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     />
                     <span>{label}</span>
                     {active && <Check size={14} className={styles.trayCheck} />}
+                    {locked && <Crown size={14} className={styles.trayLock} />}
                   </button>
                 );
               })}
@@ -365,6 +384,31 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 ? '設定を保存すると、選んだトレーがレシピ結果に反映されます。'
                 : 'Save settings to apply this tray to recipe results.'}
             </span>
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>
+              {language === 'ja' ? 'みんなのレシピへの自動共有' : 'Auto-share to Community Recipes'}
+            </label>
+            <button
+              type="button"
+              className={`${styles.shareToggle} ${(isPremium ? profile.shareGeneratedRecipes !== false : true) ? styles.shareToggleOn : ''}`}
+              aria-pressed={isPremium ? profile.shareGeneratedRecipes !== false : true}
+              onClick={() => {
+                if (!isPremium) setShowPaywall(true);
+                else setProfile(prev => ({ ...prev, shareGeneratedRecipes: prev.shareGeneratedRecipes === false }));
+              }}
+            >
+              <span className={styles.shareToggleTrack}><i /></span>
+              <span>
+                <strong>{isPremium && profile.shareGeneratedRecipes === false
+                  ? (language === 'ja' ? '共有しない' : 'Do not share')
+                  : (language === 'ja' ? '生成レシピを共有する' : 'Share generated recipes')}</strong>
+                <small>{isPremium
+                  ? (language === 'ja' ? 'レシピ本文のみ。個人設定や在庫は送信しません。' : 'Recipe content only. Your settings and pantry are never sent.')
+                  : (language === 'ja' ? '無料版は自動共有。PlusではOFFにできます。' : 'Free automatically shares; Plus can turn this off.')}</small>
+              </span>
+            </button>
           </div>
 
           <div className={styles.section}>
@@ -598,7 +642,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               <>
                 <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 6px' }}>{t.settings.historySwipeHint}</p>
                 <div className={styles.recordList}>
-                  {stats.cooked_records.map((rec, i) => (
+                  {stats.cooked_records.slice(0, isPremium ? undefined : FREE_HISTORY_ITEMS).map((rec, i) => (
                     <SwipeableRecordRow
                       key={`${rec.date}-${i}`}
                       record={rec}
@@ -612,6 +656,12 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     />
                   ))}
                 </div>
+                {!isPremium && stats.cooked_records.length > FREE_HISTORY_ITEMS && (
+                  <button type="button" className={styles.premiumSettingsGate} onClick={() => setShowPaywall(true)}>
+                    <Crown size={17} />
+                    <span>{language === 'ja' ? 'Plusで過去の記録をすべて表示' : 'View your full history with Plus'}</span>
+                  </button>
+                )}
               </>
             ) : (
               <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>{t.settings.noHistory}</p>
@@ -620,7 +670,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
         </div>
       )}
 
-      {activeTab === 'tips' && (
+      {activeTab === 'tips' && isPremium && (
         <div className={styles.body}>
           <p className={styles.description}>
             {t.settings.tipsDescription}
@@ -814,6 +864,8 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           </button>
         </div>
       )}
+
+      <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </>
   );
 }

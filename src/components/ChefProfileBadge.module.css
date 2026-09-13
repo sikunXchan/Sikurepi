@@ -12,6 +12,29 @@
   box-shadow: 0 10px 26px rgba(98, 62, 46, 0.08);
 }
 
+.badgePremium {
+  border-color: rgba(255, 163, 195, 0.42);
+  background: linear-gradient(120deg, #fff1f5, #fff8d9, #e8fff2, #e8f7ff, #f3ebff, #fff1f5);
+  background-size: 260% 260%;
+  box-shadow: 0 10px 30px rgba(128, 98, 166, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.74);
+  animation: plusRainbow 8s ease-in-out infinite;
+}
+
+.badgePremium .rankPill,
+.badgePremium .metricItem {
+  background: rgba(255, 255, 255, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes plusRainbow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badgePremium { animation: none; }
+}
+
 .rankPill {
   display: flex;
   align-items: center;
@@ -41,6 +64,41 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.rankInfo {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progressTrack {
+  width: 44px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(143, 112, 105, 0.16);
+}
+
+.progressTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff789b, #e85c83);
+}
+
+.progressLabel {
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .metricsGroup {
