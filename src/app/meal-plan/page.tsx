@@ -11,6 +11,7 @@ import CookedModal from "@/components/CookedModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import PremiumPaywall from "@/components/PremiumPaywall";
+import RecipeDetailScreen, { type RecipeDetailData } from "@/components/RecipeDetailScreen";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -83,6 +84,7 @@ export default function MealPlanPage() {
   const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [servingOverrides, setServingOverrides] = useState<Record<string, number>>({});
+  const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
   const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -456,9 +458,21 @@ export default function MealPlanPage() {
                   return (
                     <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`}>
                           <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
-                            <div className={styles.planDish}>
+                            <button
+                              type="button"
+                              className={styles.planDish}
+                              aria-label={language === 'ja' ? `${entry.recipe.title}をトレーで開く` : `Open ${entry.recipe.title}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setPreviewRecipe({
+                                  ...displayedRecipe,
+                                  source: 'meal-plan',
+                                  sourceRecipeId: key,
+                                });
+                              }}
+                            >
                               <RecipeThumbnail genre={entry.recipe.genre} fallbackIngredientName={entry.recipe.title} size={74} />
-                            </div>
+                            </button>
                             <div className={`${recipeStyles.titleInfo} ${styles.planTitleInfo}`}>
                               <div className={recipeStyles.badgeRow}>
                                 <span className={recipeStyles.genreBadge}>{SLOT_LABEL[slot]}</span>
@@ -568,9 +582,8 @@ export default function MealPlanPage() {
                                     </ol>
                                   </div>
                                   {entry.recipe.tips && isPremium && (
-                                    <div className={recipeStyles.tipsBox} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                      <UiIcon slug="tips_idea" size={32} alt="" />
-                                      <span>{entry.recipe.tips}</span>
+                                    <div className={recipeStyles.tipsBox}>
+                                      <strong>{t.recipe.tipsPrefix}</strong> {entry.recipe.tips}
                                     </div>
                                   )}
                                   {entry.recipe.tips && !isPremium && (
@@ -633,6 +646,15 @@ export default function MealPlanPage() {
           />
         )}
       </AnimatePresence>
+
+      <RecipeDetailScreen
+        recipe={previewRecipe}
+        onClose={() => setPreviewRecipe(null)}
+        onCompleted={() => {
+          loadData();
+          showToast(t.recipe.cookedCompletedToast);
+        }}
+      />
 
       <PremiumPaywall
         open={showPaywall}

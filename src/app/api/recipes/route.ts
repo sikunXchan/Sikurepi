@@ -26,6 +26,7 @@ import {
 import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
+import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 
 // 初回生成は低遅延のFlash-Liteを使い、品質検証で不採用になった場合だけ
 // Flashへ昇格する。無条件に重いモデルを複数回呼ばない。
@@ -222,6 +223,7 @@ export async function POST(req: Request) {
       : null;
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
     const languageSection = buildLanguageSection(language);
+    const unitSection = buildIngredientUnitInstruction(language);
     const feasibilityLanguageSection = language === 'en'
       ? '\n【成立可否の出力言語】"feasibility.reason"と"feasibility.missingKeyIngredients"も自然な英語で出力してください。\n'
       : '';
@@ -231,7 +233,7 @@ export async function POST(req: Request) {
 
     const basePrompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
 
 【重要・厳守事項】
 ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいのは、在庫食材リストにある食材と、常備調味料の前提で許可されている基本調味料だけです。在庫にない主要な具材(肉・魚・野菜・主食・卵・乳製品など)を1つでも追加した場合、それはユーザーの意図に反する失敗作とみなされます。\n'}1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。

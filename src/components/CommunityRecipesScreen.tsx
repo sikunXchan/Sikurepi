@@ -8,6 +8,7 @@ import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { localizeCommunityRecipe, type CommunityRecipe } from "@/lib/communityRecipeSchema";
+import { COMMUNITY_RECIPES_CHANGED_EVENT } from "@/lib/communityRecipes";
 import styles from "./CommunityRecipesScreen.module.css";
 
 export type CommunityRecipeRow = {
@@ -120,10 +121,13 @@ export default function CommunityRecipesScreen({
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
+    const handleCommunityUpdate = () => void loadRecipes();
+    window.addEventListener(COMMUNITY_RECIPES_CHANGED_EVENT, handleCommunityUpdate);
     return () => {
       controller.abort();
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(COMMUNITY_RECIPES_CHANGED_EVENT, handleCommunityUpdate);
     };
   }, [loadRecipes, onClose, open]);
 

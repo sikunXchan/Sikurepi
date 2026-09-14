@@ -274,7 +274,7 @@ const en: typeof ja = {
     subtitle: "Your settings and cooking data, all in one place",
     collectionEyebrow: "MY KITCHEN COLLECTION",
     collectionTitle: "Kitchen Collection",
-    collectionSubtitle: "Ingredients you use and dishes you make become part of your collection.",
+    collectionSubtitle: "Ingredients you cook with become part of your collection.",
     ingredientCollectionTitle: "Ingredient Collection",
     dishCollectionTitle: "Dish Collection",
     ingredientCollectionTab: "Ingredients",

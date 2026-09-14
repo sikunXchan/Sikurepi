@@ -28,6 +28,89 @@
   color: var(--text-muted);
 }
 
+.historySectionHeading h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.historySectionHeading p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recentCookedSection {
+  display: grid;
+  gap: 10px;
+  padding: 17px;
+  border: 1px solid rgba(244, 113, 145, 0.16);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #fff9f9, #f7fbf8);
+  box-shadow: var(--shadow-soft);
+}
+
+.recentCookedGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+
+.recentCookedCard {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.recentCookedOpen {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 34px 10px 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recentCookedOpen:disabled { cursor: default; }
+.recentCookedOpen > span { min-width: 0; }
+.recentCookedOpen strong, .recentCookedOpen small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recentCookedOpen strong { color: var(--foreground); font-size: 12px; font-weight: 900; }
+.recentCookedOpen small { margin-top: 4px; color: var(--text-muted); font-size: 9px; font-weight: 700; }
+.recentCookedOpen img { flex: 0 0 auto; object-fit: contain; }
+
+.recentCookedDelete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #fff3f4;
+  color: #c75469;
+  cursor: pointer;
+}
+
+.recipePreviewButton {
+  display: grid;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .recentCookedGrid { grid-template-columns: 1fr; }
+}
+
 .rescueShelf {
   padding: 17px;
   overflow: hidden;

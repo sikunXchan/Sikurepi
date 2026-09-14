@@ -9,13 +9,11 @@ import {
   getLocalIngredients,
   getLocalUserProfile,
   getLocalUserStats,
-  getLocalSavedRecipes,
   getRescueEligibleIngredients,
   isIngredientMissing,
   recordLocalCookingDone,
   getLocalRecipeFeedback,
   saveLocalRecipeFeedback,
-  saveLocalRecipe,
   FlavorFeedbackTag,
   NutritionData,
   RecipeFeedbackRating,
@@ -190,36 +188,36 @@ export default function CookedModal({
         feedback,
         consumedIngredientNames,
         nextRescuedIngredients,
-        { source, sourceRecipeId },
+        {
+          source,
+          sourceRecipeId,
+          recipe: recipe ? {
+            title,
+            time: recipe.time || '',
+            ingredients: rawIngredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+            steps: recipe.steps || [],
+            tips: recipe.tips || '',
+            image_url: recipe.image_url || null,
+            nutrition,
+            genre: recipe.genre || null,
+            dish_badge: recipe.dish_badge || null,
+            servings: recipe.servings,
+          } : undefined,
+        },
       );
-
-      // 生成しただけでは履歴へ入れず、実際に「作った」と確定した時点で初めて
-      // レシピ本文を履歴へ残す。同じ料理を再調理した場合、自炊回数は増やすが
-      // 履歴カードは重複させない。
-      const normalizedTitle = title.normalize('NFKC').trim().toLocaleLowerCase();
-      const alreadySaved = getLocalSavedRecipes().some((saved) =>
-        saved.title.normalize('NFKC').trim().toLocaleLowerCase() === normalizedTitle
-      );
-      if (recipe && !alreadySaved) {
-        saveLocalRecipe({
-          title,
-          time: recipe.time || '',
-          ingredients: rawIngredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
-          steps: recipe.steps || [],
-          tips: recipe.tips || '',
-          image_url: recipe.image_url || null,
-          nutrition,
-          genre: recipe.genre || null,
-          dish_badge: recipe.dish_badge || null,
-          servings: recipe.servings,
-        });
-      }
 
       // 図鑑・自炊回数と同じく「料理完了」を共有の起点にする。みんなのレシピを
       // 作った場合は自分の記録には数えるが、公開レシピを再投稿しない。
       const shareEnabled = !isPremium || getLocalUserProfile().shareGeneratedRecipes !== false;
       if (source !== 'community' && shareEnabled && isCommunityRecipe(feedbackRecipe)) {
-        void shareCookedRecipes([feedbackRecipe]);
+        void shareCookedRecipes([{
+          ...feedbackRecipe,
+          time: feedbackRecipe.time || '',
+          ingredients: feedbackRecipe.ingredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+          steps: feedbackRecipe.steps || [],
+          tips: feedbackRecipe.tips || '',
+          creator_comment: cookingComment.normalize('NFKC').trim().slice(0, 280) || null,
+        }]);
       }
       const afterCollection = buildIngredientCollection(updatedStats.cooked_records || []);
       const newStreakBadge = STREAK_BADGE_MILESTONES.find(

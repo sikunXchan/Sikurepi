@@ -91,6 +91,8 @@ export type SavedRecipe = {
   saved_at: string;
 };
 
+export type CookedRecipeSnapshot = Omit<SavedRecipe, 'id' | 'saved_at'>;
+
 export type CookedRecord = {
   date: string;
   recipeTitle: string;
@@ -99,6 +101,9 @@ export type CookedRecord = {
   // 自炊記録だけを取り除くために使う。旧データとの互換性のため任意。
   source?: 'generated' | 'meal-plan' | 'history' | 'community' | 'daily-pick';
   sourceRecipeId?: string;
+  // 明示的に保存したレシピとは分けて「直近に作った料理」を再表示するための本文。
+  // 旧レコードには無いため任意とし、タイトルだけの履歴も読み込み可能にする。
+  recipe?: CookedRecipeSnapshot;
   calories?: number;
   protein_g?: number;
   fat_g?: number;
@@ -885,7 +890,7 @@ export function recordLocalCookingDone(
   feedback?: CookingFeedback,
   consumedIngredientNames: string[] = [],
   rescuedIngredients: RescuedIngredientSnapshot[] = [],
-  metadata: Pick<CookedRecord, 'source' | 'sourceRecipeId'> = {},
+  metadata: Pick<CookedRecord, 'source' | 'sourceRecipeId' | 'recipe'> = {},
 ): UserStats {
   const stats = getLocalUserStats();
   const today = getTodayLocalDateKey();
@@ -926,6 +931,7 @@ export function recordLocalCookingDone(
     feedback,
     source: metadata.source,
     sourceRecipeId: metadata.sourceRecipeId,
+    recipe: metadata.recipe,
   };
 
   const updated: UserStats = {

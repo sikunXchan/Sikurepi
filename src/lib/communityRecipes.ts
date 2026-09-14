@@ -10,6 +10,7 @@ type QueuedCommunityRecipe = {
 
 const OUTBOX_KEY = 'sikurepi_community_recipe_outbox_v1';
 export const COMMUNITY_RECIPE_OUTBOX_EVENT = 'community-recipe-outbox-updated';
+export const COMMUNITY_RECIPES_CHANGED_EVENT = 'community-recipes-changed';
 let activeFlush: Promise<boolean> | null = null;
 
 function readOutbox(): QueuedCommunityRecipe[] {
@@ -46,6 +47,9 @@ async function postRecipes(recipes: ShareableRecipe[]): Promise<boolean> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipes }),
   });
+  if (response.ok && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(COMMUNITY_RECIPES_CHANGED_EVENT));
+  }
   return response.ok;
 }
 
