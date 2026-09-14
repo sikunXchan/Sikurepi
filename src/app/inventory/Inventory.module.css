@@ -266,7 +266,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  width: 52px;
+  width: 66px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -283,7 +283,7 @@
 .shelfChip:focus-visible { outline: 3px solid rgba(32, 178, 170, 0.32); outline-offset: 3px; border-radius: 12px; }
 
 .shelfChipSquare {
-  width: 48px;
+  width: 62px;
 }
 
 .shelfChipIconCircle {
@@ -312,10 +312,14 @@
   font-size: 10px;
   font-weight: 800;
   text-align: center;
-  max-width: 100%;
+  width: 100%;
+  min-height: 2.4em;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--foreground);
 }
 
@@ -643,7 +647,7 @@
 }
 
 .itemPreviewCopy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.itemPreviewCopy strong { overflow: hidden; color: var(--foreground); font-size: 18px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.itemPreviewCopy strong { color: var(--foreground); font-size: 18px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
 .itemPreviewCopy span { color: #418092; font-size: 12px; font-weight: 800; }
 .itemPreviewCopy small { margin-top: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; line-height: 1.35; }
 
@@ -662,6 +666,37 @@
 
 .itemPreviewClose:hover { transform: none; box-shadow: none; }
 
+.itemPreviewRescue {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(229, 86, 112, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 241, 244, 0.92);
+}
+
+.itemPreviewRescue > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.itemPreviewRescue > div strong { color: #bc3f59; font-size: 13px; font-weight: 900; }
+.itemPreviewRescue > div span { color: #765d63; font-size: 10.5px; font-weight: 700; line-height: 1.4; }
+.itemPreviewRescue > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 13px;
+  background: #e85f80;
+  color: #fff;
+  box-shadow: 0 5px 13px rgba(219, 72, 108, 0.2);
+  font-size: 11px;
+  font-weight: 900;
+}
+
 @keyframes itemCardIn {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -676,6 +711,8 @@
   .itemPreviewCard { grid-template-columns: 62px minmax(0, 1fr) 36px; gap: 10px; min-height: 86px; border-radius: 21px; }
   .itemPreviewIcon { width: 62px; height: 62px; border-radius: 18px; }
   .itemPreviewCopy strong { font-size: 16px; }
+  .itemPreviewRescue { grid-template-columns: 1fr; gap: 8px; }
+  .itemPreviewRescue > button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -586,6 +586,8 @@
   gap: 8px;
 }
 
+.recentCardMeta { color: var(--text-muted); font-size: 10px; font-weight: 800; }
+
 .communityHeaderAction {
   display: inline-flex;
   align-items: center;

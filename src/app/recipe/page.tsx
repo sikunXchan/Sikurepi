@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Minus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -11,7 +12,6 @@ import ClimateBar from "@/components/ClimateBar";
 import KitchenLoader from "@/components/KitchenLoader";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
-import RecipeFeedbackPanel from "@/components/RecipeFeedbackPanel";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import PremiumPaywall from "@/components/PremiumPaywall";
@@ -44,11 +44,11 @@ import {
   incrementFreeRecipeGeneration,
 } from "@/lib/storage";
 import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
-import { shareGeneratedRecipes } from "@/lib/communityRecipes";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
 import { setNavLocked } from "@/lib/navLock";
+import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import styles from "./Recipe.module.css";
 
 type RecipeItem = {
@@ -68,6 +68,9 @@ type Recipe = {
   tips: string;
   image_url: string | null;
   nutrition?: NutritionData | null;
+  source?: 'generated' | 'community' | 'daily-pick';
+  sourceRecipeId?: string;
+  servings?: number;
 };
 
 type CookingTip = {
@@ -107,6 +110,7 @@ const stripLeadingEmoji = (value: string) => value
 export default function RecipePage() {
   const { t, language } = useLanguage();
   const { isPremium } = usePremium();
+  const router = useRouter();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -127,8 +131,12 @@ export default function RecipePage() {
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>([]);
   const [rescueIngredientName, setRescueIngredientName] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
-  const [cookingRecipeIndex, setCookingRecipeIndex] = useState<number | null>(null);
+  const [cookingSessionRecipe, setCookingSessionRecipe] = useState<Recipe | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<Recipe | null>(null);
+  // おすすめ・みんなのレシピは「一時プレビュー」として保持し、前回の生成結果を上書きしない。
+  const [externalPreviewRecipe, setExternalPreviewRecipe] = useState<Recipe | null>(null);
+  const [externalPreviewSaved, setExternalPreviewSaved] = useState(false);
+  const [servingOverrides, setServingOverrides] = useState<Record<string, number>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [resultOrigin, setResultOrigin] = useState<'generated' | 'cache' | 'restored' | null>(null);
@@ -160,16 +168,20 @@ export default function RecipePage() {
   // マウント時に一度だけ行い、storage-updated発火のたびに入力中のフォームを
   // 上書きしてしまわないようにする。
   useEffect(() => {
+    if (getLocalUserProfile().autoSaveRecipes === false) return;
     const cached = getLocalLastRecipeGeneration();
     if (cached) {
-      setRecipes(cached.recipes);
+      setRecipes(cached.recipes.map((recipe) => ({
+        ...recipe,
+        servings: recipeServings(recipe.servings, cached.servings),
+      })));
       setCookingTips(cached.cookingTips);
       // 一覧へ戻った時に詳細モーダルが勝手に開かないよう、結果だけ復元する。
       setExpandedIndex(-1);
       setSavedSet(new Set(cached.savedIndices));
       setCreationMode(cached.creationMode);
       setMealStyle(cached.mealStyle || (cached.recipes.length > 1 ? 'set' : 'single'));
-      setInstruction(cached.instruction);
+      // リクエスト・気分は一時的な入力なので、前回結果と一緒には復元しない。
       setSelectedIngredientIds(cached.selectedIngredientIds);
       setSessionServings(cached.servings);
       setResultOrigin('restored');
@@ -202,11 +214,14 @@ export default function RecipePage() {
   useEffect(() => {
     const handoff = consumePendingDailyPickHandoff();
     if (!handoff) return;
-    setRecipes([{ ...handoff, image_url: null, nutrition: handoff.nutrition || null }]);
-    setMealStyle('single');
-    setExpandedIndex(0);
-    setSavedSet(new Set());
-    setResultOrigin('generated');
+    const preview = {
+      ...handoff,
+      image_url: null,
+      nutrition: handoff.nutrition || null,
+      servings: recipeServings(handoff.servings),
+    };
+    setExternalPreviewRecipe(preview);
+    setExternalPreviewSaved(getLocalSavedRecipes().some((recipe) => recipe.title === preview.title));
   }, []);
 
   const loadLocalData = () => {
@@ -218,6 +233,26 @@ export default function RecipePage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const persistRecipe = (recipe: Recipe): boolean => {
+    const normalizedTitle = recipe.title.normalize('NFKC').trim().toLocaleLowerCase();
+    if (getLocalSavedRecipes().some((saved) => saved.title.normalize('NFKC').trim().toLocaleLowerCase() === normalizedTitle)) {
+      return false;
+    }
+    saveLocalRecipe({
+      title: recipe.title,
+      time: recipe.time,
+      ingredients: recipe.ingredients,
+      steps: recipe.steps,
+      tips: recipe.tips,
+      image_url: recipe.image_url,
+      nutrition: recipe.nutrition || null,
+      genre: recipe.genre || null,
+      dish_badge: recipe.dish_badge || null,
+      servings: recipeServings(recipe.servings),
+    });
+    return true;
   };
 
   const toggleIngredientSelection = (id: number) => {
@@ -282,12 +317,17 @@ export default function RecipePage() {
         const savedIndices = cached.recipes
           .map((recipe, index) => savedTitles.has(recipe.title) ? index : -1)
           .filter((index) => index >= 0);
+        const restoredRecipes = cached.recipes.map((recipe) => ({
+          ...recipe,
+          servings: recipeServings(recipe.servings, cached.servings),
+        }));
         const restored = {
           ...cached,
+          recipes: restoredRecipes,
           savedIndices,
           creationMode,
           mealStyle,
-          instruction,
+          instruction: '',
           selectedIngredientIds: validSelectedIngredientIds,
           servings: sessionServings,
         };
@@ -299,7 +339,9 @@ export default function RecipePage() {
         setExpandedIndex(-1);
         setSavedSet(new Set(savedIndices));
         setResultOrigin('cache');
-        setLocalLastRecipeGeneration(restored);
+        if (getLocalUserProfile().autoSaveRecipes !== false) {
+          setLocalLastRecipeGeneration(restored);
+        }
         showToast(t.recipe.cacheHitToast);
         return;
       }
@@ -343,17 +385,25 @@ export default function RecipePage() {
         return;
       }
 
-      if (data.recipes && data.recipes.length > 0) {
-        setRecipes(data.recipes);
+      const generatedRecipes: Recipe[] = Array.isArray(data.recipes)
+        ? data.recipes.map((recipe: Recipe) => ({
+            ...recipe,
+            servings: recipeServings(recipe.servings, sessionServings),
+          }))
+        : [];
+      const savedTitles = new Set(getLocalSavedRecipes().map((saved) => saved.title));
+      const savedIndices = generatedRecipes
+        .map((recipe, index) => savedTitles.has(recipe.title) ? index : -1)
+        .filter((index) => index >= 0);
+      if (generatedRecipes.length > 0) {
+        // 自動保存は「前回の生成結果をレシピタブへ復元する」ための端末内保存。
+        // 保存済みレシピや調理履歴へは自動登録せず、明示的な保存・調理完了を待つ。
+        setSavedSet(new Set(savedIndices));
+        setRecipes(generatedRecipes);
         setExpandedIndex(-1);
         setResultOrigin('generated');
         if (!isPremium) incrementFreeRecipeGeneration(mealStyle);
 
-        // 無料版は常に、Plusは設定がONの時だけ、完成レシピ本文を自動共有する。
-        // 個人設定・在庫・自由記述は送信しない。
-        if (!isPremium || userProfile.shareGeneratedRecipes !== false) {
-          void shareGeneratedRecipes(data.recipes);
-        }
       } else {
         throw new Error(t.recipe.errorNoRecipes);
       }
@@ -368,21 +418,24 @@ export default function RecipePage() {
         });
       }
 
-      // 別タブへ移動しても前回の生成結果が消えないように保存しておく
+      // 別タブへ移動しても前回の生成結果が消えないように端末へ保存しておく。
       const generationSnapshot = {
-        recipes: data.recipes,
+        recipes: generatedRecipes,
         cookingTips: tips,
         expandedIndex: -1,
-        savedIndices: [],
+        savedIndices,
         creationMode,
         mealStyle,
-        instruction,
+        // リクエスト・気分の自由記述は結果キャッシュへ保存しない。
+        instruction: '',
         selectedIngredientIds: validSelectedIngredientIds,
         servings: sessionServings,
         savedAt: new Date().toISOString(),
         requestKey,
       };
-      setLocalLastRecipeGeneration(generationSnapshot);
+      if (getLocalUserProfile().autoSaveRecipes !== false) {
+        setLocalLastRecipeGeneration(generationSnapshot);
+      }
       setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);
@@ -411,29 +464,17 @@ export default function RecipePage() {
     scrollToGenerationForm();
   };
 
-  const handleSaveRecipe = (index: number) => {
-    const r = recipes[index];
-    if (!r) return;
-
-    setSavingIndex(index);
+  const handleSaveRecipe = (recipe: Recipe, index?: number) => {
+    const savingKey = index ?? -2;
+    setSavingIndex(savingKey);
     try {
-      saveLocalRecipe({
-        title: r.title,
-        time: r.time,
-        ingredients: r.ingredients,
-        steps: r.steps,
-        tips: r.tips,
-        image_url: r.image_url,
-        nutrition: r.nutrition || null,
-        genre: r.genre || null,
-        dish_badge: r.dish_badge || null,
-      });
-
-      setSavedSet(prev => new Set(prev).add(index));
+      persistRecipe(recipe);
+      if (index === undefined) setExternalPreviewSaved(true);
+      else setSavedSet(prev => new Set(prev).add(index));
 
       // キャッシュ上の保存済みフラグも更新しておく（タブを移動して戻っても保存済み表示が残るように）
       const cached = getLocalLastRecipeGeneration();
-      if (cached) {
+      if (cached && index !== undefined) {
         setLocalLastRecipeGeneration({
           ...cached,
           savedIndices: Array.from(new Set([...cached.savedIndices, index])),
@@ -446,7 +487,7 @@ export default function RecipePage() {
         origin: { y: 0.7 },
         colors: ['#ff6f91', '#20b2aa', '#fbbf24', '#f472b6'],
       });
-      showToast(t.recipe.savedToast(r.title));
+      showToast(t.recipe.savedToast(recipe.title));
     } catch (e) {
       console.error(e);
       showToast(t.recipe.saveFailedToast);
@@ -455,7 +496,7 @@ export default function RecipePage() {
     }
   };
 
-  const handlePinToShopping = (recipeIndex: number, ingredientName: string) => {
+  const handlePinToShopping = (recipeIndex: number | string, ingredientName: string) => {
     const key = `${recipeIndex}-${ingredientName}`;
     if (pinnedToShoppingSet.has(key)) return;
     addLocalShoppingItem(ingredientName);
@@ -469,17 +510,30 @@ export default function RecipePage() {
     if (items.length > 0) acc[cat] = items;
     return acc;
   }, {});
-  const detailRecipe = expandedIndex >= 0 ? recipes[expandedIndex] : null;
-  const detailIsSaved = expandedIndex >= 0 && savedSet.has(expandedIndex);
+  const detailRecipe = externalPreviewRecipe || (expandedIndex >= 0 ? recipes[expandedIndex] : null);
+  const detailIndex = externalPreviewRecipe ? undefined : expandedIndex >= 0 ? expandedIndex : undefined;
+  const detailRecipeKey = detailRecipe
+    ? `${detailRecipe.source || 'generated'}:${detailRecipe.sourceRecipeId || (detailIndex ?? 'preview')}:${detailRecipe.title}`
+    : '';
+  const detailBaseServings = recipeServings(detailRecipe?.servings);
+  const detailServings = servingOverrides[detailRecipeKey] || detailBaseServings;
+  const scaledDetailRecipe = detailRecipe ? {
+    ...detailRecipe,
+    servings: detailServings,
+    ingredients: detailRecipe.ingredients.map((item) => ({
+      ...item,
+      amount: scaleIngredientAmount(item.amount, detailBaseServings, detailServings),
+    })),
+  } : null;
+  const detailIsSaved = externalPreviewRecipe ? externalPreviewSaved : detailIndex !== undefined && savedSet.has(detailIndex);
 
-  useEffect(() => {
-    if (!detailRecipe) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [detailRecipe]);
+  const closeRecipeDetail = () => {
+    if (externalPreviewRecipe) {
+      router.back();
+      return;
+    }
+    setExpandedIndex(-1);
+  };
 
   return (
     <div className={styles.container}>
@@ -581,7 +635,12 @@ export default function RecipePage() {
                   onClick={() => handleApplyTemplate(tmpl.query)}
                   className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
                 >
-                  <UiIcon slug={tmpl.iconSlug} size={28} alt={tmpl.key} className={styles.templateEmoji} />
+                  <UiIcon
+                    slug={tmpl.iconSlug}
+                    size={46}
+                    alt=""
+                    className={`${styles.templateEmoji} ${tmpl.key === 'sweets' ? styles.templateEmojiSweets : ''}`}
+                  />
                   <span className={styles.templateLabel}>{t.recipe.templates[tmpl.key]}</span>
                 </button>
               );
@@ -619,9 +678,10 @@ export default function RecipePage() {
                 fontSize: 20, fontWeight: 900, cursor: 'pointer',
                 opacity: sessionServings <= 1 ? 0.4 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 0, flex: '0 0 40px', lineHeight: 0,
               }}
             >
-              −
+              <Minus size={20} strokeWidth={3} aria-hidden="true" />
             </button>
             <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
               {t.recipe.servingsUnit(sessionServings)}
@@ -636,9 +696,10 @@ export default function RecipePage() {
                 fontSize: 20, fontWeight: 900, cursor: 'pointer',
                 opacity: sessionServings >= 15 ? 0.4 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 0, flex: '0 0 40px', lineHeight: 0,
               }}
             >
-              ＋
+              <Plus size={20} strokeWidth={3} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -863,6 +924,7 @@ export default function RecipePage() {
                     className={styles.recipeDishChoiceIcon}
                   />
                   <span className={styles.recipeDishChoiceName}>{recipe.title}</span>
+                  <span className={styles.recipeDishChoiceServings}>{t.recipe.servingsUnit(recipeServings(recipe.servings, sessionServings))}</span>
                 </button>
               ))}
             </div>
@@ -919,12 +981,15 @@ export default function RecipePage() {
 
       {/* クッキングセッション */}
       <AnimatePresence>
-        {cookingRecipeIndex !== null && recipes[cookingRecipeIndex] && (
+        {cookingSessionRecipe && (
           <CookingSession
-            title={recipes[cookingRecipeIndex].title}
-            steps={recipes[cookingRecipeIndex].steps}
-            ingredients={recipes[cookingRecipeIndex].ingredients}
-            onClose={() => setCookingRecipeIndex(null)}
+            title={cookingSessionRecipe.title}
+            steps={cookingSessionRecipe.steps}
+            ingredients={cookingSessionRecipe.ingredients}
+            completionRecipe={cookingSessionRecipe}
+            source={cookingSessionRecipe.source || 'generated'}
+            sourceRecipeId={cookingSessionRecipe.sourceRecipeId}
+            onClose={() => setCookingSessionRecipe(null)}
           />
         )}
       </AnimatePresence>
@@ -934,6 +999,8 @@ export default function RecipePage() {
         {cookedModalRecipe && (
           <CookedModal
             recipe={cookedModalRecipe}
+            source={cookedModalRecipe.source || 'generated'}
+            sourceRecipeId={cookedModalRecipe.sourceRecipeId}
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadLocalData();
@@ -944,21 +1011,22 @@ export default function RecipePage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {detailRecipe && expandedIndex >= 0 && cookingRecipeIndex === null && !cookedModalRecipe && (
+        {detailRecipe && scaledDetailRecipe && !cookingSessionRecipe && !cookedModalRecipe && (
           <motion.div
             className={styles.recipeDetailOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             role="dialog"
             aria-modal="true"
             aria-label={detailRecipe.title}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
           >
             <div className={styles.recipeDetailTopbar}>
               <button
                 type="button"
                 className={styles.recipeDetailClose}
-                onClick={() => setExpandedIndex(-1)}
+                onClick={closeRecipeDetail}
                 aria-label={language === 'ja' ? '閉じる' : 'Close'}
               >
                 <X size={22} />
@@ -967,8 +1035,8 @@ export default function RecipePage() {
               <button
                 type="button"
                 className={detailIsSaved ? styles.savedBtn : styles.saveBtn}
-                onClick={() => handleSaveRecipe(expandedIndex)}
-                disabled={detailIsSaved || savingIndex === expandedIndex}
+                onClick={() => handleSaveRecipe(scaledDetailRecipe, detailIndex)}
+                disabled={detailIsSaved || savingIndex === (detailIndex ?? -2)}
               >
                 {detailIsSaved ? <Check size={15} /> : <Bookmark size={15} />}
                 {detailIsSaved ? t.recipe.saved : t.recipe.save}
@@ -1019,6 +1087,7 @@ export default function RecipePage() {
                 <span className={styles.recipeTime}>
                   <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
                   {detailRecipe.time}
+                  <span aria-hidden="true">・</span>{t.recipe.servingsUnit(detailServings)}
                 </span>
                 {detailRecipe.ingredients.length > 0 && (
                   <div className={styles.ingredientIconRow}>
@@ -1027,10 +1096,6 @@ export default function RecipePage() {
                     ))}
                   </div>
                 )}
-              </div>
-
-              <div className={styles.recipeFeedbackWrap}>
-                <RecipeFeedbackPanel recipe={detailRecipe} source="generation" />
               </div>
 
               <div className={styles.recipeDetailContent}>
@@ -1043,12 +1108,33 @@ export default function RecipePage() {
                 <div className={styles.section}>
                   <div className={styles.detailSectionHeading}>
                     <h3>{t.recipe.ingredientsSectionTitle}</h3>
-                    <span>{t.recipe.ingredientsSectionHint}</span>
+                    <div className={styles.detailServingsControl} aria-label={t.recipe.servingsLabel}>
+                      <button
+                        type="button"
+                        onClick={() => setServingOverrides((current) => ({ ...current, [detailRecipeKey]: Math.max(1, detailServings - 1) }))}
+                        disabled={detailServings <= 1}
+                        aria-label={language === 'ja' ? '人数を減らす' : 'Decrease servings'}
+                      ><Minus size={17} strokeWidth={3} aria-hidden="true" /></button>
+                      <strong>{t.recipe.servingsUnit(detailServings)}</strong>
+                      <button
+                        type="button"
+                        onClick={() => setServingOverrides((current) => ({ ...current, [detailRecipeKey]: Math.min(15, detailServings + 1) }))}
+                        disabled={detailServings >= 15}
+                        aria-label={language === 'ja' ? '人数を増やす' : 'Increase servings'}
+                      ><Plus size={17} strokeWidth={3} aria-hidden="true" /></button>
+                    </div>
                   </div>
+                  {detailServings !== detailBaseServings && (
+                    <p className={styles.servingScaleNotice}>
+                      {language === 'ja'
+                        ? '分量は目安です。卵など分けにくい食材や調味料は、作りやすい量と味見で調整してください。'
+                        : 'Amounts are estimates. Round indivisible ingredients and adjust seasonings to taste.'}
+                    </p>
+                  )}
                   <ul className={styles.ingredientList}>
-                    {detailRecipe.ingredients.map((item, i) => {
+                    {scaledDetailRecipe.ingredients.map((item, i) => {
                       const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
-                      const pinKey = `${expandedIndex}-${item.name}`;
+                       const pinKey = `${detailRecipeKey}-${item.name}`;
                       const isPinned = pinnedToShoppingSet.has(pinKey);
                       return (
                         <li key={i} className={missing ? styles.ingredientMissing : undefined}>
@@ -1063,7 +1149,7 @@ export default function RecipePage() {
                             {missing && (
                               <button
                                 type="button"
-                                onClick={() => handlePinToShopping(expandedIndex, item.name)}
+                                 onClick={() => handlePinToShopping(detailRecipeKey, item.name)}
                                 className={isPinned ? styles.addedBtn : styles.addToCartBtn}
                                 disabled={isPinned}
                               >
@@ -1083,7 +1169,7 @@ export default function RecipePage() {
                     <h3>{t.recipe.stepsSectionTitle}</h3>
                     <button
                       className={styles.startCookingBtn}
-                      onClick={() => setCookingRecipeIndex(expandedIndex)}
+                      onClick={() => setCookingSessionRecipe(scaledDetailRecipe)}
                     >
                       <PlayCircle size={16} />
                       {t.recipe.cookingModeButton}
@@ -1115,7 +1201,7 @@ export default function RecipePage() {
                 <button
                   type="button"
                   className={styles.cookedDetailBtn}
-                  onClick={() => setCookedModalRecipe(detailRecipe)}
+                  onClick={() => setCookedModalRecipe(scaledDetailRecipe)}
                 >
                   {t.recipe.cookedButton}
                 </button>

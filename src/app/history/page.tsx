@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Crown } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Minus, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -13,11 +13,14 @@ import RecipeThumbnail, { GENRE_ICON_SLUGS } from "@/components/RecipeThumbnail"
 import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
 import PremiumPaywall from "@/components/PremiumPaywall";
+import RecipeDetailScreen, { type RecipeDetailData } from "@/components/RecipeDetailScreen";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
+  deleteLocalCookingRecordsForRecipe,
+  deleteLocalCookedRecord,
   getLocalIngredients,
   addLocalShoppingItem,
   isIngredientMissing,
@@ -25,11 +28,13 @@ import {
   getLocalUserProfile,
   getLocalUserStats,
   CookedRecord,
+  CookedRecipeSnapshot,
   SavedRecipe,
   Ingredient,
   UserProfile
 } from "@/lib/storage";
 import { FREE_HISTORY_ITEMS } from "@/lib/storage";
+import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
@@ -52,6 +57,13 @@ export default function HistoryPage() {
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
+  const [recentCookedRecords, setRecentCookedRecords] = useState<Array<{
+    record: CookedRecord;
+    recordIndex: number;
+    recipe: CookedRecipeSnapshot | SavedRecipe | null;
+  }>>([]);
+  const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -61,13 +73,25 @@ export default function HistoryPage() {
   const [sortByFulfillment, setSortByFulfillment] = useState(false);
 
   function loadRecipes() {
-    setAllRecipes(getLocalSavedRecipes());
+    const savedRecipes = getLocalSavedRecipes();
+    const stats = getLocalUserStats();
+    setAllRecipes(savedRecipes);
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
     setRescueRecords(
-      getLocalUserStats().cooked_records
+      stats.cooked_records
         .filter((record) => (record.rescuedIngredients?.length || 0) > 0)
         .slice(0, 8)
+    );
+    setRecentCookedRecords(
+      (stats.cooked_records || []).slice(0, 3).map((record, recordIndex) => ({
+        record,
+        recordIndex,
+        recipe: record.recipe || savedRecipes.find((saved) =>
+          saved.title.normalize('NFKC').trim().toLocaleLowerCase()
+            === record.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase()
+        ) || null,
+      }))
     );
     setLoading(false);
   }
@@ -152,7 +176,9 @@ export default function HistoryPage() {
 
   const handleDelete = () => {
     if (targetId === null) return;
+    const target = allRecipes.find((recipe) => recipe.id === targetId);
     deleteLocalSavedRecipe(targetId);
+    if (target) deleteLocalCookingRecordsForRecipe(target.id, target.title);
     if (expandedId === targetId) setExpandedId(null);
     setModalOpen(false);
     setTargetId(null);
@@ -227,6 +253,54 @@ export default function HistoryPage() {
             })}
           </div>
         </section>
+      )}
+
+      {!loading && recentCookedRecords.length > 0 && (
+        <section className={styles.recentCookedSection}>
+          <div className={styles.historySectionHeading}>
+            <div>
+              <h2>{language === 'ja' ? '直近に作った料理' : 'Recently cooked'}</h2>
+              <p>{language === 'ja' ? '調理完了した最新3件です' : 'Your latest three completed dishes'}</p>
+            </div>
+          </div>
+          <div className={styles.recentCookedGrid}>
+            {recentCookedRecords.map(({ record, recordIndex, recipe }) => (
+              <article key={`${record.date}-${recordIndex}`} className={styles.recentCookedCard}>
+                <button
+                  type="button"
+                  className={styles.recentCookedOpen}
+                  disabled={!recipe}
+                  onClick={() => recipe && setPreviewRecipe({
+                    ...recipe,
+                    source: 'history',
+                    sourceRecipeId: record.sourceRecipeId || `cooked-${record.date}`,
+                  })}
+                >
+                  <RecipeThumbnail genre={recipe?.genre || undefined} fallbackIngredientName={record.recipeTitle} size={76} />
+                  <span><strong>{record.recipeTitle}</strong><small>{formatDate(record.date)}</small></span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.recentCookedDelete}
+                  aria-label={language === 'ja' ? `${record.recipeTitle}の自炊記録を削除` : `Delete cooking record for ${record.recipeTitle}`}
+                  onClick={() => {
+                    deleteLocalCookedRecord(recordIndex);
+                    loadRecipes();
+                  }}
+                ><Trash2 size={15} /></button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && (
+        <div className={styles.historySectionHeading}>
+          <div>
+            <h2>{language === 'ja' ? '保存したレシピ' : 'Saved recipes'}</h2>
+            <p>{language === 'ja' ? '保存ボタンで残したレシピです' : 'Recipes kept with the save button'}</p>
+          </div>
+        </div>
       )}
 
       {/* Search & Filter */}
@@ -343,23 +417,44 @@ export default function HistoryPage() {
           {sortedRecipes.map((recipe) => {
             const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
+            const baseServings = recipeServings(recipe.servings);
+            const displayServings = servingOverrides[recipe.id] || baseServings;
+            const displayedRecipe = {
+              ...recipe,
+              servings: displayServings,
+              ingredients: recipe.ingredients.map((item) => ({
+                ...item,
+                amount: scaleIngredientAmount(item.amount, baseServings, displayServings),
+              })),
+            };
             return (
               <div key={recipe.id} className={styles.recipeCard}>
                 <div
                   className={styles.cardTopRow}
                   onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
                 >
-                  <RecipeThumbnail
-                    genre={recipe.genre}
-                    fallbackIngredientName={recipe.title}
-                    size={50}
-                    className={styles.recipeIcon}
-                  />
+                  <button
+                    type="button"
+                    className={styles.recipePreviewButton}
+                    aria-label={language === 'ja' ? `${recipe.title}をトレーで開く` : `Open ${recipe.title}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
+                    }}
+                  >
+                    <RecipeThumbnail
+                      genre={recipe.genre}
+                      fallbackIngredientName={recipe.title}
+                      size={50}
+                      className={styles.recipeIcon}
+                    />
+                  </button>
 
                   <div className={styles.titleInfo}>
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
                     <div className={styles.recipeMetaRow}>
                       <span className={styles.recipeTime}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{recipe.time}</span>
+                      <span className={styles.servingsBadge}>{t.recipe.servingsUnit(displayServings)}</span>
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
@@ -390,7 +485,7 @@ export default function HistoryPage() {
                   <button
                     type="button"
                     className={styles.cookBtn}
-                    onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(recipe); }}
+                    onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(displayedRecipe); }}
                   >
                     <PlayCircle size={15} />
                     {t.history.cookingButton}
@@ -399,7 +494,7 @@ export default function HistoryPage() {
                   <button
                     type="button"
                     className={styles.madeBtn}
-                    onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(recipe); }}
+                    onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(displayedRecipe); }}
                   >
                     {t.history.cookedButton}
                   </button>
@@ -423,9 +518,17 @@ export default function HistoryPage() {
                     )}
 
                     <div className={styles.section}>
-                      <h3>{t.history.ingredientsTitle}</h3>
+                      <div className={styles.detailHeadingRow}>
+                        <h3>{t.history.ingredientsTitle}</h3>
+                        <div className={styles.servingsControl} aria-label={t.recipe.servingsLabel}>
+                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}><Minus size={16} strokeWidth={3} /></button>
+                          <strong>{t.recipe.servingsUnit(displayServings)}</strong>
+                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}><Plus size={16} strokeWidth={3} /></button>
+                        </div>
+                      </div>
+                      {displayServings !== baseServings && <p className={styles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
                       <ul className={styles.ingredientList}>
-                        {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => {
+                        {displayedRecipe.ingredients.map((item, i) => {
                           const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
                           const pinKey = `${recipe.id}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);
@@ -471,7 +574,7 @@ export default function HistoryPage() {
 
                     {recipe.tips && isPremium && (
                       <div className={styles.tipsBox}>
-                        <strong>{t.history.tipsPrefix}</strong> {recipe.tips}
+                        <strong>{t.recipe.tipsPrefix}</strong> {recipe.tips}
                       </div>
                     )}
                     {recipe.tips && !isPremium && (
@@ -509,6 +612,8 @@ export default function HistoryPage() {
         {cookedModalRecipe && (
           <CookedModal
             recipe={cookedModalRecipe}
+            source="history"
+            sourceRecipeId={cookedModalRecipe.id}
             onClose={() => setCookedModalRecipe(null)}
             onCompleted={() => {
               loadRecipes();
@@ -520,6 +625,15 @@ export default function HistoryPage() {
 
       <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
 
+      <RecipeDetailScreen
+        recipe={previewRecipe}
+        onClose={() => setPreviewRecipe(null)}
+        onCompleted={() => {
+          loadRecipes();
+          showToast(t.recipe.cookedCompletedToast);
+        }}
+      />
+
       {/* クッキングセッション */}
       <AnimatePresence>
         {cookingSessionRecipe && (
@@ -527,6 +641,9 @@ export default function HistoryPage() {
             title={cookingSessionRecipe.title}
             steps={cookingSessionRecipe.steps || []}
             ingredients={cookingSessionRecipe.ingredients || []}
+            completionRecipe={cookingSessionRecipe}
+            source="history"
+            sourceRecipeId={cookingSessionRecipe.id}
             onClose={() => setCookingSessionRecipe(null)}
           />
         )}

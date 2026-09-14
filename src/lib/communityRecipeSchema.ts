@@ -13,6 +13,7 @@ export type CommunityRecipe = {
     carbs_g: number;
   } | null;
   creator_comment?: string | null;
+  servings?: number;
   translations?: Partial<Record<'ja' | 'en', CommunityRecipeTranslation>>;
 };
 
@@ -83,6 +84,7 @@ export function sanitizeCommunityRecipe(recipe: CommunityRecipe): CommunityRecip
     genre: typeof recipe.genre === 'string' ? recipe.genre.normalize('NFKC').trim().slice(0, 80) : null,
     dish_badge: typeof recipe.dish_badge === 'string' ? recipe.dish_badge.normalize('NFKC').trim().slice(0, 120) : null,
     nutrition: recipe.nutrition || null,
+    servings: Math.max(1, Math.min(15, Math.round(Number(recipe.servings) || 2))),
     creator_comment: typeof recipe.creator_comment === 'string'
       ? recipe.creator_comment.normalize('NFKC').trim().slice(0, 280)
       : null,

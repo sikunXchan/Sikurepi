@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { buildBackupPayload, applyBackupPayload, hasLocalData } from "@/lib/storage";
+import { COMMUNITY_RECIPE_OUTBOX_EVENT, flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
 
 const SYNC_DEBOUNCE_MS = 2000;
 
@@ -11,6 +12,8 @@ const SYNC_DEBOUNCE_MS = 2000;
 // マウントする常駐コンポーネント。
 //
 // 方針(シンプルな「全量スナップショット」同期):
+// - 在庫・買い物・履歴・自炊統計・設定だけでなく、献立・直近の生成結果・
+//   生成キャッシュ・無料枠利用状況まで同じアカウントへ同期する。
 // - ログイン直後: サーバーに既にデータがあればローカルへ反映(=そのデータで上書き)。
 //   サーバーが空で、この端末にローカルデータがあればサーバーへアップロードする。
 // - ログイン中の書き込み: 既存のstorage.ts経由の書き込みは全て"storage-updated"
@@ -31,6 +34,21 @@ export default function SyncManager() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userIdRef = useRef<string | null>(null);
   const pullingRef = useRef(false);
+
+  // みんなのレシピへの送信はログイン有無と別の公開キュー。通信失敗時も、
+  // ホーム画面を開くまで待たず、オンライン復帰・フォーカス復帰で再送する。
+  useEffect(() => {
+    const flush = () => { void flushCommunityRecipeOutbox(); };
+    flush();
+    window.addEventListener("online", flush);
+    window.addEventListener("focus", flush);
+    window.addEventListener(COMMUNITY_RECIPE_OUTBOX_EVENT, flush);
+    return () => {
+      window.removeEventListener("online", flush);
+      window.removeEventListener("focus", flush);
+      window.removeEventListener(COMMUNITY_RECIPE_OUTBOX_EVENT, flush);
+    };
+  }, []);
 
   const pushToRemote = useCallback(async (userId: string) => {
     if (!supabase) return;
@@ -124,7 +142,7 @@ export default function SyncManager() {
       window.removeEventListener("storage-updated", onStorageUpdated);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, pushToRemote]);
 
   // アプリがバックグラウンドから復帰したタイミングで再同期する
   useEffect(() => {

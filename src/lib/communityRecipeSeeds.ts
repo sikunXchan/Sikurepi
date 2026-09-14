@@ -10,7 +10,7 @@ function bilingualRecipe(
   japanese: Omit<CommunityRecipe, 'translations'>,
   english: CommunityRecipeTranslation,
 ): CommunityRecipe {
-  return { ...japanese, translations: { en: english } };
+  return { servings: 2, ...japanese, translations: { en: english } };
 }
 
 // 初回から「みんなのレシピ」が空にならないよう、分量・加熱目安・味の調整方法を

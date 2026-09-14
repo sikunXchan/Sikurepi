@@ -17,6 +17,7 @@ import {
 } from '@/lib/dietaryRules';
 import { qualityGateErrors } from '@/lib/recipeQuality';
 import type { ValidatedRecipe } from '@/lib/recipeValidation';
+import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 
 // ホームタブ「今日のおすすめ」用のAPI。
 // POSTは端末から渡された在庫・好みを使うパーソナライズ枠。結果はクライアント側で
@@ -39,6 +40,7 @@ export type DailyPickRecipe = {
   steps: BilingualText[];
   tips: BilingualText;
   nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
+  servings?: number;
 };
 
 type FlavorFeedbackSummary = {
@@ -208,7 +210,7 @@ ${dietaryDetails ? `\n食事制限の具体的な定義:\n${dietaryDetails}\n` :
     ? 'このユーザーの在庫と好みに合う、季節感があり作りやすい家庭料理を「今日のおすすめ」として1品だけ考案してください。'
     : '特定のユーザーの在庫には縛られず、アプリの「今日のおすすめ」として誰にでもおすすめできる、季節感があり作りやすい家庭料理を1品だけ考案してください。'}
 ${personalizationSection}
-${FLAVOR_INTENSITY_INSTRUCTION}
+${FLAVOR_INTENSITY_INSTRUCTION}${buildIngredientUnitInstruction('ja')}${buildIngredientUnitInstruction('en')}
 
 材料は2人分の具体的な分量にしてください。各手順に火加減・時間・見た目の目安を入れ、材料を手順から漏らさないでください。鶏肉・豚肉・ひき肉・内臓を使う場合は、中心75℃で1分以上または同等に十分加熱する指示を含めてください。提出前に分量、工程時間、PFCとcaloriesの整合、味・香り・食感を自己監査してください。
 
@@ -298,7 +300,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     }, 'dailyPick');
     if (lastErrors.length > 0) continue;
 
-    return recipe;
+    return { ...recipe, servings: 2 };
   }
 
   throw new Error(`Generated recommendation failed safety validation: ${lastErrors.join('; ')}`);
