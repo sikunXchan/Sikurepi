@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus, AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus, Minus, AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -381,7 +381,11 @@ export default function MealPlanPage() {
       </section>
 
       {generating && (
-        <KitchenLoader variant="cooking" text={t.mealPlan.generatingText} />
+        <KitchenLoader
+          variant="cooking"
+          text={t.mealPlan.generatingText}
+          phaseMessages={t.mealPlan.loadingPhases}
+        />
       )}
 
       {errorMsg && (
@@ -514,9 +518,9 @@ export default function MealPlanPage() {
                                     <div className={recipeStyles.detailSectionHeading}>
                                       <h3>{t.mealPlan.ingredientsTitle}</h3>
                                       <div className={recipeStyles.detailServingsControl} aria-label={t.recipe.servingsLabel}>
-                                        <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.max(1, displayServings - 1) }))}>−</button>
+                                        <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.max(1, displayServings - 1) }))}><Minus size={17} strokeWidth={3} /></button>
                                         <strong>{t.recipe.servingsUnit(displayServings)}</strong>
-                                        <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.min(15, displayServings + 1) }))}>＋</button>
+                                        <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.min(15, displayServings + 1) }))}><Plus size={17} strokeWidth={3} /></button>
                                       </div>
                                     </div>
                                     {displayServings !== baseServings && <p className={recipeStyles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}

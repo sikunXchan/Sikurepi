@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CircleAlert, Loader2, ChevronDown, ChevronUp, Bookmark, Check, Plus, Minus, Lightbulb, PlayCircle, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import NutritionChart from "@/components/NutritionChart";
@@ -109,6 +110,7 @@ const stripLeadingEmoji = (value: string) => value
 export default function RecipePage() {
   const { t, language } = useLanguage();
   const { isPremium } = usePremium();
+  const router = useRouter();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   // getLocalUserProfile()を直接初期値に渡すとSSR時のデフォルト値とクライアント
   // 初回レンダー時の実データが食い違いハイドレーションミスマッチになるため、
@@ -166,6 +168,7 @@ export default function RecipePage() {
   // マウント時に一度だけ行い、storage-updated発火のたびに入力中のフォームを
   // 上書きしてしまわないようにする。
   useEffect(() => {
+    if (getLocalUserProfile().autoSaveRecipes === false) return;
     const cached = getLocalLastRecipeGeneration();
     if (cached) {
       setRecipes(cached.recipes.map((recipe) => ({
@@ -336,7 +339,9 @@ export default function RecipePage() {
         setExpandedIndex(-1);
         setSavedSet(new Set(savedIndices));
         setResultOrigin('cache');
-        setLocalLastRecipeGeneration(restored);
+        if (getLocalUserProfile().autoSaveRecipes !== false) {
+          setLocalLastRecipeGeneration(restored);
+        }
         showToast(t.recipe.cacheHitToast);
         return;
       }
@@ -386,15 +391,14 @@ export default function RecipePage() {
             servings: recipeServings(recipe.servings, sessionServings),
           }))
         : [];
-      const autoSavedIndices: number[] = [];
+      const savedTitles = new Set(getLocalSavedRecipes().map((saved) => saved.title));
+      const savedIndices = generatedRecipes
+        .map((recipe, index) => savedTitles.has(recipe.title) ? index : -1)
+        .filter((index) => index >= 0);
       if (generatedRecipes.length > 0) {
-        if (getLocalUserProfile().autoSaveRecipes !== false) {
-          generatedRecipes.forEach((recipe, index) => {
-            persistRecipe(recipe);
-            autoSavedIndices.push(index);
-          });
-          setSavedSet(new Set(autoSavedIndices));
-        }
+        // 自動保存は「前回の生成結果をレシピタブへ復元する」ための端末内保存。
+        // 保存済みレシピや調理履歴へは自動登録せず、明示的な保存・調理完了を待つ。
+        setSavedSet(new Set(savedIndices));
         setRecipes(generatedRecipes);
         setExpandedIndex(-1);
         setResultOrigin('generated');
@@ -414,12 +418,12 @@ export default function RecipePage() {
         });
       }
 
-      // 別タブへ移動しても前回の生成結果が消えないように保存しておく
+      // 別タブへ移動しても前回の生成結果が消えないように端末へ保存しておく。
       const generationSnapshot = {
         recipes: generatedRecipes,
         cookingTips: tips,
         expandedIndex: -1,
-        savedIndices: autoSavedIndices,
+        savedIndices,
         creationMode,
         mealStyle,
         // リクエスト・気分の自由記述は結果キャッシュへ保存しない。
@@ -429,7 +433,9 @@ export default function RecipePage() {
         savedAt: new Date().toISOString(),
         requestKey,
       };
-      setLocalLastRecipeGeneration(generationSnapshot);
+      if (getLocalUserProfile().autoSaveRecipes !== false) {
+        setLocalLastRecipeGeneration(generationSnapshot);
+      }
       setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);
@@ -522,8 +528,11 @@ export default function RecipePage() {
   const detailIsSaved = externalPreviewRecipe ? externalPreviewSaved : detailIndex !== undefined && savedSet.has(detailIndex);
 
   const closeRecipeDetail = () => {
-    if (externalPreviewRecipe) setExternalPreviewRecipe(null);
-    else setExpandedIndex(-1);
+    if (externalPreviewRecipe) {
+      router.back();
+      return;
+    }
+    setExpandedIndex(-1);
   };
 
   return (
@@ -666,7 +675,7 @@ export default function RecipePage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              −
+              <Minus size={20} strokeWidth={3} aria-hidden="true" />
             </button>
             <span style={{ fontSize: 20, fontWeight: 900, color: '#ea580c', minWidth: 64, textAlign: 'center' }}>
               {t.recipe.servingsUnit(sessionServings)}
@@ -683,7 +692,7 @@ export default function RecipePage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              ＋
+              <Plus size={20} strokeWidth={3} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -994,12 +1003,17 @@ export default function RecipePage() {
         )}
       </AnimatePresence>
 
-      {detailRecipe && scaledDetailRecipe && !cookingSessionRecipe && !cookedModalRecipe && (
-          <div
+      <AnimatePresence>
+        {detailRecipe && scaledDetailRecipe && !cookingSessionRecipe && !cookedModalRecipe && (
+          <motion.div
             className={styles.recipeDetailOverlay}
             role="dialog"
             aria-modal="true"
             aria-label={detailRecipe.title}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
           >
             <div className={styles.recipeDetailTopbar}>
               <button
@@ -1093,14 +1107,14 @@ export default function RecipePage() {
                         onClick={() => setServingOverrides((current) => ({ ...current, [detailRecipeKey]: Math.max(1, detailServings - 1) }))}
                         disabled={detailServings <= 1}
                         aria-label={language === 'ja' ? '人数を減らす' : 'Decrease servings'}
-                      >−</button>
+                      ><Minus size={17} strokeWidth={3} aria-hidden="true" /></button>
                       <strong>{t.recipe.servingsUnit(detailServings)}</strong>
                       <button
                         type="button"
                         onClick={() => setServingOverrides((current) => ({ ...current, [detailRecipeKey]: Math.min(15, detailServings + 1) }))}
                         disabled={detailServings >= 15}
                         aria-label={language === 'ja' ? '人数を増やす' : 'Increase servings'}
-                      >＋</button>
+                      ><Plus size={17} strokeWidth={3} aria-hidden="true" /></button>
                     </div>
                   </div>
                   {detailServings !== detailBaseServings && (
@@ -1186,8 +1200,9 @@ export default function RecipePage() {
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
+      </AnimatePresence>
 
       <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>

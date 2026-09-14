@@ -1146,6 +1146,7 @@
   flex-direction: column;
   contain: layout paint style;
   transform: translateZ(0);
+  will-change: opacity, transform;
   min-height: 0;
   padding-top: max(env(safe-area-inset-top), 10px);
   background:
@@ -1284,6 +1285,7 @@
   place-items: center;
   width: 30px;
   height: 30px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: #278d83;
@@ -1291,6 +1293,7 @@
   font-size: 17px;
   font-weight: 900;
   cursor: pointer;
+  line-height: 0;
 }
 
 .detailServingsControl button:disabled { opacity: .35; cursor: default; }
