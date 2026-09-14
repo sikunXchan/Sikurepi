@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Crown, ChevronRight } from "lucide-react";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import CommunityRecipesScreen, { CommunityRecipeRowCard, type CommunityRecipeRow } from "@/components/CommunityRecipesScreen";
@@ -11,6 +10,7 @@ import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import KitchenLoader from "@/components/KitchenLoader";
 import PremiumPaywall from "@/components/PremiumPaywall";
+import RecipeDetailScreen, { type RecipeDetailData } from "@/components/RecipeDetailScreen";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { FREE_COMMUNITY_RECIPE_ITEMS } from "@/lib/premiumQuota";
@@ -22,7 +22,6 @@ import {
   getCachedDailyPick,
   getTodayLocalDateKey,
   setCachedDailyPick,
-  setPendingDailyPickHandoff,
   getRecentFlavorFeedbackSummary,
   getForgottenIngredients,
   getIngredientAgeDays,
@@ -35,7 +34,7 @@ import {
 } from "@/lib/storage";
 import styles from "./Home.module.css";
 import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
-import { flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
+import { COMMUNITY_RECIPES_CHANGED_EVENT, flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
 import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type BilingualText = { ja: string; en: string };
@@ -64,7 +63,6 @@ const getServerHydrationSnapshot = () => false;
 export default function HomePage() {
   const { t, language } = useLanguage();
   const { isPremium } = usePremium();
-  const router = useRouter();
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<SavedRecipe[]>([]);
   const [rescueTarget, setRescueTarget] = useState<Ingredient | null>(null);
@@ -75,12 +73,7 @@ export default function HomePage() {
     recipe: DailyPickRecipe;
   } | null>(null);
   const [dailyPickSettledKey, setDailyPickSettledKey] = useState<string | null>(null);
-
-  // おすすめ・みんなのレシピは通常ページより大きい詳細UIを使うため、先に
-  // レシピ画面のコードを読み込んでおき、タップ後の白い待ち時間を減らす。
-  useEffect(() => {
-    router.prefetch('/recipe');
-  }, [router]);
+  const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
   const isHydrated = useSyncExternalStore(
     subscribeToHydration,
     getClientHydrationSnapshot,
@@ -186,23 +179,26 @@ export default function HomePage() {
   }, [dailyPickConstraintKey, isHydrated, todayDate]);
 
   useEffect(() => {
+    const loadCommunityRecipes = () => {
+      fetch(`/api/community-recipes?limit=${isPremium ? 20 : FREE_COMMUNITY_RECIPE_ITEMS}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
+        .catch(() => setCommunityRecipes([]));
+    };
     void flushCommunityRecipeOutbox();
-    fetch(`/api/community-recipes?limit=${FREE_COMMUNITY_RECIPE_ITEMS}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
-      .catch(() => setCommunityRecipes([]));
-  }, []);
+    loadCommunityRecipes();
+    window.addEventListener(COMMUNITY_RECIPES_CHANGED_EVENT, loadCommunityRecipes);
+    return () => window.removeEventListener(COMMUNITY_RECIPES_CHANGED_EVENT, loadCommunityRecipes);
+  }, [isPremium]);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 || hour >= 18 ? t.home.greetingEvening : hour < 11 ? t.home.greetingMorning : t.home.greetingAfternoon;
 
-  // 「今日のおすすめ」をタップしたら、専用の簡易表示ではなくレシピタブの通常の
-  // レシピカードと同じ見た目・機能(材料の不足表示・クッキングモード・保存・
-  // 料理完了ボタン等)で開けるようにする。言語に応じた文言をここで確定させてから
-  // レシピタブへ1回きりの受け渡しをし、遷移する。
+  // ページ遷移を挟まずホーム上の最上位レイヤーで詳細を開く。これにより、
+  // 閉じた時に元のタブ・スクロール位置を保ち、全画面化のカクつきも抑える。
   const handleOpenDailyPick = () => {
     if (!visibleDailyPick) return;
-    setPendingDailyPickHandoff({
+    setPreviewRecipe({
       title: pickText(visibleDailyPick.title, language),
       time: visibleDailyPick.time,
       genre: visibleDailyPick.genre,
@@ -217,12 +213,12 @@ export default function HomePage() {
       servings: visibleDailyPick.servings || 2,
       source: 'daily-pick',
     });
-    router.push("/recipe");
   };
 
   const handleOpenCommunityRecipe = (row: CommunityRecipeRow) => {
     const recipe = localizeCommunityRecipe(row.recipe, language);
-    setPendingDailyPickHandoff({
+    setCommunityAllOpen(false);
+    setPreviewRecipe({
       title: recipe.title,
       time: recipe.time,
       genre: recipe.genre || undefined,
@@ -235,7 +231,6 @@ export default function HomePage() {
       source: 'community',
       sourceRecipeId: row.id,
     });
-    router.push('/recipe');
   };
 
   const handleDismissRescue = () => {
@@ -419,6 +414,13 @@ export default function HomePage() {
         open={communityAllOpen}
         onClose={() => setCommunityAllOpen(false)}
         onSelect={handleOpenCommunityRecipe}
+      />
+      <RecipeDetailScreen
+        recipe={previewRecipe}
+        onClose={() => setPreviewRecipe(null)}
+        onCompleted={() => {
+          setRecentRecipes([...getLocalSavedRecipes()].sort((a, b) => new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()).slice(0, 6));
+        }}
       />
       <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>

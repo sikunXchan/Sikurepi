@@ -261,7 +261,7 @@ const ja = {
     subtitle: "設定と自炊データはここにまとまってるよ",
     collectionEyebrow: "MY KITCHEN COLLECTION",
     collectionTitle: "キッチン図鑑",
-    collectionSubtitle: "使った食材と作った料理が、ひとつずつ図鑑に仲間入りします。",
+    collectionSubtitle: "料理に使った食材が、ひとつずつ図鑑に仲間入りします。",
     ingredientCollectionTitle: "食材図鑑",
     dishCollectionTitle: "料理図鑑",
     ingredientCollectionTab: "食材",
