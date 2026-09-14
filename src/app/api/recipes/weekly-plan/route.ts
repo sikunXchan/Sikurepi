@@ -210,7 +210,7 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${pinnedSection}
 【重要・厳守事項】
 0. 週間献立は自由作成です。在庫外の食材も使えます。在庫食材は、品質や栄養バランスを損なわない範囲で優先してください。
 1. 上記の日付・食事枠それぞれに必ず1食ずつ、過不足なくレシピを割り当ててください。昼は一皿料理または定食、夜は必ず主菜・副菜・汁物・主食を含む定食にしてください。
-2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。丼物は献立全体で最大1食までとし、丼・パスタ・麺・ワンプレートへ偏らせないでください。
+2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。丼・パスタ・麺・ワンプレートなど特定の形式へ不自然に偏らせず、内容に合う食事形式を選んでください。
 3. ピン留め食材がある場合、1週間のどこかのレシピで必ず使用してください。
 4. 気候や気温に合った最適な温度感・味付けを取り入れてください。
 5. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
@@ -293,8 +293,6 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
           logicErrors.push(`plan[${index}]: lunch meal_format must be "single" or "set"`);
         }
       });
-      const bowlCount = planArray.filter((item) => /丼|どんぶり|donburi|rice bowl/i.test(String((item as Record<string, unknown>)?.title || ''))).length;
-      if (bowlCount > 1) logicErrors.push(`weekly plan contains too many rice bowls (${bowlCount}); maximum is 1`);
       logicErrors.push(...typedPlan.flatMap((item, index) =>
         qualityGateErrors(item, {
           servings: targetServings,
