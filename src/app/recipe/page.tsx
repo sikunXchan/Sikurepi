@@ -678,6 +678,7 @@ export default function RecipePage() {
                 fontSize: 20, fontWeight: 900, cursor: 'pointer',
                 opacity: sessionServings <= 1 ? 0.4 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 0, flex: '0 0 40px', lineHeight: 0,
               }}
             >
               <Minus size={20} strokeWidth={3} aria-hidden="true" />
@@ -695,6 +696,7 @@ export default function RecipePage() {
                 fontSize: 20, fontWeight: 900, cursor: 'pointer',
                 opacity: sessionServings >= 15 ? 0.4 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 0, flex: '0 0 40px', lineHeight: 0,
               }}
             >
               <Plus size={20} strokeWidth={3} aria-hidden="true" />
