@@ -1490,14 +1490,14 @@
 .templateTile {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  width: 72px;
-  min-height: 72px;
+  width: 92px;
+  min-height: 98px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px 4px;
+  gap: 6px;
+  padding: 9px 5px;
   border-radius: 18px;
   background: var(--card-bg-solid);
   border: 1.5px solid var(--border);
@@ -1518,12 +1518,13 @@
 }
 
 .templateEmoji {
-  font-size: 22px;
-  line-height: 1;
+  width: 46px !important;
+  height: 46px !important;
+  object-fit: contain;
 }
 
 .templateLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--text-secondary);
   text-align: center;
