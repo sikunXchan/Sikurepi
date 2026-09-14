@@ -220,6 +220,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       excludedIngredients: excludedList,
       trayTheme: isPremium ? profile.trayTheme : 'wood',
       shareGeneratedRecipes: isPremium ? profile.shareGeneratedRecipes !== false : true,
+      autoSaveRecipes: profile.autoSaveRecipes !== false,
     };
 
     setLocalUserProfile(updated);
@@ -383,6 +384,28 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 ? '設定を保存すると、選んだトレーがレシピ結果に反映されます。'
                 : 'Save settings to apply this tray to recipe results.'}
             </span>
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>
+              {language === 'ja' ? '生成レシピの自動保存' : 'Auto-save generated recipes'}
+            </label>
+            <button
+              type="button"
+              className={`${styles.shareToggle} ${profile.autoSaveRecipes !== false ? styles.shareToggleOn : ''}`}
+              aria-pressed={profile.autoSaveRecipes !== false}
+              onClick={() => setProfile(prev => ({ ...prev, autoSaveRecipes: prev.autoSaveRecipes === false }))}
+            >
+              <span className={styles.shareToggleTrack}><i /></span>
+              <span>
+                <strong>{profile.autoSaveRecipes !== false
+                  ? (language === 'ja' ? '生成時に自動で保存する' : 'Save automatically after generation')
+                  : (language === 'ja' ? '自動保存しない' : 'Do not auto-save')}</strong>
+                <small>{language === 'ja'
+                  ? '自分で生成したレシピだけを履歴へ保存します。おすすめを見ただけでは保存されません。'
+                  : 'Only recipes you generate are saved to History. Viewing a recommendation does not save it.'}</small>
+              </span>
+            </button>
           </div>
 
           <div className={styles.section}>

@@ -33,6 +33,7 @@ import {
 } from "@/lib/storage";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
 // バッジ・材料・手順・コツの表示はそちらのスタイルを直接使い回す
@@ -81,6 +82,7 @@ export default function MealPlanPage() {
   // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
   const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [servingOverrides, setServingOverrides] = useState<Record<string, number>>({});
   const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -155,6 +157,7 @@ export default function MealPlanPage() {
     steps: string[];
     tips: string;
     nutrition?: { calories: number; protein_g: number; fat_g: number; carbs_g: number } | null;
+    servings?: number;
   };
 
   const mapPlanItem = (r: ApiPlanItem): WeeklyPlanEntry => ({
@@ -169,6 +172,7 @@ export default function MealPlanPage() {
       steps: r.steps,
       tips: r.tips,
       nutrition: r.nutrition,
+      servings: recipeServings(r.servings),
     },
   });
 
@@ -435,6 +439,16 @@ export default function MealPlanPage() {
                   const entry = findEntry(d.date, slot)!;
                   const key = `${d.date}_${slot}`;
                   const isExpanded = expandedKey === key;
+                  const baseServings = recipeServings(entry.recipe.servings);
+                  const displayServings = servingOverrides[key] || baseServings;
+                  const displayedRecipe = {
+                    ...entry.recipe,
+                    servings: displayServings,
+                    ingredients: entry.recipe.ingredients.map((item) => ({
+                      ...item,
+                      amount: scaleIngredientAmount(item.amount, baseServings, displayServings),
+                    })),
+                  };
                   return (
                     <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`}>
                           <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
@@ -450,7 +464,7 @@ export default function MealPlanPage() {
                               <h2 className={recipeStyles.recipeTitle}>{entry.recipe.title}</h2>
                               <span className={recipeStyles.recipeTime}>
                                 <UiIcon slug="timer_clock" collection="core" size={16} alt="" />
-                                {entry.recipe.time}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
+                                {entry.recipe.time} ・ {t.recipe.servingsUnit(displayServings)}{entry.recipe.nutrition ? ` ・ ${entry.recipe.nutrition.calories}kcal` : ''}
                               </span>
                               {(entry.recipe.ingredients || []).length > 0 && (
                                 <div className={recipeStyles.ingredientIconRow}>
@@ -499,10 +513,15 @@ export default function MealPlanPage() {
                                   <div className={recipeStyles.section}>
                                     <div className={recipeStyles.detailSectionHeading}>
                                       <h3>{t.mealPlan.ingredientsTitle}</h3>
-                                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t.mealPlan.ingredientsHint}</span>
+                                      <div className={recipeStyles.detailServingsControl} aria-label={t.recipe.servingsLabel}>
+                                        <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.max(1, displayServings - 1) }))}>−</button>
+                                        <strong>{t.recipe.servingsUnit(displayServings)}</strong>
+                                        <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.min(15, displayServings + 1) }))}>＋</button>
+                                      </div>
                                     </div>
+                                    {displayServings !== baseServings && <p className={recipeStyles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
                                     <ul className={recipeStyles.ingredientList}>
-                                      {(entry.recipe.ingredients || []).map((it, i) => {
+                                      {displayedRecipe.ingredients.map((it, i) => {
                                         const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
                                         const pinKey = `${key}-${it.name}`;
                                         const isPinned = pinnedToShoppingSet.has(pinKey);
@@ -577,7 +596,7 @@ export default function MealPlanPage() {
                                         cursor: 'pointer',
                                         boxShadow: '0 3px 10px rgba(255, 111, 145, 0.25)',
                                       }}
-                                      onClick={(e) => { e.stopPropagation(); setCookedModalEntry(entry); }}
+                                      onClick={(e) => { e.stopPropagation(); setCookedModalEntry({ ...entry, recipe: displayedRecipe }); }}
                                     >
                                       {t.recipe.cookedButton}
                                     </button>

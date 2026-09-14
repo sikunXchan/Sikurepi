@@ -31,6 +31,7 @@ import {
   UserProfile
 } from "@/lib/storage";
 import { FREE_HISTORY_ITEMS } from "@/lib/storage";
+import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
@@ -53,6 +54,7 @@ export default function HistoryPage() {
   const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -346,6 +348,16 @@ export default function HistoryPage() {
           {sortedRecipes.map((recipe) => {
             const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
+            const baseServings = recipeServings(recipe.servings);
+            const displayServings = servingOverrides[recipe.id] || baseServings;
+            const displayedRecipe = {
+              ...recipe,
+              servings: displayServings,
+              ingredients: recipe.ingredients.map((item) => ({
+                ...item,
+                amount: scaleIngredientAmount(item.amount, baseServings, displayServings),
+              })),
+            };
             return (
               <div key={recipe.id} className={styles.recipeCard}>
                 <div
@@ -363,6 +375,7 @@ export default function HistoryPage() {
                     <h2 className={styles.recipeTitle}>{recipe.title}</h2>
                     <div className={styles.recipeMetaRow}>
                       <span className={styles.recipeTime}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{recipe.time}</span>
+                      <span className={styles.servingsBadge}>{t.recipe.servingsUnit(displayServings)}</span>
                       {recipe.genre && (
                         <span className={styles.genreBadge}>{t.tagLabel[recipe.genre] || recipe.genre}</span>
                       )}
@@ -393,7 +406,7 @@ export default function HistoryPage() {
                   <button
                     type="button"
                     className={styles.cookBtn}
-                    onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(recipe); }}
+                    onClick={(e) => { e.stopPropagation(); setCookingSessionRecipe(displayedRecipe); }}
                   >
                     <PlayCircle size={15} />
                     {t.history.cookingButton}
@@ -402,7 +415,7 @@ export default function HistoryPage() {
                   <button
                     type="button"
                     className={styles.madeBtn}
-                    onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(recipe); }}
+                    onClick={(e) => { e.stopPropagation(); setCookedModalRecipe(displayedRecipe); }}
                   >
                     {t.history.cookedButton}
                   </button>
@@ -426,9 +439,17 @@ export default function HistoryPage() {
                     )}
 
                     <div className={styles.section}>
-                      <h3>{t.history.ingredientsTitle}</h3>
+                      <div className={styles.detailHeadingRow}>
+                        <h3>{t.history.ingredientsTitle}</h3>
+                        <div className={styles.servingsControl} aria-label={t.recipe.servingsLabel}>
+                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}>−</button>
+                          <strong>{t.recipe.servingsUnit(displayServings)}</strong>
+                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}>＋</button>
+                        </div>
+                      </div>
+                      {displayServings !== baseServings && <p className={styles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
                       <ul className={styles.ingredientList}>
-                        {(Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item, i) => {
+                        {displayedRecipe.ingredients.map((item, i) => {
                           const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
                           const pinKey = `${recipe.id}-${item.name}`;
                           const isPinned = pinnedToShoppingSet.has(pinKey);

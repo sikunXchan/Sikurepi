@@ -371,7 +371,10 @@ ${targetedRepair
       }
 
       return NextResponse.json({
-        plan: planArray,
+        plan: planArray.map((entry) => ({
+          ...(entry as Record<string, unknown>),
+          servings: targetServings,
+        })),
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
       });
     }

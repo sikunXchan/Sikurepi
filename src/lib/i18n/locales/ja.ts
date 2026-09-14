@@ -455,7 +455,7 @@ const ja = {
     nutritionTitle: "栄養バランス",
     ingredientsTitle: "材料・調味料",
     stepsTitle: "作り方",
-    tipsPrefix: "ポイント: ",
+    tipsPrefix: "シェフのコツ: ",
     noFilterResults: "条件に合うレシピが見つかりませんでした",
     resetFiltersButton2: "フィルターをリセット",
     emptyState: "保存されたレシピはありません",

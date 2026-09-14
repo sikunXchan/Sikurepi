@@ -49,6 +49,7 @@ type DailyPickRecipe = {
   steps: BilingualText[];
   tips: BilingualText;
   nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
+  servings?: number;
 };
 
 function pickText(value: BilingualText | undefined, language: "ja" | "en"): string {
@@ -207,6 +208,7 @@ export default function HomePage() {
       steps: visibleDailyPick.steps.map(step => pickText(step, language)),
       tips: pickText(visibleDailyPick.tips, language),
       nutrition: visibleDailyPick.nutrition,
+      servings: visibleDailyPick.servings || 2,
       source: 'daily-pick',
     });
     router.push("/recipe");
@@ -223,6 +225,7 @@ export default function HomePage() {
       steps: recipe.steps || [],
       tips: recipe.tips || '',
       nutrition: recipe.nutrition || null,
+      servings: recipe.servings || 2,
       source: 'community',
       sourceRecipeId: row.id,
     });
@@ -320,7 +323,7 @@ export default function HomePage() {
             <div className={styles.pickTextCol}>
               <p className={styles.pickTagline}>{pickText(visibleDailyPick.tagline, language)}</p>
               <p className={styles.pickTitle}>{pickText(visibleDailyPick.title, language)}</p>
-              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{visibleDailyPick.time}</p>
+              <p className={styles.pickMeta}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{visibleDailyPick.time}<span aria-hidden="true">・</span>{t.recipe.servingsUnit(visibleDailyPick.servings || 2)}</p>
             </div>
             <button type="button" className={styles.pickViewBtn} onClick={handleOpenDailyPick}>
               {t.home.todaysPickViewButton}
@@ -398,6 +401,7 @@ export default function HomePage() {
                     <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
                   </div>
                   <span className={styles.recentCardTitle}>{recipe.title}</span>
+                  <span className={styles.recentCardMeta}>{recipe.time} ・ {t.recipe.servingsUnit(recipe.servings || 2)}</span>
                 </Link>
               ))}
             </div>

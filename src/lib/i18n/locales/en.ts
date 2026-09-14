@@ -468,7 +468,7 @@ const en: typeof ja = {
     nutritionTitle: "Nutrition breakdown",
     ingredientsTitle: "Ingredients",
     stepsTitle: "Instructions",
-    tipsPrefix: "Tip: ",
+    tipsPrefix: "Chef's tip: ",
     noFilterResults: "No recipes match your filters",
     resetFiltersButton2: "Reset filters",
     emptyState: "No saved recipes yet",
