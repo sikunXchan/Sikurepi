@@ -1,4 +1,5 @@
 import type { ValidatedRecipe } from './recipeValidation';
+import { validateIngredientUnits } from './ingredientUnits.ts';
 
 function toHiragana(value: string): string {
   return value.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
@@ -234,6 +235,8 @@ export function assessRecipeQuality(
       }
     }
   }
+
+  errors.push(...validateIngredientUnits(recipe.ingredients));
 
   const stepsText = normalize(recipe.steps.join(' '));
   const substantialIngredients = recipe.ingredients.filter((item) => !SEASONING.test(item.name) && !AUXILIARY.test(item.name));

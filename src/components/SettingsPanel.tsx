@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform, animate as animateValue, PanInfo 
 import {
   getLocalUserProfile,
   setLocalUserProfile,
+  clearLocalLastRecipeGeneration,
   UserProfile,
   DEFAULT_USER_PROFILE,
   exportBackupJSON,
@@ -220,9 +221,11 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       excludedIngredients: excludedList,
       trayTheme: isPremium ? profile.trayTheme : 'wood',
       shareGeneratedRecipes: isPremium ? profile.shareGeneratedRecipes !== false : true,
+      autoSaveRecipes: profile.autoSaveRecipes !== false,
     };
 
     setLocalUserProfile(updated);
+    if (!updated.autoSaveRecipes) clearLocalLastRecipeGeneration();
     if (onSaved) onSaved();
     if (onCloseRequest) {
       onCloseRequest();
@@ -387,6 +390,28 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
 
           <div className={styles.section}>
             <label className={styles.sectionLabel}>
+              {language === 'ja' ? '生成レシピの自動保存' : 'Auto-save generated recipes'}
+            </label>
+            <button
+              type="button"
+              className={`${styles.shareToggle} ${profile.autoSaveRecipes !== false ? styles.shareToggleOn : ''}`}
+              aria-pressed={profile.autoSaveRecipes !== false}
+              onClick={() => setProfile(prev => ({ ...prev, autoSaveRecipes: prev.autoSaveRecipes === false }))}
+            >
+              <span className={styles.shareToggleTrack}><i /></span>
+              <span>
+                <strong>{profile.autoSaveRecipes !== false
+                  ? (language === 'ja' ? '生成時に自動で保存する' : 'Save automatically after generation')
+                  : (language === 'ja' ? '自動保存しない' : 'Do not auto-save')}</strong>
+                <small>{language === 'ja'
+                  ? '前回の生成結果を端末に保存し、レシピタブへ戻ったときに復元します。調理履歴には追加しません。'
+                  : 'Keeps the latest generated result on this device and restores it in the Recipe tab. It is not added to cooking history.'}</small>
+              </span>
+            </button>
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>
               {language === 'ja' ? 'みんなのレシピへの自動共有' : 'Auto-share to Community Recipes'}
             </label>
             <button
@@ -402,10 +427,10 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               <span>
                 <strong>{isPremium && profile.shareGeneratedRecipes === false
                   ? (language === 'ja' ? '共有しない' : 'Do not share')
-                  : (language === 'ja' ? '生成レシピを共有する' : 'Share generated recipes')}</strong>
+                  : (language === 'ja' ? '作ったレシピを共有する' : 'Share recipes I cooked')}</strong>
                 <small>{isPremium
-                  ? (language === 'ja' ? 'レシピ本文のみ。個人設定や在庫は送信しません。' : 'Recipe content only. Your settings and pantry are never sent.')
-                  : (language === 'ja' ? '無料版は自動共有。PlusではOFFにできます。' : 'Free automatically shares; Plus can turn this off.')}</small>
+                  ? (language === 'ja' ? '「この料理を作った！」で記録したレシピ本文のみ。個人設定や在庫は送信しません。' : 'Only recipes recorded with “I made this!” are shared. Your settings and pantry are never sent.')
+                  : (language === 'ja' ? '実際に作った料理は自動共有。PlusではOFFにできます。' : 'Recipes you actually cook are shared automatically; Plus can turn this off.')}</small>
               </span>
             </button>
           </div>

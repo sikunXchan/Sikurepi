@@ -7,6 +7,7 @@ import {
   consumeLocalIngredientsDetailed,
   getIngredientAgeDays,
   getLocalIngredients,
+  getLocalUserProfile,
   getLocalUserStats,
   getRescueEligibleIngredients,
   isIngredientMissing,
@@ -17,11 +18,15 @@ import {
   NutritionData,
   RecipeFeedbackRating,
   RescuedIngredientSnapshot,
+  CookedRecord,
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { usePremium } from "@/lib/premium/PremiumContext";
 import IngredientIcon from "./IngredientIcon";
 import RecipeFeedbackPanel from "./RecipeFeedbackPanel";
 import { buildIngredientCollection, STREAK_BADGE_MILESTONES } from "@/lib/ingredientCollection";
+import { shareCookedRecipes } from "@/lib/communityRecipes";
+import { isCommunityRecipe } from "@/lib/communityRecipeSchema";
 import styles from "./CookedModal.module.css";
 
 type RecipeLike = {
@@ -33,6 +38,10 @@ type RecipeLike = {
   genre?: string | null;
   dish_badge?: string | null;
   nutrition?: NutritionData | null;
+  source?: NonNullable<CookedRecord['source']>;
+  sourceRecipeId?: string;
+  servings?: number;
+  image_url?: string | null;
 };
 
 type Props = {
@@ -43,6 +52,8 @@ type Props = {
   onClose: () => void;
   onCompleted?: () => void;
   onSuccess?: () => void;
+  source?: NonNullable<CookedRecord['source']>;
+  sourceRecipeId?: string | number;
 };
 
 export default function CookedModal({
@@ -52,13 +63,20 @@ export default function CookedModal({
   nutrition: propNutrition,
   onClose,
   onCompleted,
-  onSuccess
+  onSuccess,
+  source: sourceProp,
+  sourceRecipeId: sourceRecipeIdProp,
 }: Props) {
   const { t } = useLanguage();
+  const { isPremium } = usePremium();
   const title = recipe?.title || propTitle || t.cookingSession.cookedDefaultTitle;
   const rawIngredients = recipe?.ingredients || propIngredients || [];
   const nutrition = recipe?.nutrition || propNutrition || null;
   const feedbackRecipe: RecipeLike = recipe || { title, ingredients: rawIngredients, nutrition };
+  const source = sourceProp || recipe?.source || 'generated';
+  const sourceRecipeId = sourceRecipeIdProp != null
+    ? String(sourceRecipeIdProp)
+    : recipe?.sourceRecipeId;
 
   // レシピには在庫に無い調味料や不足食材も含まれる。在庫に実在する材料だけを
   // 初期選択し、料理を記録しただけで無関係な在庫が消える事故を防ぐ。
@@ -170,7 +188,37 @@ export default function CookedModal({
         feedback,
         consumedIngredientNames,
         nextRescuedIngredients,
+        {
+          source,
+          sourceRecipeId,
+          recipe: recipe ? {
+            title,
+            time: recipe.time || '',
+            ingredients: rawIngredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+            steps: recipe.steps || [],
+            tips: recipe.tips || '',
+            image_url: recipe.image_url || null,
+            nutrition,
+            genre: recipe.genre || null,
+            dish_badge: recipe.dish_badge || null,
+            servings: recipe.servings,
+          } : undefined,
+        },
       );
+
+      // 図鑑・自炊回数と同じく「料理完了」を共有の起点にする。みんなのレシピを
+      // 作った場合は自分の記録には数えるが、公開レシピを再投稿しない。
+      const shareEnabled = !isPremium || getLocalUserProfile().shareGeneratedRecipes !== false;
+      if (source !== 'community' && shareEnabled && isCommunityRecipe(feedbackRecipe)) {
+        void shareCookedRecipes([{
+          ...feedbackRecipe,
+          time: feedbackRecipe.time || '',
+          ingredients: feedbackRecipe.ingredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+          steps: feedbackRecipe.steps || [],
+          tips: feedbackRecipe.tips || '',
+          creator_comment: cookingComment.normalize('NFKC').trim().slice(0, 280) || null,
+        }]);
+      }
       const afterCollection = buildIngredientCollection(updatedStats.cooked_records || []);
       const newStreakBadge = STREAK_BADGE_MILESTONES.find(
         (milestone) => beforeCollection.bestStreak < milestone && afterCollection.bestStreak >= milestone,

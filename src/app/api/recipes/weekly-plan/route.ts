@@ -25,6 +25,7 @@ import {
   WeeklyRecipe,
   WeeklySlot,
 } from '@/lib/recipeQuality';
+import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
@@ -197,18 +198,19 @@ export async function POST(req: Request) {
 今回生成する${requestedSlots.length}食の合計目安: カロリー約${weeklyCalories}kcal、タンパク質約${weeklyProtein}g、脂質約${weeklyFat}g、炭水化物約${weeklyCarbs}g
 ※ 栄養値は推定値なので、個々のレシピは目安から前後して構いません。指定された全レシピの合計は週間目安のプラスマイナス30%程度を目標にし、夕食はやや多め、昼食はやや控えめに調整してください。\n`;
     const languageSection = buildLanguageSection(language);
+    const unitSection = buildIngredientUnitInstruction(language);
 
-    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに、主食を含めて1食として完結する一皿料理を1品ずつ提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
+    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに、昼は作りやすさと多様性のある一食、夜は主菜・副菜・汁物・主食を組み合わせた定食を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
 
 【生成が必要な日付・食事枠一覧（合計${requestedSlots.length}件）】
 ${slotLines}
 
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
+${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
 【重要・厳守事項】
 0. 週間献立は自由作成です。在庫外の食材も使えます。在庫食材は、品質や栄養バランスを損なわない範囲で優先してください。
-1. 上記の日付・食事枠それぞれに必ず1品ずつ、過不足なくレシピを割り当ててください。
-2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。
+1. 上記の日付・食事枠それぞれに必ず1食ずつ、過不足なくレシピを割り当ててください。昼は一皿料理または定食、夜は必ず主菜・副菜・汁物・主食を含む定食にしてください。
+2. 同じ主菜・主要食材（例:鶏肉料理が連日続く等）が連続しないよう、1週間を通して献立にバリエーションを持たせてください。丼・パスタ・麺・ワンプレートなど特定の形式へ不自然に偏らせず、内容に合う食事形式を選んでください。
 3. ピン留め食材がある場合、1週間のどこかのレシピで必ず使用してください。
 4. 気候や気温に合った最適な温度感・味付けを取り入れてください。
 5. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
@@ -217,14 +219,21 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${pinnedSection}${climateSecti
 8. ${DISH_LOAD_INSTRUCTION}
 9. 【提出前の自己監査】各材料が手順内で使われているか、分量・所要時間・PFCとcaloriesが矛盾していないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含め、味は塩分だけでなく旨味・酸味・香り・食感の組み合わせを確認してください。
    "time"には浸水・漬け込み・炊飯・焼成・休ませる時間も含めてください。同じ手順内に複数の連続する所要時間を書く場合、それらの合計より"time"を短くしないでください。
-10. 【一食として完結】各料理には米・パン・麺・いも類等の主食を必ず材料と手順に含め、nutritionには主菜だけでなく主食を含む一食全体の値を記載してください。丼、ワンプレート、パスタ、麺料理等、アプリ上は一つの料理名と一つの料理アイコンで表現できる形にしてください。
+10. 【一食として完結】各料理には米・パン・麺・いも類等の主食を必ず材料と手順に含め、nutritionには一食全体の値を記載してください。夜はmeal_formatを"set"にし、componentsに主菜・副菜・汁物・主食を各1件以上入れ、材料と手順には全ての構成料理を含めてください。componentsのcourse値だけは表示言語にかかわらず「主菜」「副菜」「汁物」「主食」の日本語固定です。昼は内容に応じてmeal_formatを"single"または"set"にしてください。画面上では一食を一つの献立名・一つのアイコンで表現します。
 11. 以下のJSON構造で、"plan"配列の中に上記の食事枠と同じ件数だけレシピデータを格納して返してください。"date"と"meal_slot"は依頼された値と完全に一致させてください（meal_slotは"lunch"または"dinner"）。これ以外のテキストは一切含めないでください。
 {
   "plan": [
     {
       "date": "2026-09-02",
       "meal_slot": "dinner",
-      "title": "料理名",
+      "meal_format": "set",
+      "title": "鮭の塩焼きと季節野菜の定食",
+      "components": [
+        { "course": "主菜", "title": "鮭の塩焼き" },
+        { "course": "副菜", "title": "季節野菜の和え物" },
+        { "course": "汁物", "title": "豆腐のみそ汁" },
+        { "course": "主食", "title": "ご飯" }
+      ],
       "time": "調理時間目安（例：15分）",
       "genre": "和食",
       "dish_badge": "洗い物少なめ（2点）",
@@ -269,9 +278,25 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       const logicErrors = typedPlan.flatMap((item, index) =>
         validateRecipeLogic(item, feasibilityContext).map((error) => `plan[${index}]: ${error}`)
       );
+      planArray.forEach((item, index) => {
+        const entry = item as Record<string, unknown>;
+        if (entry.meal_slot === 'dinner') {
+          if (entry.meal_format !== 'set') logicErrors.push(`plan[${index}]: dinner meal_format must be "set"`);
+          const components = Array.isArray(entry.components) ? entry.components : [];
+          const courses = new Set(components.map((component) =>
+            component && typeof component === 'object' ? String((component as Record<string, unknown>).course || '') : ''
+          ));
+          for (const required of ['主菜', '副菜', '汁物', '主食']) {
+            if (!courses.has(required)) logicErrors.push(`plan[${index}]: dinner components must include ${required}`);
+          }
+        } else if (entry.meal_format !== 'single' && entry.meal_format !== 'set') {
+          logicErrors.push(`plan[${index}]: lunch meal_format must be "single" or "set"`);
+        }
+      });
       logicErrors.push(...typedPlan.flatMap((item, index) =>
         qualityGateErrors(item, {
           servings: targetServings,
+          mealStyle: (planArray[index] as Record<string, unknown>)?.meal_slot === 'dinner' ? 'set' : 'single',
           targetCaloriesPerServing: perMealCalories,
           targetProteinPerServing: perMealProtein,
         }, `plan[${index}]`)
@@ -371,7 +396,10 @@ ${targetedRepair
       }
 
       return NextResponse.json({
-        plan: planArray,
+        plan: planArray.map((entry) => ({
+          ...(entry as Record<string, unknown>),
+          servings: targetServings,
+        })),
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
       });
     }

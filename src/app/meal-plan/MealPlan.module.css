@@ -344,6 +344,11 @@
 }
 
 .planDish {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
   display: grid;
   place-items: center;
   width: 76px;

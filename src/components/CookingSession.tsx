@@ -21,16 +21,34 @@ import IngredientIcon from "./IngredientIcon";
 import UiIcon from "./UiIcon";
 import styles from "./CookingSession.module.css";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import type { CookedRecord, NutritionData } from "@/lib/storage";
 
 type IngredientItem = {
   name: string;
   amount: string;
 };
 
+type CompletionRecipe = {
+  title: string;
+  time?: string;
+  ingredients: IngredientItem[];
+  steps?: string[];
+  tips?: string;
+  genre?: string | null;
+  dish_badge?: string | null;
+  nutrition?: NutritionData | null;
+  source?: NonNullable<CookedRecord['source']>;
+  sourceRecipeId?: string;
+  servings?: number;
+};
+
 type Props = {
   title: string;
   steps: string[];
   ingredients?: IngredientItem[];
+  completionRecipe?: CompletionRecipe;
+  source?: NonNullable<CookedRecord['source']>;
+  sourceRecipeId?: string | number;
   autoGenerateImages?: boolean;
   onClose: () => void;
 };
@@ -72,6 +90,9 @@ export default function CookingSession({
   title,
   steps,
   ingredients,
+  completionRecipe,
+  source,
+  sourceRecipeId,
   autoGenerateImages = false,
   onClose,
 }: Props) {
@@ -481,8 +502,11 @@ export default function CookingSession({
 
       {showCookedModal && (
         <CookedModal
-          recipeTitle={title}
-          ingredients={ingredients || []}
+          recipe={completionRecipe}
+          recipeTitle={completionRecipe ? undefined : title}
+          ingredients={completionRecipe ? undefined : (ingredients || [])}
+          source={source}
+          sourceRecipeId={sourceRecipeId}
           onClose={() => setShowCookedModal(false)}
           onSuccess={() => onClose()}
         />

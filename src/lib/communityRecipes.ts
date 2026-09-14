@@ -1,5 +1,5 @@
 import { getOrCreateDeviceId, type RecipeFeedbackRating } from './storage';
-import type { CommunityRecipe } from './communityRecipeSchema';
+import { serializeCommunityRecipeIdentity, type CommunityRecipe } from './communityRecipeSchema';
 
 export type ShareableRecipe = CommunityRecipe;
 
@@ -9,6 +9,8 @@ type QueuedCommunityRecipe = {
 };
 
 const OUTBOX_KEY = 'sikurepi_community_recipe_outbox_v1';
+export const COMMUNITY_RECIPE_OUTBOX_EVENT = 'community-recipe-outbox-updated';
+export const COMMUNITY_RECIPES_CHANGED_EVENT = 'community-recipes-changed';
 let activeFlush: Promise<boolean> | null = null;
 
 function readOutbox(): QueuedCommunityRecipe[] {
@@ -27,6 +29,7 @@ function writeOutbox(items: QueuedCommunityRecipe[]): boolean {
   if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(OUTBOX_KEY, JSON.stringify(items));
+    window.dispatchEvent(new Event(COMMUNITY_RECIPE_OUTBOX_EVENT));
     return true;
   } catch {
     return false;
@@ -44,6 +47,9 @@ async function postRecipes(recipes: ShareableRecipe[]): Promise<boolean> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipes }),
   });
+  if (response.ok && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(COMMUNITY_RECIPES_CHANGED_EVENT));
+  }
   return response.ok;
 }
 
@@ -70,15 +76,25 @@ export function flushCommunityRecipeOutbox(): Promise<boolean> {
   return activeFlush;
 }
 
-// 自由記述・在庫・アレルギー設定などは送らず、AIが完成させたレシピ本文だけを共有する。
-// 共有失敗は生成自体を失敗扱いにせず、端末内の送信待ちキューから次回再送する。
-export async function shareGeneratedRecipes(recipes: ShareableRecipe[]): Promise<boolean> {
+// 自由記述・在庫・アレルギー設定などは送らず、ユーザーが実際に作ったレシピ本文だけを共有する。
+// 共有失敗は調理記録自体を失敗扱いにせず、端末内の送信待ちキューから次回再送する。
+export async function shareCookedRecipes(recipes: ShareableRecipe[]): Promise<boolean> {
   if (recipes.length === 0) return true;
 
-  const queued = recipes.map((recipe) => ({ id: createQueueId(), recipe }));
-  if (!writeOutbox([...readOutbox(), ...queued])) {
+  const current = readOutbox();
+  const queuedIdentities = new Set(current.map((item) => serializeCommunityRecipeIdentity(item.recipe)));
+  const queued = recipes
+    .filter((recipe) => {
+      const identity = serializeCommunityRecipeIdentity(recipe);
+      if (queuedIdentities.has(identity)) return false;
+      queuedIdentities.add(identity);
+      return true;
+    })
+    .map((recipe) => ({ id: createQueueId(), recipe }));
+  if (queued.length === 0) return flushCommunityRecipeOutbox();
+  if (!writeOutbox([...current, ...queued])) {
     try {
-      return await postRecipes(recipes);
+      return await postRecipes(queued.map((item) => item.recipe));
     } catch {
       return false;
     }

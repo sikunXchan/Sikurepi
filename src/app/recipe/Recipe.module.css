@@ -663,8 +663,9 @@
 }
 
 .tipsBox {
-  background: rgba(255, 111, 145, 0.06);
-  border-left: 4px solid var(--primary);
+  background: #edf8f5;
+  border: 1px solid #b8ddd6;
+  border-left: 5px solid #278d83;
   padding: 14px 16px;
   border-radius: 0 12px 12px 0;
   font-size: 14px;
@@ -962,10 +963,12 @@
 }
 
 .rescueModeCopy strong {
-  color: var(--foreground);
+  color: #294a46;
   font-size: 14px;
   font-weight: 900;
 }
+
+.tipsBox strong { color: #176d65; }
 
 .rescueModeCopy small {
   color: var(--text-muted);
@@ -1127,12 +1130,23 @@
     0 4px 12px rgba(78, 43, 27, 0.18);
 }
 
+.recipeDishChoiceServings {
+  position: relative;
+  z-index: 2;
+  color: #77584b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .recipeDetailOverlay {
   position: fixed;
   z-index: 9000;
   inset: 0;
   display: flex;
   flex-direction: column;
+  contain: layout paint style;
+  transform: translateZ(0);
+  will-change: opacity, transform;
   min-height: 0;
   padding-top: max(env(safe-area-inset-top), 10px);
   background:
@@ -1185,6 +1199,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0 14px calc(max(env(safe-area-inset-bottom), 18px) + 28px);
   -webkit-overflow-scrolling: touch;
 }
@@ -1225,11 +1240,6 @@
   box-shadow: 0 8px 20px rgba(91, 51, 30, 0.09);
 }
 
-.recipeFeedbackWrap {
-  width: min(calc(100% - 16px), 710px);
-  margin: 12px auto 0;
-}
-
 .recipeDetailContent {
   position: relative;
   display: flex;
@@ -1258,6 +1268,45 @@
   font-size: 13px;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+.detailServingsControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 7px;
+  border: 1px solid #b8ddd6;
+  border-radius: 999px;
+  background: #edf8f5;
+}
+
+.detailServingsControl button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #278d83;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.detailServingsControl button:disabled { opacity: .35; cursor: default; }
+.detailServingsControl strong { min-width: 52px; color: #176d65; text-align: center; font-size: 13px; }
+
+.servingScaleNotice {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #fff8e8;
+  color: #71551e;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .cookedDetailBtn {
@@ -1316,7 +1365,6 @@
     height: clamp(220px, 62vw, 248px) !important;
   }
   .recipeDetailSummary { width: calc(100% - 12px); padding: 14px 16px; border-radius: 18px; }
-  .recipeFeedbackWrap { width: calc(100% - 12px); }
   .recipeDetailContent { width: calc(100% - 12px); padding: 16px; border-radius: 20px; }
   .detailSectionHeading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .detailSectionHeading span { text-align: left; }
@@ -1442,14 +1490,14 @@
 .templateTile {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  width: 72px;
-  min-height: 72px;
+  width: 92px;
+  min-height: 98px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px 4px;
+  gap: 6px;
+  padding: 9px 5px;
   border-radius: 18px;
   background: var(--card-bg-solid);
   border: 1.5px solid var(--border);
@@ -1470,12 +1518,19 @@
 }
 
 .templateEmoji {
-  font-size: 22px;
-  line-height: 1;
+  width: 46px !important;
+  height: 46px !important;
+  object-fit: contain;
+}
+
+/* sweets_template.png は他素材より透明余白が約2割広く、同じ画像枠では
+   小さく見えるため、実際に見える輪郭の寸法を基準に補正する。 */
+.templateEmojiSweets {
+  transform: translateX(6%) scale(1.22);
 }
 
 .templateLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--text-secondary);
   text-align: center;
