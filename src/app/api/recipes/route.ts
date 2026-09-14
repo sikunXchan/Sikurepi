@@ -439,7 +439,13 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       latestAttemptTelemetry = attemptTelemetry;
       generationAttempts.push(attemptTelemetry);
       logRecipeGeneration(requestId, generationStartedAt, 'success', generationAttempts);
-      return NextResponse.json(json, {
+      return NextResponse.json({
+        ...json,
+        recipes: recipeArray.map((recipe) => ({
+          ...(recipe as Record<string, unknown>),
+          servings: targetServings,
+        })),
+      }, {
         headers: generationHeaders(generationStartedAt, attemptTelemetry),
       });
     }

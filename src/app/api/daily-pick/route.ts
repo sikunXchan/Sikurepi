@@ -39,6 +39,7 @@ export type DailyPickRecipe = {
   steps: BilingualText[];
   tips: BilingualText;
   nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
+  servings?: number;
 };
 
 type FlavorFeedbackSummary = {
@@ -298,7 +299,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
     }, 'dailyPick');
     if (lastErrors.length > 0) continue;
 
-    return recipe;
+    return { ...recipe, servings: 2 };
   }
 
   throw new Error(`Generated recommendation failed safety validation: ${lastErrors.join('; ')}`);

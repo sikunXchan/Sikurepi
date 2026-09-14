@@ -236,6 +236,15 @@
   padding: 0 14px 14px;
 }
 
+.servingsBadge { color: #176d65; font-size: 12px; font-weight: 900; }
+.detailHeadingRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.detailHeadingRow h3 { margin: 0; }
+.servingsControl { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid #b8ddd6; border-radius: 999px; background: #edf8f5; }
+.servingsControl button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: #278d83; color: #fff; font-weight: 900; }
+.servingsControl button:disabled { opacity: .35; }
+.servingsControl strong { min-width: 48px; color: #176d65; font-size: 12px; text-align: center; }
+.servingScaleNotice { margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: #fff8e8; color: #71551e; font-size: 12px; line-height: 1.5; }
+
 .cookBtn,
 .madeBtn {
   display: inline-flex;
@@ -478,13 +487,17 @@
 }
 
 .tipsBox {
-  background: rgba(255, 111, 145, 0.06);
-  border-left: 4px solid var(--primary);
+  background: #edf8f5;
+  border: 1px solid #b8ddd6;
+  border-left: 5px solid #278d83;
   padding: 12px 14px;
   border-radius: 0 12px 12px 0;
   font-size: 13px;
   line-height: 1.5;
+  color: #294a46;
 }
+
+.tipsBox strong { color: #176d65; }
 
 @media (max-width: 768px) {
 

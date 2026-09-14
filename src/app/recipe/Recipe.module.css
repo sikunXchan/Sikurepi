@@ -663,8 +663,9 @@
 }
 
 .tipsBox {
-  background: rgba(255, 111, 145, 0.06);
-  border-left: 4px solid var(--primary);
+  background: #edf8f5;
+  border: 1px solid #b8ddd6;
+  border-left: 5px solid #278d83;
   padding: 14px 16px;
   border-radius: 0 12px 12px 0;
   font-size: 14px;
@@ -962,10 +963,12 @@
 }
 
 .rescueModeCopy strong {
-  color: var(--foreground);
+  color: #294a46;
   font-size: 14px;
   font-weight: 900;
 }
+
+.tipsBox strong { color: #176d65; }
 
 .rescueModeCopy small {
   color: var(--text-muted);
@@ -1127,12 +1130,22 @@
     0 4px 12px rgba(78, 43, 27, 0.18);
 }
 
+.recipeDishChoiceServings {
+  position: relative;
+  z-index: 2;
+  color: #77584b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .recipeDetailOverlay {
   position: fixed;
   z-index: 9000;
   inset: 0;
   display: flex;
   flex-direction: column;
+  contain: layout paint style;
+  transform: translateZ(0);
   min-height: 0;
   padding-top: max(env(safe-area-inset-top), 10px);
   background:
@@ -1185,6 +1198,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0 14px calc(max(env(safe-area-inset-bottom), 18px) + 28px);
   -webkit-overflow-scrolling: touch;
 }
@@ -1253,6 +1267,43 @@
   font-size: 13px;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+.detailServingsControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 7px;
+  border: 1px solid #b8ddd6;
+  border-radius: 999px;
+  background: #edf8f5;
+}
+
+.detailServingsControl button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #278d83;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.detailServingsControl button:disabled { opacity: .35; cursor: default; }
+.detailServingsControl strong { min-width: 52px; color: #176d65; text-align: center; font-size: 13px; }
+
+.servingScaleNotice {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #fff8e8;
+  color: #71551e;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .cookedDetailBtn {

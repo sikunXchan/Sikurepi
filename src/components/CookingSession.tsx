@@ -39,6 +39,7 @@ type CompletionRecipe = {
   nutrition?: NutritionData | null;
   source?: NonNullable<CookedRecord['source']>;
   sourceRecipeId?: string;
+  servings?: number;
 };
 
 type Props = {

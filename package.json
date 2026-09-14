@@ -14,6 +14,7 @@
     "test:feedback": "node --no-warnings --experimental-strip-types scripts/test-recipe-feedback.mjs",
     "test:recipe-cache": "node --no-warnings --experimental-strip-types scripts/test-recipe-cache.mjs",
     "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
+    "test:servings": "node --no-warnings --experimental-strip-types scripts/test-serving-scale.mjs",
     "qa:dishes:world-02": "node scripts/build-icon-contact-sheet.mjs public/dishes/icons .tmp/world-cuisines-02-contact-sheet.png --manifest-group=world_cuisines_02"
   },
   "dependencies": {

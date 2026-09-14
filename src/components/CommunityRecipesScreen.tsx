@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { CircleDot, MessageSquareText, RefreshCw, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import { CircleDot, Clock3, MessageSquareText, RefreshCw, ThumbsDown, ThumbsUp, Users, X } from "lucide-react";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -65,6 +65,10 @@ export function CommunityRecipeRowCard({
           </span>
         </span>
         <strong className={styles.recipeTitle}>{recipe.title}</strong>
+        <span className={styles.recipeMeta}>
+          <span><Clock3 size={12} aria-hidden="true" />{recipe.time}</span>
+          <span><Users size={12} aria-hidden="true" />{t.recipe.servingsUnit(recipe.servings || 2)}</span>
+        </span>
         {recipe.creator_comment && (
           <span className={styles.comment}>
             <span className={styles.commentLabel}><MessageSquareText size={12} aria-hidden="true" />{t.home.communityCommentLabel}</span>
