@@ -9,11 +9,13 @@ import {
   getLocalIngredients,
   getLocalUserProfile,
   getLocalUserStats,
+  getLocalSavedRecipes,
   getRescueEligibleIngredients,
   isIngredientMissing,
   recordLocalCookingDone,
   getLocalRecipeFeedback,
   saveLocalRecipeFeedback,
+  saveLocalRecipe,
   FlavorFeedbackTag,
   NutritionData,
   RecipeFeedbackRating,
@@ -41,6 +43,7 @@ type RecipeLike = {
   source?: NonNullable<CookedRecord['source']>;
   sourceRecipeId?: string;
   servings?: number;
+  image_url?: string | null;
 };
 
 type Props = {
@@ -189,6 +192,28 @@ export default function CookedModal({
         nextRescuedIngredients,
         { source, sourceRecipeId },
       );
+
+      // 生成しただけでは履歴へ入れず、実際に「作った」と確定した時点で初めて
+      // レシピ本文を履歴へ残す。同じ料理を再調理した場合、自炊回数は増やすが
+      // 履歴カードは重複させない。
+      const normalizedTitle = title.normalize('NFKC').trim().toLocaleLowerCase();
+      const alreadySaved = getLocalSavedRecipes().some((saved) =>
+        saved.title.normalize('NFKC').trim().toLocaleLowerCase() === normalizedTitle
+      );
+      if (recipe && !alreadySaved) {
+        saveLocalRecipe({
+          title,
+          time: recipe.time || '',
+          ingredients: rawIngredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+          steps: recipe.steps || [],
+          tips: recipe.tips || '',
+          image_url: recipe.image_url || null,
+          nutrition,
+          genre: recipe.genre || null,
+          dish_badge: recipe.dish_badge || null,
+          servings: recipe.servings,
+        });
+      }
 
       // 図鑑・自炊回数と同じく「料理完了」を共有の起点にする。みんなのレシピを
       // 作った場合は自分の記録には数えるが、公開レシピを再投稿しない。

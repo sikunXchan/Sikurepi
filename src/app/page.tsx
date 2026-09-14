@@ -75,6 +75,12 @@ export default function HomePage() {
     recipe: DailyPickRecipe;
   } | null>(null);
   const [dailyPickSettledKey, setDailyPickSettledKey] = useState<string | null>(null);
+
+  // おすすめ・みんなのレシピは通常ページより大きい詳細UIを使うため、先に
+  // レシピ画面のコードを読み込んでおき、タップ後の白い待ち時間を減らす。
+  useEffect(() => {
+    router.prefetch('/recipe');
+  }, [router]);
   const isHydrated = useSyncExternalStore(
     subscribeToHydration,
     getClientHydrationSnapshot,

@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform, animate as animateValue, PanInfo 
 import {
   getLocalUserProfile,
   setLocalUserProfile,
+  clearLocalLastRecipeGeneration,
   UserProfile,
   DEFAULT_USER_PROFILE,
   exportBackupJSON,
@@ -224,6 +225,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     };
 
     setLocalUserProfile(updated);
+    if (!updated.autoSaveRecipes) clearLocalLastRecipeGeneration();
     if (onSaved) onSaved();
     if (onCloseRequest) {
       onCloseRequest();
@@ -402,8 +404,8 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                   ? (language === 'ja' ? '生成時に自動で保存する' : 'Save automatically after generation')
                   : (language === 'ja' ? '自動保存しない' : 'Do not auto-save')}</strong>
                 <small>{language === 'ja'
-                  ? '自分で生成したレシピだけを履歴へ保存します。おすすめを見ただけでは保存されません。'
-                  : 'Only recipes you generate are saved to History. Viewing a recommendation does not save it.'}</small>
+                  ? '前回の生成結果を端末に保存し、レシピタブへ戻ったときに復元します。調理履歴には追加しません。'
+                  : 'Keeps the latest generated result on this device and restores it in the Recipe tab. It is not added to cooking history.'}</small>
               </span>
             </button>
           </div>

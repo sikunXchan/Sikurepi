@@ -790,6 +790,12 @@ export function setLocalLastRecipeGeneration(data: LastRecipeGeneration): void {
   setStorage(KEYS.LAST_RECIPE_GENERATION, withoutSavedInstruction(data));
 }
 
+export function clearLocalLastRecipeGeneration(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.LAST_RECIPE_GENERATION);
+  window.dispatchEvent(new Event('storage-updated'));
+}
+
 export function getLocalCachedRecipeGeneration(
   requestKey: string,
   maxAgeMs = RECIPE_GENERATION_CACHE_TTL_MS,

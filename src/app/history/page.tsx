@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Crown } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Minus, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
@@ -442,9 +442,9 @@ export default function HistoryPage() {
                       <div className={styles.detailHeadingRow}>
                         <h3>{t.history.ingredientsTitle}</h3>
                         <div className={styles.servingsControl} aria-label={t.recipe.servingsLabel}>
-                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}>−</button>
+                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}><Minus size={16} strokeWidth={3} /></button>
                           <strong>{t.recipe.servingsUnit(displayServings)}</strong>
-                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}>＋</button>
+                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}><Plus size={16} strokeWidth={3} /></button>
                         </div>
                       </div>
                       {displayServings !== baseServings && <p className={styles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
