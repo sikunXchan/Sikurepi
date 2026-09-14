@@ -635,7 +635,12 @@ export default function RecipePage() {
                   onClick={() => handleApplyTemplate(tmpl.query)}
                   className={`${styles.templateTile} ${selected ? styles.templateTileActive : ''}`}
                 >
-                  <UiIcon slug={tmpl.iconSlug} size={46} alt="" className={styles.templateEmoji} />
+                  <UiIcon
+                    slug={tmpl.iconSlug}
+                    size={46}
+                    alt=""
+                    className={`${styles.templateEmoji} ${tmpl.key === 'sweets' ? styles.templateEmojiSweets : ''}`}
+                  />
                   <span className={styles.templateLabel}>{t.recipe.templates[tmpl.key]}</span>
                 </button>
               );

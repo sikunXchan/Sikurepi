@@ -1523,6 +1523,12 @@
   object-fit: contain;
 }
 
+/* sweets_template.png は他素材より透明余白が約2割広く、同じ画像枠では
+   小さく見えるため、実際に見える輪郭の寸法を基準に補正する。 */
+.templateEmojiSweets {
+  transform: translateX(6%) scale(1.22);
+}
+
 .templateLabel {
   font-size: 12px;
   font-weight: 800;
