@@ -159,6 +159,7 @@ const en: typeof ja = {
     communityLowRating: "Low rated",
     communityMixedRating: "Mixed reviews",
     communityNewRating: "New recipe",
+    communityPendingSync: "Waiting to send",
     communityAll: "Plus · All recipes",
     communitySeeAll: "See all",
     communityTopOne: "Free · Top recipe",
