@@ -228,6 +228,8 @@ export default function HomePage() {
       tips: recipe.tips || '',
       nutrition: recipe.nutrition || null,
       servings: recipe.servings || 2,
+      meal_format: recipe.meal_format,
+      components: recipe.components,
       source: 'community',
       sourceRecipeId: row.id,
     });

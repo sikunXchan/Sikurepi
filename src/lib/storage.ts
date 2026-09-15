@@ -71,6 +71,16 @@ export type LocalRecipeFeedback = {
   createdAt: string;
 };
 
+export type RecipeSource = 'generated' | 'meal-plan' | 'history' | 'community' | 'daily-pick';
+
+export type MealFormat = 'single' | 'set';
+
+export type MealComponent = {
+  course: string;
+  title: string;
+  genre?: string | null;
+};
+
 export type RescuedIngredientSnapshot = {
   name: string;
   ageDays: number;
@@ -88,10 +98,21 @@ export type SavedRecipe = {
   genre: string | null;
   dish_badge?: string | null;
   servings?: number;
+  meal_format?: MealFormat;
+  components?: MealComponent[];
   saved_at: string;
 };
 
 export type CookedRecipeSnapshot = Omit<SavedRecipe, 'id' | 'saved_at'>;
+
+// 明示的にブックマークしたレシピとは別に、最近生成した料理だけを最大3件保持する。
+// 「履歴」画面で一時的な生成結果と保存済みのお気に入りを混ぜないためのデータ。
+export type RecentRecipe = CookedRecipeSnapshot & {
+  id: string;
+  recent_at: string;
+  source: RecipeSource;
+  sourceRecipeId?: string;
+};
 
 export type CookedRecord = {
   date: string;
@@ -99,7 +120,7 @@ export type CookedRecord = {
   // 「何を表示したか」ではなく、どの導線から実際に調理を完了したかを残す。
   // みんなのレシピ由来の料理を再共有しないことや、履歴削除時に対応する
   // 自炊記録だけを取り除くために使う。旧データとの互換性のため任意。
-  source?: 'generated' | 'meal-plan' | 'history' | 'community' | 'daily-pick';
+  source?: RecipeSource;
   sourceRecipeId?: string;
   // 明示的に保存したレシピとは分けて「直近に作った料理」を再表示するための本文。
   // 旧レコードには無いため任意とし、タイトルだけの履歴も読み込み可能にする。
@@ -413,6 +434,8 @@ export type PlannedRecipe = {
   tips: string;
   nutrition?: NutritionData | null;
   servings?: number;
+  meal_format?: MealFormat;
+  components?: MealComponent[];
 };
 
 export type WeeklyPlanEntry = {
@@ -439,6 +462,7 @@ const KEYS = {
   INVENTORY: 'lily_app_inventory',
   SHOPPING: 'lily_app_shopping',
   SAVED_RECIPES: 'lily_app_saved_recipes',
+  RECENT_RECIPES: 'lily_app_recent_recipes_v1',
   STATS: 'lily_app_user_stats',
   PROFILE: 'lily_app_user_profile',
   CLIMATE: 'lily_app_climate',
@@ -736,9 +760,75 @@ export function deleteLocalSavedRecipe(id: number): void {
   setStorage(KEYS.SAVED_RECIPES, list.filter(i => i.id !== id));
 }
 
+const RECENT_RECIPE_LIMIT = 3;
+
+function recipeIdentity(recipe: Pick<CookedRecipeSnapshot, 'title' | 'ingredients'>): string {
+  return JSON.stringify([
+    recipe.title.normalize('NFKC').trim().toLocaleLowerCase(),
+    (recipe.ingredients || []).map((item) => [
+      item.name.normalize('NFKC').trim().toLocaleLowerCase(),
+      (item.amount || '').normalize('NFKC').trim().toLocaleLowerCase(),
+    ]),
+  ]);
+}
+
+export function getLocalRecentRecipes(): RecentRecipe[] {
+  return getStorage<RecentRecipe[]>(KEYS.RECENT_RECIPES, [])
+    .filter((recipe) => Boolean(recipe?.id && recipe?.title && Array.isArray(recipe?.ingredients)))
+    .sort((a, b) => (Date.parse(b.recent_at) || 0) - (Date.parse(a.recent_at) || 0))
+    .slice(0, RECENT_RECIPE_LIMIT);
+}
+
+export function saveLocalRecentRecipes(
+  recipes: Array<Omit<RecentRecipe, 'id' | 'recent_at'>>,
+): RecentRecipe[] {
+  if (recipes.length === 0) return getLocalRecentRecipes();
+  const now = new Date().toISOString();
+  const seenIncoming = new Set<string>();
+  const incoming = recipes
+    .filter((recipe) => {
+      const identity = recipeIdentity(recipe);
+      if (seenIncoming.has(identity)) return false;
+      seenIncoming.add(identity);
+      return true;
+    })
+    .map((recipe, index): RecentRecipe => ({
+      ...recipe,
+      id: `${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+      recent_at: now,
+    }));
+  const incomingKeys = new Set(incoming.map(recipeIdentity));
+  const next = [
+    ...incoming,
+    ...getLocalRecentRecipes().filter((recipe) => !incomingKeys.has(recipeIdentity(recipe))),
+  ].slice(0, RECENT_RECIPE_LIMIT);
+  setStorage(KEYS.RECENT_RECIPES, next);
+  return next;
+}
+
+export function deleteLocalRecentRecipe(id: string): void {
+  setStorage(KEYS.RECENT_RECIPES, getLocalRecentRecipes().filter((recipe) => recipe.id !== id));
+}
+
+export function clearLocalRecentRecipes(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.RECENT_RECIPES);
+  window.dispatchEvent(new Event('storage-updated'));
+}
+
 export function getRecentLocalRecipeNames(limit = 5): string[] {
-  const list = getLocalSavedRecipes();
-  return list.slice(0, limit).map(r => r.title);
+  const titles = [
+    ...getLocalRecentRecipes().map((recipe) => recipe.title),
+    ...getLocalUserStats().cooked_records.map((record) => record.recipeTitle),
+    ...getLocalSavedRecipes().map((recipe) => recipe.title),
+  ];
+  const seen = new Set<string>();
+  return titles.filter((title) => {
+    const key = title.normalize('NFKC').trim().toLocaleLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, Math.max(0, limit));
 }
 
 // --- 直近のAIレシピ生成結果 (別タブへ移動しても消えないように保持する) ---
@@ -759,6 +849,8 @@ export type LastRecipeGeneration = {
     servings?: number;
     source?: 'generated' | 'community' | 'daily-pick';
     sourceRecipeId?: string;
+    meal_format?: MealFormat;
+    components?: MealComponent[];
   }[];
   cookingTips: { category: string; tip: string }[];
   expandedIndex: number;
@@ -1288,6 +1380,7 @@ export type AppBackupPayload = {
   inventory: Ingredient[];
   shopping: ShoppingItem[];
   savedRecipes: SavedRecipe[];
+  recentRecipes?: RecentRecipe[];
   stats: UserStats;
   profile: UserProfile;
   climate: ClimateState;
@@ -1310,6 +1403,7 @@ export function buildBackupPayload(): AppBackupPayload {
     inventory: getLocalIngredients(),
     shopping: getLocalShoppingItems(),
     savedRecipes: getLocalSavedRecipes(),
+    recentRecipes: getLocalRecentRecipes(),
     stats: getLocalUserStats(),
     profile: getLocalUserProfile(),
     climate: getLocalClimateState(),
@@ -1354,6 +1448,7 @@ export function applyBackupPayload(data: unknown): void {
   if (Array.isArray(payload.inventory)) setStorage(KEYS.INVENTORY, payload.inventory);
   if (Array.isArray(payload.shopping)) setStorage(KEYS.SHOPPING, payload.shopping);
   if (Array.isArray(payload.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, payload.savedRecipes);
+  if (Array.isArray(payload.recentRecipes)) setStorage(KEYS.RECENT_RECIPES, payload.recentRecipes.slice(0, RECENT_RECIPE_LIMIT));
   if (payload.stats && typeof payload.stats === 'object') setStorage(KEYS.STATS, payload.stats);
   if (payload.profile && typeof payload.profile === 'object') setStorage(KEYS.PROFILE, payload.profile);
   if (payload.climate && typeof payload.climate === 'object') setStorage(KEYS.CLIMATE, payload.climate);
@@ -1387,6 +1482,7 @@ export function hasLocalData(): boolean {
     getLocalIngredients().length > 0 ||
     getLocalShoppingItems().length > 0 ||
     getLocalSavedRecipes().length > 0 ||
+    getLocalRecentRecipes().length > 0 ||
     getLocalUserStats().total_cooked > 0 ||
     getLocalWeekPlan().length > 0 ||
     getLocalLastRecipeGeneration() !== null

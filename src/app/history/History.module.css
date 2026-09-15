@@ -83,6 +83,18 @@
 .recentCookedOpen small { margin-top: 4px; color: var(--text-muted); font-size: 9px; font-weight: 700; }
 .recentCookedOpen img { flex: 0 0 auto; object-fit: contain; }
 
+.recentRecipesEmpty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed rgba(244, 113, 145, 0.2);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .recentCookedDelete {
   position: absolute;
   top: 8px;

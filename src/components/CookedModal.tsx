@@ -19,6 +19,8 @@ import {
   RecipeFeedbackRating,
   RescuedIngredientSnapshot,
   CookedRecord,
+  MealComponent,
+  MealFormat,
 } from "@/lib/storage";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
@@ -42,6 +44,8 @@ type RecipeLike = {
   sourceRecipeId?: string;
   servings?: number;
   image_url?: string | null;
+  meal_format?: MealFormat;
+  components?: MealComponent[];
 };
 
 type Props = {
@@ -107,6 +111,7 @@ export default function CookedModal({
   const [initialRecipeFeedback] = useState(() => getLocalRecipeFeedback(feedbackRecipe));
   const [recipeRating, setRecipeRating] = useState<RecipeFeedbackRating | null>(initialRecipeFeedback?.rating || null);
   const [recipeFeedbackNote, setRecipeFeedbackNote] = useState(initialRecipeFeedback?.note || "");
+  const [shareStatus, setShareStatus] = useState<'idle' | 'sharing' | 'shared' | 'queued'>('idle');
   // handleConfirmは同期処理のため、setLoading(true)〜finallyのsetLoading(false)が
   // 同じJSタスク内で完結してしまい、Reactの再レンダーを待たずに終わる。
   // そのためstateのdisabled表示だけでは、素早い連打(ダブルタップ)で
@@ -202,6 +207,8 @@ export default function CookedModal({
             genre: recipe.genre || null,
             dish_badge: recipe.dish_badge || null,
             servings: recipe.servings,
+            meal_format: recipe.meal_format,
+            components: recipe.components,
           } : undefined,
         },
       );
@@ -210,6 +217,7 @@ export default function CookedModal({
       // 作った場合は自分の記録には数えるが、公開レシピを再投稿しない。
       const shareEnabled = !isPremium || getLocalUserProfile().shareGeneratedRecipes !== false;
       if (source !== 'community' && shareEnabled && isCommunityRecipe(feedbackRecipe)) {
+        setShareStatus('sharing');
         void shareCookedRecipes([{
           ...feedbackRecipe,
           time: feedbackRecipe.time || '',
@@ -217,7 +225,7 @@ export default function CookedModal({
           steps: feedbackRecipe.steps || [],
           tips: feedbackRecipe.tips || '',
           creator_comment: cookingComment.normalize('NFKC').trim().slice(0, 280) || null,
-        }]);
+        }]).then((shared) => setShareStatus(shared ? 'shared' : 'queued'));
       }
       const afterCollection = buildIngredientCollection(updatedStats.cooked_records || []);
       const newStreakBadge = STREAK_BADGE_MILESTONES.find(
@@ -330,6 +338,16 @@ export default function CookedModal({
                       ? t.cookingSession.streakBadgeEarned(collectionReward.newStreakBadge)
                       : t.cookingSession.streakProgress(collectionReward.streakDays)}
                   </span>
+                </div>
+              )}
+              {shareStatus !== 'idle' && (
+                <div className={styles.shareStatus} data-state={shareStatus}>
+                  {shareStatus === 'sharing' && <Loader2 size={14} className="spin" />}
+                  <span>{shareStatus === 'sharing'
+                    ? t.cookingSession.communitySharing
+                    : shareStatus === 'shared'
+                      ? t.cookingSession.communityShared
+                      : t.cookingSession.communityQueued}</span>
                 </div>
               )}
             </div>

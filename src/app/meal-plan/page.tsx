@@ -26,6 +26,7 @@ import {
   getFreeGenerationsRemaining,
   incrementFreeGenerationsUsed,
   isIngredientMissing,
+  saveLocalRecentRecipes,
   FREE_WEEKLY_PLAN_GENERATIONS,
   Ingredient,
   UserProfile,
@@ -160,6 +161,8 @@ export default function MealPlanPage() {
     tips: string;
     nutrition?: { calories: number; protein_g: number; fat_g: number; carbs_g: number } | null;
     servings?: number;
+    meal_format?: 'single' | 'set';
+    components?: { course: string; title: string; genre?: string | null }[];
   };
 
   const mapPlanItem = (r: ApiPlanItem): WeeklyPlanEntry => ({
@@ -175,8 +178,23 @@ export default function MealPlanPage() {
       tips: r.tips,
       nutrition: r.nutrition,
       servings: recipeServings(r.servings),
+      meal_format: r.meal_format,
+      components: Array.isArray(r.components) ? r.components : undefined,
     },
   });
+
+  const rememberRecentPlanEntries = (entries: WeeklyPlanEntry[]) => {
+    if (getLocalUserProfile().autoSaveRecipes === false) return;
+    saveLocalRecentRecipes(entries.map((entry) => ({
+      ...entry.recipe,
+      image_url: null,
+      nutrition: entry.recipe.nutrition || null,
+      genre: entry.recipe.genre || null,
+      dish_badge: entry.recipe.dish_badge || null,
+      source: 'meal-plan',
+      sourceRecipeId: `${entry.date}_${entry.mealSlot}`,
+    })));
+  };
 
   const handleGenerate = async () => {
     const slots = activeSlots();
@@ -202,6 +220,7 @@ export default function MealPlanPage() {
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
       if (entries.length === 0) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries(entries);
+      rememberRecentPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
       if (!isPremium) incrementFreeGenerationsUsed();
       loadData();
@@ -233,6 +252,7 @@ export default function MealPlanPage() {
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
       const entry = mapPlanItem(r);
       setLocalWeekPlanEntries([entry]);
+      rememberRecentPlanEntries([entry]);
       if (!isPremium) incrementFreeGenerationsUsed();
       loadData();
       showToast(t.mealPlan.regeneratedToast);
@@ -457,11 +477,32 @@ export default function MealPlanPage() {
                   };
                   return (
                     <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`}>
-                          <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
+                          <div
+                            className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t.mealPlan.openRecipeLabel(entry.recipe.title)}
+                            onClick={() => setPreviewRecipe({
+                              ...displayedRecipe,
+                              source: 'meal-plan',
+                              sourceRecipeId: key,
+                            })}
+                            onKeyDown={(event) => {
+                              if (event.target !== event.currentTarget) return;
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setPreviewRecipe({
+                                  ...displayedRecipe,
+                                  source: 'meal-plan',
+                                  sourceRecipeId: key,
+                                });
+                              }
+                            }}
+                          >
                             <button
                               type="button"
                               className={styles.planDish}
-                              aria-label={language === 'ja' ? `${entry.recipe.title}をトレーで開く` : `Open ${entry.recipe.title}`}
+                              aria-label={t.mealPlan.openRecipeLabel(entry.recipe.title)}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setPreviewRecipe({
@@ -510,7 +551,19 @@ export default function MealPlanPage() {
                               >
                                 <Trash2 size={14} />
                               </button>
-                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                              <button
+                                type="button"
+                                className={styles.iconButton}
+                                title={isExpanded ? t.mealPlan.collapseRecipeLabel : t.mealPlan.expandRecipeLabel}
+                                aria-label={isExpanded ? t.mealPlan.collapseRecipeLabel : t.mealPlan.expandRecipeLabel}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setExpandedKey(isExpanded ? null : key);
+                                }}
+                                onKeyDown={(event) => event.stopPropagation()}
+                              >
+                                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                              </button>
                             </div>
                           </div>
 

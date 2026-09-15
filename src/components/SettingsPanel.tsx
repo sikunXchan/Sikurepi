@@ -6,6 +6,7 @@ import {
   getLocalUserProfile,
   setLocalUserProfile,
   clearLocalLastRecipeGeneration,
+  clearLocalRecentRecipes,
   UserProfile,
   DEFAULT_USER_PROFILE,
   exportBackupJSON,
@@ -225,7 +226,10 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
     };
 
     setLocalUserProfile(updated);
-    if (!updated.autoSaveRecipes) clearLocalLastRecipeGeneration();
+    if (!updated.autoSaveRecipes) {
+      clearLocalLastRecipeGeneration();
+      clearLocalRecentRecipes();
+    }
     if (onSaved) onSaved();
     if (onCloseRequest) {
       onCloseRequest();
@@ -404,8 +408,8 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                   ? (language === 'ja' ? '生成時に自動で保存する' : 'Save automatically after generation')
                   : (language === 'ja' ? '自動保存しない' : 'Do not auto-save')}</strong>
                 <small>{language === 'ja'
-                  ? '前回の生成結果を端末に保存し、レシピタブへ戻ったときに復元します。調理履歴には追加しません。'
-                  : 'Keeps the latest generated result on this device and restores it in the Recipe tab. It is not added to cooking history.'}</small>
+                  ? '前回の生成結果をレシピタブへ復元し、直近3件を履歴タブに残します。保存したレシピや調理履歴とは別に管理されます。'
+                  : 'Restores the latest result in Recipes and keeps the latest three in History, separately from saved recipes and cooking logs.'}</small>
               </span>
             </button>
           </div>
