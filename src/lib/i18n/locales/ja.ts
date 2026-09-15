@@ -146,6 +146,7 @@ const ja = {
     communityLowRating: "低評価",
     communityMixedRating: "評価分かれる",
     communityNewRating: "新着レシピ",
+    communityPendingSync: "送信待ち",
     communityAll: "Plus・すべて表示",
     communitySeeAll: "すべて表示",
     communityTopOne: "無料・上位1件",
