@@ -1226,6 +1226,57 @@
   transform: translate(-50%, -50%);
 }
 
+.recipeDetailSetGrid {
+  position: absolute;
+  inset: 9% 13% 10%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: 2px 20px;
+}
+
+.recipeDetailHeroSet { aspect-ratio: 1.32 / 1; }
+
+.recipeDetailSetDish {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #4f3024;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(255, 250, 240, 0.96), 0 3px 9px rgba(78, 43, 27, 0.16);
+}
+
+.recipeDetailSetDishIcon {
+  width: clamp(112px, 18vw, 150px) !important;
+  height: clamp(112px, 18vw, 150px) !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 7px 5px rgba(78, 43, 27, 0.16));
+}
+
+.recipeDetailSetDishCourse {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #77584b;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.recipeDetailSetDish strong {
+  max-width: 220px;
+  overflow: hidden;
+  color: #4f3024;
+  font-size: clamp(11px, 1.8vw, 14px);
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .recipeDetailSummary {
   display: flex;
   flex-direction: column;
@@ -1358,6 +1409,11 @@
   .recipeDetailTopbar .savedBtn { min-height: 42px; padding: 8px 12px; }
   .recipeDetailScroll { padding-inline: 8px; }
   .recipeDetailHero { aspect-ratio: 1.33 / 1; background-size: 108% 100%; }
+  .recipeDetailHero.recipeDetailHeroSet { aspect-ratio: 1.16 / 1; }
+  .recipeDetailSetGrid { inset: 4% 12% 5%; gap: 0 10px; }
+  .recipeDetailSetDishIcon { width: clamp(82px, 27vw, 108px) !important; height: clamp(82px, 27vw, 108px) !important; }
+  .recipeDetailSetDishCourse { font-size: 9px; }
+  .recipeDetailSetDish strong { max-width: 136px; font-size: 10px; }
   .recipeDetailDishIcon {
     left: 50%;
     top: 50%;

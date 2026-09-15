@@ -283,6 +283,16 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         if (entry.meal_slot === 'dinner') {
           if (entry.meal_format !== 'set') logicErrors.push(`plan[${index}]: dinner meal_format must be "set"`);
           const components = Array.isArray(entry.components) ? entry.components : [];
+          components.forEach((component, componentIndex) => {
+            if (!component || typeof component !== 'object') {
+              logicErrors.push(`plan[${index}].components[${componentIndex}] must be an object`);
+              return;
+            }
+            const value = component as Record<string, unknown>;
+            if (typeof value.title !== 'string' || !value.title.trim()) {
+              logicErrors.push(`plan[${index}].components[${componentIndex}].title is missing`);
+            }
+          });
           const courses = new Set(components.map((component) =>
             component && typeof component === 'object' ? String((component as Record<string, unknown>).course || '') : ''
           ));
@@ -296,7 +306,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       logicErrors.push(...typedPlan.flatMap((item, index) =>
         qualityGateErrors(item, {
           servings: targetServings,
-          mealStyle: (planArray[index] as Record<string, unknown>)?.meal_slot === 'dinner' ? 'set' : 'single',
+          mealStyle: (planArray[index] as Record<string, unknown>)?.meal_format === 'set' ? 'set' : 'single',
           targetCaloriesPerServing: perMealCalories,
           targetProteinPerServing: perMealProtein,
         }, `plan[${index}]`)

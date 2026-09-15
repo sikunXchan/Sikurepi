@@ -20,7 +20,8 @@ import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
   deleteLocalCookingRecordsForRecipe,
-  deleteLocalCookedRecord,
+  deleteLocalRecentRecipe,
+  getLocalRecentRecipes,
   getLocalIngredients,
   addLocalShoppingItem,
   isIngredientMissing,
@@ -28,7 +29,7 @@ import {
   getLocalUserProfile,
   getLocalUserStats,
   CookedRecord,
-  CookedRecipeSnapshot,
+  RecentRecipe,
   SavedRecipe,
   Ingredient,
   UserProfile
@@ -58,11 +59,7 @@ export default function HistoryPage() {
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
-  const [recentCookedRecords, setRecentCookedRecords] = useState<Array<{
-    record: CookedRecord;
-    recordIndex: number;
-    recipe: CookedRecipeSnapshot | SavedRecipe | null;
-  }>>([]);
+  const [recentRecipes, setRecentRecipes] = useState<RecentRecipe[]>([]);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
 
   // Search/filter state
@@ -76,22 +73,13 @@ export default function HistoryPage() {
     const savedRecipes = getLocalSavedRecipes();
     const stats = getLocalUserStats();
     setAllRecipes(savedRecipes);
+    setRecentRecipes(getLocalRecentRecipes());
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
     setRescueRecords(
       stats.cooked_records
         .filter((record) => (record.rescuedIngredients?.length || 0) > 0)
         .slice(0, 8)
-    );
-    setRecentCookedRecords(
-      (stats.cooked_records || []).slice(0, 3).map((record, recordIndex) => ({
-        record,
-        recordIndex,
-        recipe: record.recipe || savedRecipes.find((saved) =>
-          saved.title.normalize('NFKC').trim().toLocaleLowerCase()
-            === record.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase()
-        ) || null,
-      }))
     );
     setLoading(false);
   }
@@ -255,50 +243,52 @@ export default function HistoryPage() {
         </section>
       )}
 
-      {!loading && recentCookedRecords.length > 0 && (
+      {!loading && (
         <section className={styles.recentCookedSection}>
           <div className={styles.historySectionHeading}>
             <div>
-              <h2>{language === 'ja' ? '直近に作った料理' : 'Recently cooked'}</h2>
-              <p>{language === 'ja' ? '調理完了した最新3件です' : 'Your latest three completed dishes'}</p>
+              <h2>{t.history.recentRecipesTitle}</h2>
+              <p>{t.history.recentRecipesSubtitle}</p>
             </div>
           </div>
-          <div className={styles.recentCookedGrid}>
-            {recentCookedRecords.map(({ record, recordIndex, recipe }) => (
-              <article key={`${record.date}-${recordIndex}`} className={styles.recentCookedCard}>
+          {recentRecipes.length > 0 ? (
+            <div className={styles.recentCookedGrid}>
+              {recentRecipes.map((recipe) => (
+                <article key={recipe.id} className={styles.recentCookedCard}>
                 <button
                   type="button"
                   className={styles.recentCookedOpen}
-                  disabled={!recipe}
-                  onClick={() => recipe && setPreviewRecipe({
+                  onClick={() => setPreviewRecipe({
                     ...recipe,
-                    source: 'history',
-                    sourceRecipeId: record.sourceRecipeId || `cooked-${record.date}`,
+                    sourceRecipeId: recipe.sourceRecipeId || recipe.id,
                   })}
                 >
-                  <RecipeThumbnail genre={recipe?.genre || undefined} fallbackIngredientName={record.recipeTitle} size={76} />
-                  <span><strong>{record.recipeTitle}</strong><small>{formatDate(record.date)}</small></span>
+                  <RecipeThumbnail genre={recipe.genre || undefined} fallbackIngredientName={recipe.title} size={76} />
+                  <span><strong>{recipe.title}</strong><small>{formatDate(recipe.recent_at)}</small></span>
                 </button>
                 <button
                   type="button"
                   className={styles.recentCookedDelete}
-                  aria-label={language === 'ja' ? `${record.recipeTitle}の自炊記録を削除` : `Delete cooking record for ${record.recipeTitle}`}
+                  aria-label={t.history.deleteRecentRecipeLabel(recipe.title)}
                   onClick={() => {
-                    deleteLocalCookedRecord(recordIndex);
+                    deleteLocalRecentRecipe(recipe.id);
                     loadRecipes();
                   }}
                 ><Trash2 size={15} /></button>
               </article>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.recentRecipesEmpty}>{t.history.recentRecipesEmpty}</p>
+          )}
         </section>
       )}
 
       {!loading && (
         <div className={styles.historySectionHeading}>
           <div>
-            <h2>{language === 'ja' ? '保存したレシピ' : 'Saved recipes'}</h2>
-            <p>{language === 'ja' ? '保存ボタンで残したレシピです' : 'Recipes kept with the save button'}</p>
+            <h2>{t.history.savedRecipesTitle}</h2>
+            <p>{t.history.savedRecipesSubtitle}</p>
           </div>
         </div>
       )}
@@ -431,12 +421,22 @@ export default function HistoryPage() {
               <div key={recipe.id} className={styles.recipeCard}>
                 <div
                   className={styles.cardTopRow}
-                  onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t.history.openRecipeLabel(recipe.title)}
+                  onClick={() => setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) })}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
+                    }
+                  }}
                 >
                   <button
                     type="button"
                     className={styles.recipePreviewButton}
-                    aria-label={language === 'ja' ? `${recipe.title}をトレーで開く` : `Open ${recipe.title}`}
+                    aria-label={t.history.openRecipeLabel(recipe.title)}
                     onClick={(event) => {
                       event.stopPropagation();
                       setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
@@ -476,7 +476,16 @@ export default function HistoryPage() {
                     </div>
                   </div>
 
-                  <button className={styles.expandBtn}>
+                  <button
+                    type="button"
+                    className={styles.expandBtn}
+                    aria-label={isExpanded ? t.history.collapseRecipeLabel : t.history.expandRecipeLabel}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setExpandedId(isExpanded ? null : recipe.id);
+                    }}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </button>
                 </div>

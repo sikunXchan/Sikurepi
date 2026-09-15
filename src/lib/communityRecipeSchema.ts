@@ -14,6 +14,8 @@ export type CommunityRecipe = {
   } | null;
   creator_comment?: string | null;
   servings?: number;
+  meal_format?: 'single' | 'set';
+  components?: { course: string; title: string; genre?: string | null }[];
   translations?: Partial<Record<'ja' | 'en', CommunityRecipeTranslation>>;
 };
 
@@ -26,7 +28,19 @@ export type CommunityRecipeTranslation = {
   genre?: string | null;
   dish_badge?: string | null;
   creator_comment?: string | null;
+  meal_format?: 'single' | 'set';
+  components?: { course: string; title: string; genre?: string | null }[];
 };
+
+function sanitizeMealComponents(value: unknown): CommunityRecipe['components'] {
+  if (!Array.isArray(value)) return undefined;
+  const components = value.slice(0, 6).map((component) => ({
+    course: String(component?.course || '').normalize('NFKC').trim().slice(0, 40),
+    title: String(component?.title || '').normalize('NFKC').trim().slice(0, 160),
+    genre: typeof component?.genre === 'string' ? component.genre.normalize('NFKC').trim().slice(0, 80) : null,
+  })).filter((component) => component.course && component.title);
+  return components.length > 0 ? components : undefined;
+}
 
 function isCommunityRecipeTranslation(value: unknown): value is CommunityRecipeTranslation {
   if (!value || typeof value !== 'object') return false;
@@ -53,6 +67,8 @@ function sanitizeTranslation(translation: CommunityRecipeTranslation): Community
     creator_comment: typeof translation.creator_comment === 'string'
       ? translation.creator_comment.normalize('NFKC').trim().slice(0, 280)
       : null,
+    meal_format: translation.meal_format === 'set' ? 'set' : translation.meal_format === 'single' ? 'single' : undefined,
+    components: sanitizeMealComponents(translation.components),
   };
 }
 
@@ -88,6 +104,8 @@ export function sanitizeCommunityRecipe(recipe: CommunityRecipe): CommunityRecip
     creator_comment: typeof recipe.creator_comment === 'string'
       ? recipe.creator_comment.normalize('NFKC').trim().slice(0, 280)
       : null,
+    meal_format: recipe.meal_format === 'set' ? 'set' : recipe.meal_format === 'single' ? 'single' : undefined,
+    components: sanitizeMealComponents(recipe.components),
     translations: Object.keys(translations || {}).length > 0 ? translations : undefined,
   };
 }
@@ -110,5 +128,7 @@ export function serializeCommunityRecipeIdentity(recipe: CommunityRecipe): strin
     sanitized.time.toLocaleLowerCase(),
     sanitized.ingredients.map((item) => [item.name.toLocaleLowerCase(), item.amount.toLocaleLowerCase()]),
     sanitized.steps.map((step) => step.toLocaleLowerCase()),
+    sanitized.meal_format || 'single',
+    (sanitized.components || []).map((component) => [component.course, component.title.toLocaleLowerCase()]),
   ]);
 }

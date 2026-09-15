@@ -30,13 +30,16 @@ import {
   setLocalLastRecipeGeneration,
   getLocalCachedRecipeGeneration,
   setLocalCachedRecipeGeneration,
+  saveLocalRecentRecipes,
   consumePendingDailyPickHandoff,
   DEFAULT_USER_PROFILE,
   CATEGORY_ORDER,
   CATEGORY_ICON_SLUGS,
   Ingredient,
   UserProfile,
-  NutritionData
+  NutritionData,
+  MealComponent,
+  MealFormat
 } from "@/lib/storage";
 import {
   canUseFreeRecipeGeneration,
@@ -71,6 +74,8 @@ type Recipe = {
   source?: 'generated' | 'community' | 'daily-pick';
   sourceRecipeId?: string;
   servings?: number;
+  meal_format?: MealFormat;
+  components?: MealComponent[];
 };
 
 type CookingTip = {
@@ -251,6 +256,8 @@ export default function RecipePage() {
       genre: recipe.genre || null,
       dish_badge: recipe.dish_badge || null,
       servings: recipeServings(recipe.servings),
+      meal_format: recipe.meal_format,
+      components: recipe.components,
     });
     return true;
   };
@@ -435,6 +442,22 @@ export default function RecipePage() {
       };
       if (getLocalUserProfile().autoSaveRecipes !== false) {
         setLocalLastRecipeGeneration(generationSnapshot);
+        saveLocalRecentRecipes(generatedRecipes.map((recipe) => ({
+          title: recipe.title,
+          time: recipe.time,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          tips: recipe.tips,
+          image_url: recipe.image_url,
+          nutrition: recipe.nutrition || null,
+          genre: recipe.genre || null,
+          dish_badge: recipe.dish_badge || null,
+          servings: recipeServings(recipe.servings, sessionServings),
+          meal_format: recipe.meal_format,
+          components: recipe.components,
+          source: recipe.source || 'generated',
+          sourceRecipeId: recipe.sourceRecipeId,
+        })));
       }
       setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
