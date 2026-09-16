@@ -5,8 +5,6 @@ import { motion, useMotionValue, useTransform, animate as animateValue, PanInfo 
 import {
   getLocalUserProfile,
   setLocalUserProfile,
-  clearLocalLastRecipeGeneration,
-  clearLocalRecentRecipes,
   UserProfile,
   DEFAULT_USER_PROFILE,
   exportBackupJSON,
@@ -222,14 +220,9 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
       excludedIngredients: excludedList,
       trayTheme: isPremium ? profile.trayTheme : 'wood',
       shareGeneratedRecipes: isPremium ? profile.shareGeneratedRecipes !== false : true,
-      autoSaveRecipes: profile.autoSaveRecipes !== false,
     };
 
     setLocalUserProfile(updated);
-    if (!updated.autoSaveRecipes) {
-      clearLocalLastRecipeGeneration();
-      clearLocalRecentRecipes();
-    }
     if (onSaved) onSaved();
     if (onCloseRequest) {
       onCloseRequest();
@@ -394,28 +387,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
 
           <div className={styles.section}>
             <label className={styles.sectionLabel}>
-              {language === 'ja' ? '生成レシピの自動保存' : 'Auto-save generated recipes'}
-            </label>
-            <button
-              type="button"
-              className={`${styles.shareToggle} ${profile.autoSaveRecipes !== false ? styles.shareToggleOn : ''}`}
-              aria-pressed={profile.autoSaveRecipes !== false}
-              onClick={() => setProfile(prev => ({ ...prev, autoSaveRecipes: prev.autoSaveRecipes === false }))}
-            >
-              <span className={styles.shareToggleTrack}><i /></span>
-              <span>
-                <strong>{profile.autoSaveRecipes !== false
-                  ? (language === 'ja' ? '生成時に自動で保存する' : 'Save automatically after generation')
-                  : (language === 'ja' ? '自動保存しない' : 'Do not auto-save')}</strong>
-                <small>{language === 'ja'
-                  ? '前回の生成結果をレシピタブへ復元し、直近3件を履歴タブに残します。保存したレシピや調理履歴とは別に管理されます。'
-                  : 'Restores the latest result in Recipes and keeps the latest three in History, separately from saved recipes and cooking logs.'}</small>
-              </span>
-            </button>
-          </div>
-
-          <div className={styles.section}>
-            <label className={styles.sectionLabel}>
               {language === 'ja' ? 'みんなのレシピへの自動共有' : 'Auto-share to Community Recipes'}
             </label>
             <button
@@ -449,18 +420,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
             />
             <span className={styles.hint}>{t.settings.addressHint}</span>
-          </div>
-
-          <div className={styles.section}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151' }}>
-              <input
-                type="checkbox"
-                checked={profile.enableClimate !== false}
-                onChange={(e) => setProfile(prev => ({ ...prev, enableClimate: e.target.checked }))}
-                style={{ width: 16, height: 16, accentColor: '#ff6f91' }}
-              />
-              <span>{t.settings.climateToggleLabel}</span>
-            </label>
           </div>
 
           <div className={styles.section}>

@@ -173,7 +173,6 @@ export default function RecipePage() {
   // マウント時に一度だけ行い、storage-updated発火のたびに入力中のフォームを
   // 上書きしてしまわないようにする。
   useEffect(() => {
-    if (getLocalUserProfile().autoSaveRecipes === false) return;
     const cached = getLocalLastRecipeGeneration();
     if (cached) {
       setRecipes(cached.recipes.map((recipe) => ({
@@ -346,9 +345,7 @@ export default function RecipePage() {
         setExpandedIndex(-1);
         setSavedSet(new Set(savedIndices));
         setResultOrigin('cache');
-        if (getLocalUserProfile().autoSaveRecipes !== false) {
-          setLocalLastRecipeGeneration(restored);
-        }
+        setLocalLastRecipeGeneration(restored);
         showToast(t.recipe.cacheHitToast);
         return;
       }
@@ -440,25 +437,23 @@ export default function RecipePage() {
         savedAt: new Date().toISOString(),
         requestKey,
       };
-      if (getLocalUserProfile().autoSaveRecipes !== false) {
-        setLocalLastRecipeGeneration(generationSnapshot);
-        saveLocalRecentRecipes(generatedRecipes.map((recipe) => ({
-          title: recipe.title,
-          time: recipe.time,
-          ingredients: recipe.ingredients,
-          steps: recipe.steps,
-          tips: recipe.tips,
-          image_url: recipe.image_url,
-          nutrition: recipe.nutrition || null,
-          genre: recipe.genre || null,
-          dish_badge: recipe.dish_badge || null,
-          servings: recipeServings(recipe.servings, sessionServings),
-          meal_format: recipe.meal_format,
-          components: recipe.components,
-          source: recipe.source || 'generated',
-          sourceRecipeId: recipe.sourceRecipeId,
-        })));
-      }
+      setLocalLastRecipeGeneration(generationSnapshot);
+      saveLocalRecentRecipes(generatedRecipes.map((recipe) => ({
+        title: recipe.title,
+        time: recipe.time,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        tips: recipe.tips,
+        image_url: recipe.image_url,
+        nutrition: recipe.nutrition || null,
+        genre: recipe.genre || null,
+        dish_badge: recipe.dish_badge || null,
+        servings: recipeServings(recipe.servings, sessionServings),
+        meal_format: recipe.meal_format,
+        components: recipe.components,
+        source: recipe.source || 'generated',
+        sourceRecipeId: recipe.sourceRecipeId,
+      })));
       setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);

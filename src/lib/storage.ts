@@ -178,8 +178,6 @@ export type UserProfile = {
   // 実際に作ったレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
   // falseにして共有を停止できる。旧データは未定義=trueとして扱う。
   shareGeneratedRecipes?: boolean;
-  // 生成完了時に履歴へ自動保存する。旧データは未定義=trueとして扱う。
-  autoSaveRecipes?: boolean;
   // 「そろそろ使って」通知をユーザーが明示的に非表示にした食材ID。
   // 食材を削除して再登録した場合は新IDになるため、再び通常判定へ戻る。
   ignoredForgottenIngredientIds?: number[];
@@ -1318,7 +1316,6 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   preferredGenres: [],
   trayTheme: 'wood',
   shareGeneratedRecipes: true,
-  autoSaveRecipes: true,
   ignoredForgottenIngredientIds: [],
 };
 
