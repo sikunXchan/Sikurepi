@@ -28,15 +28,78 @@
   color: var(--text-muted);
 }
 
-.historySectionHeading h2 {
-  margin: 0;
-  color: var(--foreground);
-  font-size: 18px;
+/* 「直近のレシピ」「保存したレシピ」を切り替えるタブ */
+.sectionTabs {
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6px 16px rgba(91, 57, 40, 0.05);
+}
+
+.sectionTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-size: 13px;
   font-weight: 900;
 }
 
-.historySectionHeading p {
-  margin: 3px 0 0;
+.sectionTab:hover { transform: none; box-shadow: none; }
+
+.sectionTabActive {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(224, 70, 110, 0.18);
+}
+
+.sectionTabCount {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(111, 78, 59, 0.1);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sectionTabActive .sectionTabCount { background: rgba(255, 255, 255, 0.28); }
+
+/* タブと連動する横スライド。スクロールスナップでページ送りにし、
+   タップでもスワイプでも同じ位置に切り替わるようにする */
+.sectionScroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 0 -3px;
+}
+
+.sectionScroll::-webkit-scrollbar { display: none; }
+
+.sectionPane {
+  flex: 0 0 100%;
+  min-width: 100%;
+  padding: 0 3px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.paneSubtitle {
+  margin: 0;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;

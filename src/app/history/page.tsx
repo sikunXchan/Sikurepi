@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Minus, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,6 +61,24 @@ export default function HistoryPage() {
   const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
   const [recentRecipes, setRecentRecipes] = useState<RecentRecipe[]>([]);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
+
+  // 「直近のレシピ」「保存したレシピ」を縦に並べず、横スライドで切り替える
+  const [activeSection, setActiveSection] = useState<'recent' | 'saved'>('recent');
+  const sectionScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (section: 'recent' | 'saved') => {
+    const el = sectionScrollRef.current;
+    setActiveSection(section);
+    if (!el) return;
+    el.scrollTo({ left: section === 'recent' ? 0 : el.clientWidth, behavior: 'smooth' });
+  };
+
+  const handleSectionScroll = () => {
+    const el = sectionScrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const next = el.scrollLeft >= el.clientWidth / 2 ? 'saved' : 'recent';
+    setActiveSection((prev) => (prev === next ? prev : next));
+  };
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -243,14 +261,69 @@ export default function HistoryPage() {
         </section>
       )}
 
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className={styles.modalContent}
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            >
+              <div className={styles.modalIcon}>
+                <Trash2 size={32} />
+              </div>
+              <h2 className={styles.modalTitle}>{t.history.deleteConfirmTitle}</h2>
+              <p className={styles.modalText}>
+                {t.history.deleteConfirmLine1}<br />{t.history.deleteConfirmLine2}
+              </p>
+              <div className={styles.modalActions}>
+                <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
+                  {t.history.cancel}
+                </button>
+                <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
+                  {t.history.confirmDelete}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading && (
+        <KitchenLoader compact variant="reading" text={t.history.subtitle} />
+      )}
+
       {!loading && (
-        <section className={styles.recentCookedSection}>
-          <div className={styles.historySectionHeading}>
-            <div>
-              <h2>{t.history.recentRecipesTitle}</h2>
-              <p>{t.history.recentRecipesSubtitle}</p>
-            </div>
+        <>
+          <div className={styles.sectionTabs}>
+            <button
+              type="button"
+              className={`${styles.sectionTab} ${activeSection === 'recent' ? styles.sectionTabActive : ''}`}
+              onClick={() => scrollToSection('recent')}
+            >
+              {t.history.recentRecipesTitle}
+              {recentRecipes.length > 0 && <span className={styles.sectionTabCount}>{recentRecipes.length}</span>}
+            </button>
+            <button
+              type="button"
+              className={`${styles.sectionTab} ${activeSection === 'saved' ? styles.sectionTabActive : ''}`}
+              onClick={() => scrollToSection('saved')}
+            >
+              {t.history.savedRecipesTitle}
+              {allRecipes.length > 0 && <span className={styles.sectionTabCount}>{allRecipes.length}</span>}
+            </button>
           </div>
+
+          <div className={styles.sectionScroll} ref={sectionScrollRef} onScroll={handleSectionScroll}>
+          <div className={styles.sectionPane}>
+          <section className={styles.recentCookedSection}>
+          <p className={styles.paneSubtitle}>{t.history.recentRecipesSubtitle}</p>
           {recentRecipes.length > 0 ? (
             <div className={styles.recentCookedGrid}>
               {recentRecipes.map((recipe) => (
@@ -282,19 +355,13 @@ export default function HistoryPage() {
             <p className={styles.recentRecipesEmpty}>{t.history.recentRecipesEmpty}</p>
           )}
         </section>
-      )}
-
-      {!loading && (
-        <div className={styles.historySectionHeading}>
-          <div>
-            <h2>{t.history.savedRecipesTitle}</h2>
-            <p>{t.history.savedRecipesSubtitle}</p>
-          </div>
         </div>
-      )}
 
-      {/* Search & Filter */}
-      {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>
+        <div className={styles.sectionPane}>
+          <p className={styles.paneSubtitle}>{t.history.savedRecipesSubtitle}</p>
+
+          {/* Search & Filter */}
+          {allRecipes.length > 0 && <div className={styles.searchSection}>
         <div className={styles.searchBar}>
           <Search size={16} className={styles.searchIcon} />
           <input
@@ -358,46 +425,6 @@ export default function HistoryPage() {
         )}
       </div>}
 
-      <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className={styles.modalContent}
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            >
-              <div className={styles.modalIcon}>
-                <Trash2 size={32} />
-              </div>
-              <h2 className={styles.modalTitle}>{t.history.deleteConfirmTitle}</h2>
-              <p className={styles.modalText}>
-                {t.history.deleteConfirmLine1}<br />{t.history.deleteConfirmLine2}
-              </p>
-              <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
-                  {t.history.cancel}
-                </button>
-                <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
-                  {t.history.confirmDelete}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {loading && (
-        <KitchenLoader compact variant="reading" text={t.history.subtitle} />
-      )}
-
-      {!loading && (
-        <>
           {!isPremium && allRecipes.length > FREE_HISTORY_ITEMS && (
             <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
               <Crown size={20} />
@@ -613,6 +640,8 @@ export default function HistoryPage() {
               <Link href="/recipe" className={styles.emptyStateCta}>{t.history.emptyStateCta}</Link>
             </div>
           )}
+          </div>
+          </div>
         </>
       )}
 
