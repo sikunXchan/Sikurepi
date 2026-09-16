@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Minus, Crown } from "lucide-react";
+import { Trash2, Search, X, PlayCircle, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -20,15 +19,14 @@ import {
   getLocalSavedRecipes,
   deleteLocalSavedRecipe,
   deleteLocalCookingRecordsForRecipe,
-  deleteLocalCookedRecord,
+  deleteLocalRecentRecipe,
+  getLocalRecentRecipes,
   getLocalIngredients,
-  addLocalShoppingItem,
-  isIngredientMissing,
   computeIngredientFulfillment,
   getLocalUserProfile,
   getLocalUserStats,
   CookedRecord,
-  CookedRecipeSnapshot,
+  RecentRecipe,
   SavedRecipe,
   Ingredient,
   UserProfile
@@ -46,7 +44,6 @@ export default function HistoryPage() {
   const TIME_OPTIONS = t.history.timeOptions;
   const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [targetId, setTargetId] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<SavedRecipe | null>(null);
@@ -54,16 +51,28 @@ export default function HistoryPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
-  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
-  const [recentCookedRecords, setRecentCookedRecords] = useState<Array<{
-    record: CookedRecord;
-    recordIndex: number;
-    recipe: CookedRecipeSnapshot | SavedRecipe | null;
-  }>>([]);
+  const [recentRecipes, setRecentRecipes] = useState<RecentRecipe[]>([]);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
+
+  // 「直近のレシピ」「保存したレシピ」を縦に並べず、横スライドで切り替える
+  const [activeSection, setActiveSection] = useState<'recent' | 'saved'>('recent');
+  const sectionScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (section: 'recent' | 'saved') => {
+    const el = sectionScrollRef.current;
+    setActiveSection(section);
+    if (!el) return;
+    el.scrollTo({ left: section === 'recent' ? 0 : el.clientWidth, behavior: 'smooth' });
+  };
+
+  const handleSectionScroll = () => {
+    const el = sectionScrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const next = el.scrollLeft >= el.clientWidth / 2 ? 'saved' : 'recent';
+    setActiveSection((prev) => (prev === next ? prev : next));
+  };
 
   // Search/filter state
   const [searchText, setSearchText] = useState('');
@@ -76,22 +85,13 @@ export default function HistoryPage() {
     const savedRecipes = getLocalSavedRecipes();
     const stats = getLocalUserStats();
     setAllRecipes(savedRecipes);
+    setRecentRecipes(getLocalRecentRecipes());
     setIngredients(getLocalIngredients());
     setUserProfile(getLocalUserProfile());
     setRescueRecords(
       stats.cooked_records
         .filter((record) => (record.rescuedIngredients?.length || 0) > 0)
         .slice(0, 8)
-    );
-    setRecentCookedRecords(
-      (stats.cooked_records || []).slice(0, 3).map((record, recordIndex) => ({
-        record,
-        recordIndex,
-        recipe: record.recipe || savedRecipes.find((saved) =>
-          saved.title.normalize('NFKC').trim().toLocaleLowerCase()
-            === record.recipeTitle.normalize('NFKC').trim().toLocaleLowerCase()
-        ) || null,
-      }))
     );
     setLoading(false);
   }
@@ -105,14 +105,6 @@ export default function HistoryPage() {
       window.removeEventListener("storage-updated", handleUpdate);
     };
   }, []);
-
-  const handlePinToShopping = (recipeId: number, ingredientName: string) => {
-    const key = `${recipeId}-${ingredientName}`;
-    if (pinnedToShoppingSet.has(key)) return;
-    addLocalShoppingItem(ingredientName);
-    setPinnedToShoppingSet(prev => new Set(prev).add(key));
-    showToast(t.recipe.pinnedToShoppingToast(ingredientName));
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -179,7 +171,6 @@ export default function HistoryPage() {
     const target = allRecipes.find((recipe) => recipe.id === targetId);
     deleteLocalSavedRecipe(targetId);
     if (target) deleteLocalCookingRecordsForRecipe(target.id, target.title);
-    if (expandedId === targetId) setExpandedId(null);
     setModalOpen(false);
     setTargetId(null);
     loadRecipes();
@@ -255,56 +246,107 @@ export default function HistoryPage() {
         </section>
       )}
 
-      {!loading && recentCookedRecords.length > 0 && (
-        <section className={styles.recentCookedSection}>
-          <div className={styles.historySectionHeading}>
-            <div>
-              <h2>{language === 'ja' ? '直近に作った料理' : 'Recently cooked'}</h2>
-              <p>{language === 'ja' ? '調理完了した最新3件です' : 'Your latest three completed dishes'}</p>
-            </div>
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className={styles.modalContent}
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            >
+              <div className={styles.modalIcon}>
+                <Trash2 size={32} />
+              </div>
+              <h2 className={styles.modalTitle}>{t.history.deleteConfirmTitle}</h2>
+              <p className={styles.modalText}>
+                {t.history.deleteConfirmLine1}<br />{t.history.deleteConfirmLine2}
+              </p>
+              <div className={styles.modalActions}>
+                <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
+                  {t.history.cancel}
+                </button>
+                <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
+                  {t.history.confirmDelete}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading && (
+        <KitchenLoader compact variant="reading" text={t.history.subtitle} />
+      )}
+
+      {!loading && (
+        <>
+          <div className={styles.sectionTabs}>
+            <button
+              type="button"
+              className={`${styles.sectionTab} ${activeSection === 'recent' ? styles.sectionTabActive : ''}`}
+              onClick={() => scrollToSection('recent')}
+            >
+              {t.history.recentRecipesTitle}
+              {recentRecipes.length > 0 && <span className={styles.sectionTabCount}>{recentRecipes.length}</span>}
+            </button>
+            <button
+              type="button"
+              className={`${styles.sectionTab} ${activeSection === 'saved' ? styles.sectionTabActive : ''}`}
+              onClick={() => scrollToSection('saved')}
+            >
+              {t.history.savedRecipesTitle}
+              {allRecipes.length > 0 && <span className={styles.sectionTabCount}>{allRecipes.length}</span>}
+            </button>
           </div>
-          <div className={styles.recentCookedGrid}>
-            {recentCookedRecords.map(({ record, recordIndex, recipe }) => (
-              <article key={`${record.date}-${recordIndex}`} className={styles.recentCookedCard}>
+
+          <div className={styles.sectionScroll} ref={sectionScrollRef} onScroll={handleSectionScroll}>
+          <div className={styles.sectionPane}>
+          <section className={styles.recentCookedSection}>
+          <p className={styles.paneSubtitle}>{t.history.recentRecipesSubtitle}</p>
+          {recentRecipes.length > 0 ? (
+            <div className={styles.recentCookedGrid}>
+              {recentRecipes.map((recipe) => (
+                <article key={recipe.id} className={styles.recentCookedCard}>
                 <button
                   type="button"
                   className={styles.recentCookedOpen}
-                  disabled={!recipe}
-                  onClick={() => recipe && setPreviewRecipe({
+                  onClick={() => setPreviewRecipe({
                     ...recipe,
-                    source: 'history',
-                    sourceRecipeId: record.sourceRecipeId || `cooked-${record.date}`,
+                    sourceRecipeId: recipe.sourceRecipeId || recipe.id,
                   })}
                 >
-                  <RecipeThumbnail genre={recipe?.genre || undefined} fallbackIngredientName={record.recipeTitle} size={76} />
-                  <span><strong>{record.recipeTitle}</strong><small>{formatDate(record.date)}</small></span>
+                  <RecipeThumbnail genre={recipe.genre || undefined} fallbackIngredientName={recipe.title} size={76} />
+                  <span><strong>{recipe.title}</strong><small>{formatDate(recipe.recent_at)}</small></span>
                 </button>
                 <button
                   type="button"
                   className={styles.recentCookedDelete}
-                  aria-label={language === 'ja' ? `${record.recipeTitle}の自炊記録を削除` : `Delete cooking record for ${record.recipeTitle}`}
+                  aria-label={t.history.deleteRecentRecipeLabel(recipe.title)}
                   onClick={() => {
-                    deleteLocalCookedRecord(recordIndex);
+                    deleteLocalRecentRecipe(recipe.id);
                     loadRecipes();
                   }}
                 ><Trash2 size={15} /></button>
               </article>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.recentRecipesEmpty}>{t.history.recentRecipesEmpty}</p>
+          )}
         </section>
-      )}
-
-      {!loading && (
-        <div className={styles.historySectionHeading}>
-          <div>
-            <h2>{language === 'ja' ? '保存したレシピ' : 'Saved recipes'}</h2>
-            <p>{language === 'ja' ? '保存ボタンで残したレシピです' : 'Recipes kept with the save button'}</p>
-          </div>
         </div>
-      )}
 
-      {/* Search & Filter */}
-      {!loading && allRecipes.length > 0 && <div className={styles.searchSection}>
+        <div className={styles.sectionPane}>
+          <p className={styles.paneSubtitle}>{t.history.savedRecipesSubtitle}</p>
+
+          {/* Search & Filter */}
+          {allRecipes.length > 0 && <div className={styles.searchSection}>
         <div className={styles.searchBar}>
           <Search size={16} className={styles.searchIcon} />
           <input
@@ -368,46 +410,6 @@ export default function HistoryPage() {
         )}
       </div>}
 
-      <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className={styles.modalContent}
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            >
-              <div className={styles.modalIcon}>
-                <Trash2 size={32} />
-              </div>
-              <h2 className={styles.modalTitle}>{t.history.deleteConfirmTitle}</h2>
-              <p className={styles.modalText}>
-                {t.history.deleteConfirmLine1}<br />{t.history.deleteConfirmLine2}
-              </p>
-              <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={() => setModalOpen(false)}>
-                  {t.history.cancel}
-                </button>
-                <button className={styles.confirmDeleteBtn} onClick={handleDelete}>
-                  {t.history.confirmDelete}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {loading && (
-        <KitchenLoader compact variant="reading" text={t.history.subtitle} />
-      )}
-
-      {!loading && (
-        <>
           {!isPremium && allRecipes.length > FREE_HISTORY_ITEMS && (
             <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
               <Crown size={20} />
@@ -415,10 +417,9 @@ export default function HistoryPage() {
             </button>
           )}
           {sortedRecipes.map((recipe) => {
-            const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
             const baseServings = recipeServings(recipe.servings);
-            const displayServings = servingOverrides[recipe.id] || baseServings;
+            const displayServings = baseServings;
             const displayedRecipe = {
               ...recipe,
               servings: displayServings,
@@ -431,12 +432,22 @@ export default function HistoryPage() {
               <div key={recipe.id} className={styles.recipeCard}>
                 <div
                   className={styles.cardTopRow}
-                  onClick={() => setExpandedId(isExpanded ? null : recipe.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t.history.openRecipeLabel(recipe.title)}
+                  onClick={() => setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) })}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
+                    }
+                  }}
                 >
                   <button
                     type="button"
                     className={styles.recipePreviewButton}
-                    aria-label={language === 'ja' ? `${recipe.title}をトレーで開く` : `Open ${recipe.title}`}
+                    aria-label={t.history.openRecipeLabel(recipe.title)}
                     onClick={(event) => {
                       event.stopPropagation();
                       setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
@@ -475,10 +486,6 @@ export default function HistoryPage() {
                       <UiIcon slug="calendar_date" size={15} alt="" /> {formatDate(recipe.saved_at)}
                     </div>
                   </div>
-
-                  <button className={styles.expandBtn}>
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                  </button>
                 </div>
 
                 <div className={styles.cardActions}>
@@ -507,84 +514,6 @@ export default function HistoryPage() {
                     <Trash2 size={16} />
                   </button>
                 </div>
-
-                {isExpanded && (
-                  <div className={styles.detailBody}>
-                    {recipe.nutrition && (
-                      <div className={styles.nutritionSection}>
-                        <h3 className={styles.nutritionTitle}>{t.history.nutritionTitle}</h3>
-                        <NutritionChart nutrition={recipe.nutrition} />
-                      </div>
-                    )}
-
-                    <div className={styles.section}>
-                      <div className={styles.detailHeadingRow}>
-                        <h3>{t.history.ingredientsTitle}</h3>
-                        <div className={styles.servingsControl} aria-label={t.recipe.servingsLabel}>
-                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}><Minus size={16} strokeWidth={3} /></button>
-                          <strong>{t.recipe.servingsUnit(displayServings)}</strong>
-                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}><Plus size={16} strokeWidth={3} /></button>
-                        </div>
-                      </div>
-                      {displayServings !== baseServings && <p className={styles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
-                      <ul className={styles.ingredientList}>
-                        {displayedRecipe.ingredients.map((item, i) => {
-                          const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
-                          const pinKey = `${recipe.id}-${item.name}`;
-                          const isPinned = pinnedToShoppingSet.has(pinKey);
-                          return (
-                            <li key={i} className={missing ? styles.ingredientMissing : undefined}>
-                              <span className={styles.ingredientName}>
-                                <IngredientIcon name={item.name} size={30} />
-                                <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
-                                  {item.name}
-                                </span>
-                              </span>
-                              <span className={styles.ingredientRight}>
-                                <span className={styles.ingredientAmount}>{item.amount}</span>
-                                {missing && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(recipe.id, item.name); }}
-                                    className={isPinned ? styles.addedBtn : styles.addToCartBtn}
-                                    disabled={isPinned}
-                                  >
-                                    {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                    {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
-                                  </button>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-
-                    <div className={styles.section}>
-                      <h3>{t.history.stepsTitle}</h3>
-                      <ol className={styles.stepList}>
-                        {(Array.isArray(recipe.steps) ? recipe.steps : []).map((step, i) => (
-                          <li key={i}>
-                            <span className={styles.stepNumber}>{i + 1}</span>
-                            <span className={styles.stepText}>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-
-                    {recipe.tips && isPremium && (
-                      <div className={styles.tipsBox}>
-                        <strong>{t.recipe.tipsPrefix}</strong> {recipe.tips}
-                      </div>
-                    )}
-                    {recipe.tips && !isPremium && (
-                      <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
-                        <Crown size={18} />
-                        <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -604,6 +533,8 @@ export default function HistoryPage() {
               <Link href="/recipe" className={styles.emptyStateCta}>{t.history.emptyStateCta}</Link>
             </div>
           )}
+          </div>
+          </div>
         </>
       )}
 
