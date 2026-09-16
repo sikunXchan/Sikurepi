@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Trash2, ChevronDown, ChevronUp, Search, X, PlayCircle, Check, Plus, Minus, Crown } from "lucide-react";
+import { Trash2, Search, X, PlayCircle, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import NutritionChart from "@/components/NutritionChart";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -23,8 +22,6 @@ import {
   deleteLocalRecentRecipe,
   getLocalRecentRecipes,
   getLocalIngredients,
-  addLocalShoppingItem,
-  isIngredientMissing,
   computeIngredientFulfillment,
   getLocalUserProfile,
   getLocalUserStats,
@@ -47,7 +44,6 @@ export default function HistoryPage() {
   const TIME_OPTIONS = t.history.timeOptions;
   const [allRecipes, setAllRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [targetId, setTargetId] = useState<number | null>(null);
   const [cookedModalRecipe, setCookedModalRecipe] = useState<SavedRecipe | null>(null);
@@ -55,10 +51,8 @@ export default function HistoryPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(getLocalUserProfile());
-  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
   const [rescueRecords, setRescueRecords] = useState<CookedRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [servingOverrides, setServingOverrides] = useState<Record<number, number>>({});
   const [recentRecipes, setRecentRecipes] = useState<RecentRecipe[]>([]);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
 
@@ -111,14 +105,6 @@ export default function HistoryPage() {
       window.removeEventListener("storage-updated", handleUpdate);
     };
   }, []);
-
-  const handlePinToShopping = (recipeId: number, ingredientName: string) => {
-    const key = `${recipeId}-${ingredientName}`;
-    if (pinnedToShoppingSet.has(key)) return;
-    addLocalShoppingItem(ingredientName);
-    setPinnedToShoppingSet(prev => new Set(prev).add(key));
-    showToast(t.recipe.pinnedToShoppingToast(ingredientName));
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -185,7 +171,6 @@ export default function HistoryPage() {
     const target = allRecipes.find((recipe) => recipe.id === targetId);
     deleteLocalSavedRecipe(targetId);
     if (target) deleteLocalCookingRecordsForRecipe(target.id, target.title);
-    if (expandedId === targetId) setExpandedId(null);
     setModalOpen(false);
     setTargetId(null);
     loadRecipes();
@@ -432,10 +417,9 @@ export default function HistoryPage() {
             </button>
           )}
           {sortedRecipes.map((recipe) => {
-            const isExpanded = expandedId === recipe.id;
             const fulfillment = fulfillmentByRecipeId.get(recipe.id);
             const baseServings = recipeServings(recipe.servings);
-            const displayServings = servingOverrides[recipe.id] || baseServings;
+            const displayServings = baseServings;
             const displayedRecipe = {
               ...recipe,
               servings: displayServings,
@@ -502,19 +486,6 @@ export default function HistoryPage() {
                       <UiIcon slug="calendar_date" size={15} alt="" /> {formatDate(recipe.saved_at)}
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    className={styles.expandBtn}
-                    aria-label={isExpanded ? t.history.collapseRecipeLabel : t.history.expandRecipeLabel}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setExpandedId(isExpanded ? null : recipe.id);
-                    }}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                  </button>
                 </div>
 
                 <div className={styles.cardActions}>
@@ -543,84 +514,6 @@ export default function HistoryPage() {
                     <Trash2 size={16} />
                   </button>
                 </div>
-
-                {isExpanded && (
-                  <div className={styles.detailBody}>
-                    {recipe.nutrition && (
-                      <div className={styles.nutritionSection}>
-                        <h3 className={styles.nutritionTitle}>{t.history.nutritionTitle}</h3>
-                        <NutritionChart nutrition={recipe.nutrition} />
-                      </div>
-                    )}
-
-                    <div className={styles.section}>
-                      <div className={styles.detailHeadingRow}>
-                        <h3>{t.history.ingredientsTitle}</h3>
-                        <div className={styles.servingsControl} aria-label={t.recipe.servingsLabel}>
-                          <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.max(1, displayServings - 1) }))}><Minus size={16} strokeWidth={3} /></button>
-                          <strong>{t.recipe.servingsUnit(displayServings)}</strong>
-                          <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [recipe.id]: Math.min(15, displayServings + 1) }))}><Plus size={16} strokeWidth={3} /></button>
-                        </div>
-                      </div>
-                      {displayServings !== baseServings && <p className={styles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
-                      <ul className={styles.ingredientList}>
-                        {displayedRecipe.ingredients.map((item, i) => {
-                          const missing = isIngredientMissing(item.name, ingredients, userProfile.assumeSeasoningsAvailable);
-                          const pinKey = `${recipe.id}-${item.name}`;
-                          const isPinned = pinnedToShoppingSet.has(pinKey);
-                          return (
-                            <li key={i} className={missing ? styles.ingredientMissing : undefined}>
-                              <span className={styles.ingredientName}>
-                                <IngredientIcon name={item.name} size={30} />
-                                <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
-                                  {item.name}
-                                </span>
-                              </span>
-                              <span className={styles.ingredientRight}>
-                                <span className={styles.ingredientAmount}>{item.amount}</span>
-                                {missing && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handlePinToShopping(recipe.id, item.name); }}
-                                    className={isPinned ? styles.addedBtn : styles.addToCartBtn}
-                                    disabled={isPinned}
-                                  >
-                                    {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                    {isPinned ? t.recipe.addedToShopping : t.recipe.addToShopping}
-                                  </button>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-
-                    <div className={styles.section}>
-                      <h3>{t.history.stepsTitle}</h3>
-                      <ol className={styles.stepList}>
-                        {(Array.isArray(recipe.steps) ? recipe.steps : []).map((step, i) => (
-                          <li key={i}>
-                            <span className={styles.stepNumber}>{i + 1}</span>
-                            <span className={styles.stepText}>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-
-                    {recipe.tips && isPremium && (
-                      <div className={styles.tipsBox}>
-                        <strong>{t.recipe.tipsPrefix}</strong> {recipe.tips}
-                      </div>
-                    )}
-                    {recipe.tips && !isPremium && (
-                      <button type="button" className={styles.historyLimitCard} onClick={() => setShowPaywall(true)}>
-                        <Crown size={18} />
-                        <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
