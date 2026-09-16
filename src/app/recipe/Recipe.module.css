@@ -1102,6 +1102,21 @@
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
 }
 
+/* 器そのものが大きい丼・汁麺画像は、トレーの縁に触れない表示寸法へ抑える。 */
+.recipeDishChoiceIcon[data-dish-shape="bowl"] {
+  width: 156px !important;
+  height: 156px !important;
+}
+.recipeDishChoiceSingle .recipeDishChoiceIcon[data-dish-shape="bowl"] {
+  width: 188px !important;
+  height: 188px !important;
+}
+.recipeDishChoiceSolo .recipeDishChoiceIcon[data-dish-shape="bowl"] {
+  width: 208px !important;
+  height: 208px !important;
+}
+.recipeDishChoice:has(.recipeDishChoiceIcon[data-dish-shape="bowl"])::after { display: none; }
+
 /* 単品はトレーの主役なので、定食セットの各皿より一段だけ大きく見せる。 */
 .recipeDishChoiceSingle { flex-basis: 228px; }
 .recipeDishChoiceSingle .recipeDishChoiceIcon { width: 216px !important; height: 216px !important; }
@@ -1224,6 +1239,11 @@
   object-fit: contain !important;
   filter: drop-shadow(0 8px 6px rgba(78, 43, 27, 0.16));
   transform: translate(-50%, -50%);
+}
+
+.recipeDetailDishIcon[data-dish-shape="bowl"] {
+  width: clamp(200px, 27vw, 270px) !important;
+  height: clamp(200px, 27vw, 270px) !important;
 }
 
 .recipeDetailSummary {
@@ -1351,6 +1371,9 @@
   .recipeDishChoiceSolo { flex-basis: 236px; }
   .recipeDishChoiceSolo .recipeDishChoiceIcon { width: 224px !important; height: 224px !important; }
   .recipeDishChoiceSolo::after { top: 191px; width: 142px; }
+  .recipeDishChoiceIcon[data-dish-shape="bowl"] { width: 140px !important; height: 140px !important; }
+  .recipeDishChoiceSingle .recipeDishChoiceIcon[data-dish-shape="bowl"] { width: 166px !important; height: 166px !important; }
+  .recipeDishChoiceSolo .recipeDishChoiceIcon[data-dish-shape="bowl"] { width: 186px !important; height: 186px !important; }
 
   .recipeDetailTopbar { padding-inline: 10px; }
   .recipeDetailTopbar strong { font-size: 13px; }
@@ -1363,6 +1386,10 @@
     top: 50%;
     width: clamp(220px, 62vw, 248px) !important;
     height: clamp(220px, 62vw, 248px) !important;
+  }
+  .recipeDetailDishIcon[data-dish-shape="bowl"] {
+    width: clamp(174px, 49vw, 202px) !important;
+    height: clamp(174px, 49vw, 202px) !important;
   }
   .recipeDetailSummary { width: calc(100% - 12px); padding: 14px 16px; border-radius: 18px; }
   .recipeDetailContent { width: calc(100% - 12px); padding: 16px; border-radius: 20px; }
