@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Loader2, MessageSquareText, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Clock3, Loader2, MessageSquareText, RefreshCw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   getLocalRecipeFeedback,
+  getOrCreateDeviceId,
   saveLocalRecipeFeedback,
   type RecipeFeedbackInput,
   type RecipeFeedbackRating,
@@ -15,6 +16,8 @@ import {
   type RecipeFeedbackSubmissionResult,
 } from "@/lib/communityRecipes";
 import styles from "./RecipeFeedbackPanel.module.css";
+import { COMMUNITY_FEEDBACK_SYNC_EVENT, getFeedbackSyncStatus } from "@/lib/communityFeedbackQueue";
+import { isCommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type FeedbackRecipe = CommunityFeedbackRecipe & RecipeFeedbackInput;
 
@@ -30,6 +33,15 @@ export default function RecipeFeedbackPanel({ recipe, source, onChange }: Props)
   const [rating, setRating] = useState<RecipeFeedbackRating | null>(initialFeedback?.rating || null);
   const [note, setNote] = useState(initialFeedback?.note || "");
   const [status, setStatus] = useState<RecipeFeedbackSubmissionResult | "saving" | null>(null);
+
+  useEffect(() => {
+    const refreshStatus = () => {
+      if (isCommunityRecipe(recipe)) setStatus(getFeedbackSyncStatus(recipe, getOrCreateDeviceId()));
+    };
+    refreshStatus();
+    window.addEventListener(COMMUNITY_FEEDBACK_SYNC_EVENT, refreshStatus);
+    return () => window.removeEventListener(COMMUNITY_FEEDBACK_SYNC_EVENT, refreshStatus);
+  }, [recipe]);
 
   const persist = async (nextRating: RecipeFeedbackRating, nextNote: string) => {
     const sanitizedNote = nextRating === "negative" ? nextNote.slice(0, 500) : "";
@@ -59,7 +71,12 @@ export default function RecipeFeedbackPanel({ recipe, source, onChange }: Props)
         ? t.recipeFeedback.localOnly
         : status === "failed"
           ? t.recipeFeedback.failed
-          : null;
+          : status === "service-unavailable"
+            ? t.recipeFeedback.serviceUnavailable
+            : status === "pending"
+              ? t.recipeFeedback.pending
+              : null;
+  const waiting = status === 'failed' || status === 'pending' || status === 'service-unavailable';
 
   return (
     <section className={`${styles.panel} ${source === "completion" ? styles.panelCompletion : ""}`}>
@@ -69,9 +86,11 @@ export default function RecipeFeedbackPanel({ recipe, source, onChange }: Props)
           <span>{t.recipeFeedback.hint}</span>
         </div>
         {status === "saving" ? (
-          <Loader2 className={styles.spinner} size={17} aria-label={t.recipeFeedback.saved} />
+          <Loader2 className={styles.spinner} size={17} aria-label={t.recipeFeedback.sending} />
         ) : statusText ? (
-          <small className={styles.savedStatus}><Check size={13} />{statusText}</small>
+          <small className={`${styles.savedStatus} ${waiting ? styles.waitingStatus : ''}`} role="status">
+            {waiting ? <Clock3 size={13} /> : <Check size={13} />}{statusText}
+          </small>
         ) : null}
       </div>
 
@@ -97,6 +116,12 @@ export default function RecipeFeedbackPanel({ recipe, source, onChange }: Props)
           {t.recipeFeedback.dislike}
         </button>
       </div>
+
+      {waiting && rating && (
+        <button type="button" className={styles.retryButton} onClick={() => void persist(rating, note)}>
+          <RefreshCw size={14} />{t.recipeFeedback.retry}
+        </button>
+      )}
 
       {rating === "negative" && (
         <div className={styles.issueArea}>

@@ -7,18 +7,15 @@ import { CircleDot, Clock3, MessageSquareText, RefreshCw, ThumbsDown, ThumbsUp, 
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import { localizeCommunityRecipe, type CommunityRecipe } from "@/lib/communityRecipeSchema";
-import { COMMUNITY_RECIPES_CHANGED_EVENT } from "@/lib/communityRecipes";
+import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
+import {
+  COMMUNITY_RECIPES_CHANGED_EVENT,
+  mergeCommunityRecipesWithLocal,
+  type CommunityRecipeRowData,
+} from "@/lib/communityRecipes";
 import styles from "./CommunityRecipesScreen.module.css";
 
-export type CommunityRecipeRow = {
-  id: string;
-  likes_count: number;
-  positive_ratings_count?: number;
-  negative_ratings_count?: number;
-  ranking_score?: number;
-  recipe: CommunityRecipe;
-};
+export type CommunityRecipeRow = CommunityRecipeRowData;
 
 type Sentiment = "positive" | "negative" | "mixed" | "new";
 
@@ -61,8 +58,13 @@ export function CommunityRecipeRowCard({
       <span className={styles.recipeCopy}>
         <span className={styles.recipeTopline}>
           <span className={styles.identity}>{t.home.communityAnonymousAuthor}</span>
-          <span className={`${styles.sentiment} ${styles[`sentiment_${sentiment}`]}`}>
-            <SentimentIcon size={12} aria-hidden="true" />{sentimentLabel}
+          <span className={styles.statuses}>
+            {row.sync_status === 'pending' && (
+              <span className={styles.syncPending}>{t.home.communityPendingSync}</span>
+            )}
+            <span className={`${styles.sentiment} ${styles[`sentiment_${sentiment}`]}`}>
+              <SentimentIcon size={12} aria-hidden="true" />{sentimentLabel}
+            </span>
           </span>
         </span>
         <strong className={styles.recipeTitle}>{recipe.title}</strong>
@@ -102,10 +104,13 @@ export default function CommunityRecipesScreen({
       const response = await fetch("/api/community-recipes?limit=20", { signal });
       if (!response.ok) throw new Error("community recipes request failed");
       const data = await response.json();
-      setRecipes(Array.isArray(data?.recipes) ? data.recipes : []);
+      setRecipes(mergeCommunityRecipesWithLocal(Array.isArray(data?.recipes) ? data.recipes : []));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setFailed(true);
+      // 通信できない時も、端末内で送信待ちの料理は失わず表示する。
+      const localRecipes = mergeCommunityRecipesWithLocal([]);
+      setRecipes(localRecipes);
+      setFailed(localRecipes.length === 0);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { buildBackupPayload, applyBackupPayload, hasLocalData } from "@/lib/storage";
 import { COMMUNITY_RECIPE_OUTBOX_EVENT, flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
+import { flushCommunityFeedbackOutbox } from "@/lib/communityFeedbackQueue";
 
 const SYNC_DEBOUNCE_MS = 2000;
 
@@ -38,15 +39,21 @@ export default function SyncManager() {
   // みんなのレシピへの送信はログイン有無と別の公開キュー。通信失敗時も、
   // ホーム画面を開くまで待たず、オンライン復帰・フォーカス復帰で再送する。
   useEffect(() => {
-    const flush = () => { void flushCommunityRecipeOutbox(); };
+    const flush = () => {
+      void flushCommunityRecipeOutbox();
+      void flushCommunityFeedbackOutbox();
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') flush(); };
     flush();
     window.addEventListener("online", flush);
     window.addEventListener("focus", flush);
     window.addEventListener(COMMUNITY_RECIPE_OUTBOX_EVENT, flush);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener("online", flush);
       window.removeEventListener("focus", flush);
       window.removeEventListener(COMMUNITY_RECIPE_OUTBOX_EVENT, flush);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 

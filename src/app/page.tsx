@@ -34,7 +34,11 @@ import {
 } from "@/lib/storage";
 import styles from "./Home.module.css";
 import { buildDietaryConstraintKey } from "@/lib/dietaryRules";
-import { COMMUNITY_RECIPES_CHANGED_EVENT, flushCommunityRecipeOutbox } from "@/lib/communityRecipes";
+import {
+  COMMUNITY_RECIPES_CHANGED_EVENT,
+  flushCommunityRecipeOutbox,
+  mergeCommunityRecipesWithLocal,
+} from "@/lib/communityRecipes";
 import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
 
 type BilingualText = { ja: string; en: string };
@@ -182,8 +186,8 @@ export default function HomePage() {
     const loadCommunityRecipes = () => {
       fetch(`/api/community-recipes?limit=${isPremium ? 20 : FREE_COMMUNITY_RECIPE_ITEMS}`)
         .then(res => res.ok ? res.json() : null)
-        .then(data => setCommunityRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
-        .catch(() => setCommunityRecipes([]));
+        .then(data => setCommunityRecipes(mergeCommunityRecipesWithLocal(Array.isArray(data?.recipes) ? data.recipes : [])))
+        .catch(() => setCommunityRecipes(mergeCommunityRecipesWithLocal([])));
     };
     void flushCommunityRecipeOutbox();
     loadCommunityRecipes();

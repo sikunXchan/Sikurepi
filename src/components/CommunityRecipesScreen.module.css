@@ -97,6 +97,8 @@
 .recipeCopy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
 .recipeTopline { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .identity { color: #9a777f; font-size: 9px; font-weight: 900; letter-spacing: 0.04em; }
+.statuses { display: inline-flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; }
+.syncPending { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 4px 7px; border-radius: 999px; background: #fff4dd; color: #996420; font-size: 9px; font-weight: 900; white-space: nowrap; }
 .recipeTitle { display: -webkit-box; overflow: hidden; color: var(--foreground); font-size: 14px; font-weight: 900; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .recipeMeta { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--text-muted); font-size: 10px; font-weight: 800; }
 .recipeMeta > span { display: inline-flex; align-items: center; gap: 4px; }
