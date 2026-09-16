@@ -577,7 +577,11 @@ const ja = {
     saveIssue: "改善点を保存",
     saved: "アプリに保存し、順位にも反映しました",
     localOnly: "アプリに保存しました",
-    failed: "通信できませんでしたが、アプリには保存しました",
+    failed: "評価は端末に保存されています。送信をもう一度お試しください",
+    pending: "評価は送信待ちです。アプリを開いたときに再送します",
+    serviceUnavailable: "共有サービスが利用できません。評価を端末に保管して再送します",
+    sending: "評価を送信中",
+    retry: "送信をもう一度試す",
   },
   cookingSession: {
     collectionNew: (count: number) => `図鑑に新しく${count}種類発見`,

@@ -1,5 +1,6 @@
 import { getOrCreateDeviceId, type RecipeFeedbackRating } from './storage';
 import { serializeCommunityRecipeIdentity, type CommunityRecipe } from './communityRecipeSchema';
+import { queueCommunityFeedback, type FeedbackSyncStatus } from './communityFeedbackQueue';
 
 export type ShareableRecipe = CommunityRecipe;
 
@@ -171,15 +172,15 @@ async function postRecipes(recipes: ShareableRecipe[]): Promise<{ ok: boolean; i
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipes }),
   });
-  if (response.ok && typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(COMMUNITY_RECIPES_CHANGED_EVENT));
-  }
   if (!response.ok) return { ok: false, ids: [] };
   const data = await response.json().catch(() => null);
-  return {
-    ok: true,
-    ids: Array.isArray(data?.ids) ? data.ids.filter((id: unknown): id is string => typeof id === 'string') : [],
-  };
+  const ids: string[] = Array.isArray(data?.ids)
+    ? data.ids.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  // HTTP 200だけではキューを消さない。全件のDB保存IDが返ったときだけ完了扱い。
+  if (ids.length !== recipes.length) return { ok: false, ids: [] };
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(COMMUNITY_RECIPES_CHANGED_EVENT));
+  return { ok: true, ids };
 }
 
 /** 保存済みの送信待ちレシピを古い順に再送する。重複flushは1本にまとめる。 */
@@ -267,7 +268,7 @@ export type CommunityFeedbackRecipe = {
   nutrition?: ShareableRecipe['nutrition'];
 };
 
-export type RecipeFeedbackSubmissionResult = 'saved' | 'local-only' | 'failed';
+export type RecipeFeedbackSubmissionResult = FeedbackSyncStatus;
 
 // タイトルだけの古い履歴など、公開レシピとして成立する本文を持たない場合も
 // 個人の好み学習は端末内で継続し、ランキング送信だけを安全に省略する。
@@ -281,26 +282,18 @@ export async function submitCommunityRecipeFeedback({
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return 'local-only';
 
-  try {
-    const response = await fetch('/api/community-recipes/feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipe: {
-          ...recipe,
-          ingredients: recipe.ingredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
-        },
-        deviceId,
-        rating: rating === 'positive' ? 1 : -1,
-        note: note.slice(0, 500),
-        source,
-        publish: rating === 'positive',
-      }),
-    });
-    if (!response.ok) return 'failed';
-    const data = await response.json();
-    return data?.rankingUpdated === false ? 'local-only' : 'saved';
-  } catch {
-    return 'failed';
-  }
+  return queueCommunityFeedback({
+    recipe: {
+      ...recipe,
+      time: recipe.time,
+      steps: recipe.steps,
+      tips: recipe.tips,
+      ingredients: recipe.ingredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
+    },
+    deviceId,
+    rating: rating === 'positive' ? 1 : -1,
+    note: note.slice(0, 500),
+    source,
+    publish: rating === 'positive',
+  });
 }
