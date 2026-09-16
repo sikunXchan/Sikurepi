@@ -32,7 +32,7 @@
 ログインして複数端末でデータを同期する機能はSupabaseを使っています。設定しなくてもアプリは今まで通りこの端末だけのゲスト利用として動作します。
 
 1. [Supabase](https://supabase.com/)でプロジェクトを新規作成します。
-2. プロジェクトの「SQL Editor」を開き、このリポジトリの `supabase_schema.sql` の内容をコピーして実行します（`user_data`テーブルとRow Level Securityポリシーが作成されます）。
+2. プロジェクトの「SQL Editor」を開き、このリポジトリの `supabase_schema.sql` の内容をコピーして実行します（アカウント同期・共有レシピ・評価用のテーブル、権限、DB関数が作成されます）。
 3. 「Authentication」>「Providers」で「Email」プロバイダーが有効になっていることを確認します。
 4. **「Authentication」>「Email Templates」>「Magic Link」を開き、本文に`{{ .Token }}`を含めるよう編集します**（例: `確認コード: {{ .Token }}`）。これをしないと、メールにはリンクしか入らず、アプリ側で入力してもらう6桁のコードが届きません（デフォルトのテンプレートは`{{ .ConfirmationURL }}`のみでコードが含まれていません）。
    - ログイン方式に6桁の確認コード入力を採用しているのは、CapacitorのネイティブアプリではSafari側でリンクが開いてしまいアプリ本体のログイン状態に反映されない問題があるため（Universal Linksには有料のApple Developer Programが必要）。
@@ -41,6 +41,20 @@
 7. Vercelの「Settings」>「Environment Variables」に以下を追加し、再デプロイします。
    - `NEXT_PUBLIC_SUPABASE_URL`: 控えた`Project URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 控えた`anon public`(`publishable`)キー
+
+#### 「みんなのレシピ」が反映されない既存環境
+
+GitHubへのpushやVercelの再デプロイだけでは、Supabaseのテーブルは作成されません。内蔵サンプルが一覧に出ていても、共有機能の接続確認にはなりません。
+
+1. Vercelの `NEXT_PUBLIC_SUPABASE_URL` と同じSupabaseプロジェクトの「SQL Editor」で、新しいクエリを開きます。
+2. `supabase/migrations/202609160001_community_recipes.sql` の全体を貼り付け、実行します。既存データを削除せず、再実行できます。
+3. この変更を含むアプリをデプロイした後、アプリを開き直します。送信待ちの料理と、このバージョン以降に送信待ちへ保存された評価が再送されます。古いバージョンで失敗した評価は、対象料理で評価を押し直してください。
+
+このSQLは共有用の3テーブルと評価保存関数を追加します。評価の自由記述を公開SELECTせず、DB関数が評価変更と順位集計を行います。成功通知はDBから保存結果を受け取った場合だけ表示します。
+
+`/api/community-recipes` の `sharingAvailable: true` が共有一覧の接続確認です。`COMMUNITY_SCHEMA_MISSING` はSQL未適用、`COMMUNITY_NOT_CONFIGURED` は環境変数未設定、`COMMUNITY_ACCESS_DENIED` は権限設定の不備を示します。評価送信では `accepted: true`・`rankingUpdated: true`・`recipeId` を確認してください。共有していない料理の低評価は端末内だけに残ります。
+
+再送処理の回帰テスト: `npm run test:community`
 
 ### 5. PWAアイコンの設定
 あなたが提供した「犬のBBQ画像」ファイルを、`public/icon.png` (512x512推奨) として保存してコミットしてからプッシュしてください。PWAのアイコンとして反映されます。

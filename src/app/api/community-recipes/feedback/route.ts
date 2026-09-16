@@ -7,6 +7,7 @@ import {
   serializeCommunityRecipeIdentity,
 } from '@/lib/communityRecipeSchema';
 import type { CommunityRecipe } from '@/lib/communityRecipeSchema';
+import { communityServiceError, isMissingCommunityColumn } from '@/lib/communityRecipeErrors';
 
 type CommunityRecipeRow = {
   id: string;
@@ -25,7 +26,7 @@ async function findLegacyRecipe(recipe: CommunityRecipe): Promise<string | null>
     .select('id, recipe')
     .order('created_at', { ascending: false })
     .limit(200);
-  if (error) return null;
+  if (error) throw error;
   const match = (data as CommunityRecipeRow[] | null)?.find((row) =>
     isCommunityRecipe(row.recipe) && serializeCommunityRecipeIdentity(row.recipe) === target
   );
@@ -34,7 +35,7 @@ async function findLegacyRecipe(recipe: CommunityRecipe): Promise<string | null>
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ accepted: true, rankingUpdated: false, reason: 'local-only' });
+    return NextResponse.json(communityServiceError({ code: 'COMMUNITY_NOT_CONFIGURED' }), { status: 503 });
   }
 
   try {
@@ -61,6 +62,8 @@ export async function POST(req: Request) {
       .limit(1)
       .maybeSingle();
 
+    if (keyedLookup.error && !isMissingCommunityColumn(keyedLookup.error)) throw keyedLookup.error;
+
     let recipeId = !keyedLookup.error ? keyedLookup.data?.id || null : null;
     const supportsRecipeKey = !keyedLookup.error;
     if (!recipeId) recipeId = await findLegacyRecipe(recipe);
@@ -81,45 +84,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ accepted: true, rankingUpdated: false });
     }
 
-    const feedbackResult = await supabase
-      .from('community_recipe_feedback')
-      .upsert({
-        recipe_id: recipeId,
-        device_id: deviceId,
-        rating,
-        note: note || null,
-        source,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'recipe_id,device_id' });
-
-    if (!feedbackResult.error) {
-      const counts = await supabase
-        .from('community_recipes')
-        .select('likes_count, positive_ratings_count, negative_ratings_count, ranking_score')
-        .eq('id', recipeId)
-        .maybeSingle();
-      return NextResponse.json({
-        accepted: true,
-        rankingUpdated: true,
-        recipeId,
-        ...(counts.data || {}),
-      });
-    }
-
-    // SQL更新前でも高評価だけは既存の「いいね」基盤へ接続し、順位に反映する。
-    if (rating === 1) {
-      const legacyLike = await supabase
-        .from('community_recipe_likes')
-        .insert({ recipe_id: recipeId, device_id: deviceId });
-      if (legacyLike.error && legacyLike.error.code !== '23505') throw legacyLike.error;
-      return NextResponse.json({ accepted: true, rankingUpdated: true, recipeId, legacy: true });
-    }
-
-    return NextResponse.json({ accepted: true, rankingUpdated: false, recipeId, legacy: true });
+    // privateな評価本文にSELECT権限を足さず、DB関数内で評価変更と集計を完了する。
+    // 古いlikesへ逃がすと低評価への変更が反映されないため、失敗時は再送対象にする。
+    const feedbackResult = await supabase.rpc('submit_community_recipe_feedback', {
+      p_recipe_id: recipeId,
+      p_device_id: deviceId,
+      p_rating: rating,
+      p_note: note || null,
+      p_source: source,
+    });
+    if (feedbackResult.error) throw feedbackResult.error;
+    const counts = feedbackResult.data?.[0];
+    if (!counts) throw new Error('Feedback save returned no receipt');
+    return NextResponse.json({ accepted: true, rankingUpdated: true, recipeId, ...counts });
   } catch (error: unknown) {
     console.error('Community Recipe Feedback Error:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Failed to save recipe feedback',
-    }, { status: 500 });
+    return NextResponse.json(communityServiceError(error), { status: 503 });
   }
 }

@@ -4,7 +4,10 @@
 .heading > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .heading strong { color: #3f3235; font-size: 13px; font-weight: 900; }
 .heading span { color: #927e82; font-size: 10px; font-weight: 700; line-height: 1.45; }
-.savedStatus { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; color: #168276; font-size: 9px; font-weight: 900; }
+.savedStatus { display: inline-flex; flex: 0 1 190px; align-items: flex-start; gap: 4px; color: #168276; font-size: 10px; font-weight: 800; line-height: 1.5; }
+.savedStatus svg { flex-shrink: 0; margin-top: 1px; }
+.waitingStatus { color: #916022; }
+.retryButton { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; padding: 8px 10px; border: 1px solid #decdaa; border-radius: 10px; background: #fff9ed; color: #80521c; font-size: 11px; font-weight: 800; box-shadow: none; }
 .spinner { flex: 0 0 auto; color: #168276; animation: feedbackSpin .8s linear infinite; }
 .voteRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
 .voteButton { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; border: 1px solid rgba(112,77,58,.12); border-radius: 13px; background: #fff; color: #71615d; font-size: 12px; font-weight: 900; box-shadow: none; }
@@ -28,6 +31,7 @@
 @media (max-width: 420px) {
   .panel { padding: 12px; }
   .heading { flex-direction: column; }
+  .savedStatus { flex-basis: auto; }
   .voteButton { min-height: 44px; }
 }
 

@@ -581,7 +581,11 @@ const en: typeof ja = {
     saveIssue: "Save feedback",
     saved: "Saved in the app and reflected in ranking",
     localOnly: "Saved in the app",
-    failed: "Couldn't reach Community, but it is saved in the app",
+    failed: "Your rating is saved on this device. Please try sending it again",
+    pending: "Your rating is waiting to send. We'll retry when you reopen the app",
+    serviceUnavailable: "Community sharing is unavailable. Your rating is kept on this device for retry",
+    sending: "Sending your rating",
+    retry: "Try sending again",
   },
   cookingSession: {
     collectionNew: (count: number) => `${count} new ingredient${count === 1 ? "" : "s"} discovered`,
