@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import IngredientIcon from "./IngredientIcon";
-import { getDishIconUrl } from "@/lib/dishIcons";
+import { getDishIconSlug, getDishIconUrl } from "@/lib/dishIcons";
 
 // ジャンルの料理イラスト。public/genres/{slug}.png を参照する。
 // 「その他」用のイラストは無いため、画像が無い場合(404)はonErrorで
@@ -44,9 +44,28 @@ type Props = {
   className?: string;
 };
 
+// 丼・汁麺系は器まで含めて画像の外周が大きいため、トレー上で通常の皿と
+// 同じ表示寸法にすると縁へ接触して見える。CSSから専用サイズを当てる印。
+const BOWL_DISH_SLUGS = new Set([
+  "plain_rice",
+  "rice_bowl",
+  "rice_porridge",
+  "oyakodon",
+  "gyudon",
+  "katsudon",
+  "bibimbap",
+  "poke_bowl",
+  "ramen",
+  "pho",
+  "udon",
+  "soba",
+  "noodle_soup",
+]);
+
 export default function RecipeThumbnail({ genre, fallbackIngredientName, size = 50, className }: Props) {
   const slug = genre ? GENRE_ICON_SLUGS[genre] : undefined;
-  const dishUrl = getDishIconUrl(fallbackIngredientName);
+  const dishSlug = getDishIconSlug(fallbackIngredientName);
+  const dishUrl = dishSlug ? getDishIconUrl(fallbackIngredientName) : null;
   const genreUrl = slug ? `/genres/${slug}.png` : null;
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
   const imageUrl = [dishUrl, genreUrl].find(url => url && !failedUrls.has(url));
@@ -60,6 +79,7 @@ export default function RecipeThumbnail({ genre, fallbackIngredientName, size = 
         width={size}
         height={size}
         className={className}
+        data-dish-shape={dishSlug && BOWL_DISH_SLUGS.has(dishSlug) ? "bowl" : undefined}
         style={{ objectFit: "contain", flexShrink: 0 }}
         onError={() => setFailedUrls(previous => new Set(previous).add(imageUrl))}
       />
