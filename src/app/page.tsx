@@ -232,9 +232,15 @@ export default function HomePage() {
       tips: recipe.tips || '',
       nutrition: recipe.nutrition || null,
       servings: recipe.servings || 2,
+      meal_format: recipe.meal_format,
+      components: recipe.components,
       source: 'community',
       sourceRecipeId: row.id,
     });
+  };
+
+  const handleOpenRecentRecipe = (recipe: SavedRecipe) => {
+    setPreviewRecipe({ ...recipe, source: 'history', sourceRecipeId: String(recipe.id) });
   };
 
   const handleDismissRescue = () => {
@@ -401,13 +407,18 @@ export default function HomePage() {
           ) : (
             <div className={styles.recentScroll}>
               {recentRecipes.map(recipe => (
-                <Link key={recipe.id} href="/history" className={styles.recentCard}>
+                <button
+                  key={recipe.id}
+                  type="button"
+                  className={styles.recentCard}
+                  onClick={() => handleOpenRecentRecipe(recipe)}
+                >
                   <div className={styles.recentThumbWrap}>
                     <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={108} />
                   </div>
                   <span className={styles.recentCardTitle}>{recipe.title}</span>
                   <span className={styles.recentCardMeta}>{recipe.time} ・ {t.recipe.servingsUnit(recipe.servings || 2)}</span>
-                </Link>
+                </button>
               ))}
             </div>
           )}

@@ -21,6 +21,8 @@ import {
   getLocalUserProfile,
   isIngredientMissing,
   NutritionData,
+  MealComponent,
+  MealFormat,
   saveLocalRecipe,
 } from "@/lib/storage";
 import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
@@ -42,6 +44,8 @@ export type RecipeDetailData = {
   servings?: number;
   source?: NonNullable<CookedRecord["source"]>;
   sourceRecipeId?: string;
+  meal_format?: MealFormat;
+  components?: MealComponent[];
 };
 
 const COURSE_ICON_SLUGS: Record<string, string> = {
@@ -49,6 +53,7 @@ const COURSE_ICON_SLUGS: Record<string, string> = {
   "副菜": "side_dish",
   "汁物": "soup_course",
   "ご飯・主食": "rice_staple",
+  "主食": "rice_staple",
 };
 
 const stripLeadingEmoji = (value: string) => value
@@ -131,6 +136,8 @@ export default function RecipeDetailScreen({
       genre: displayedRecipe.genre || null,
       dish_badge: displayedRecipe.dish_badge || null,
       servings: displayedRecipe.servings,
+      meal_format: displayedRecipe.meal_format,
+      components: displayedRecipe.components,
     });
     setSaved(true);
   };
@@ -171,8 +178,31 @@ export default function RecipeDetailScreen({
             </div>
 
             <div className={styles.recipeDetailScroll}>
-              <div className={styles.recipeDetailHero} style={{ backgroundImage: `url("${tray.asset}")`, backgroundSize: tray.backgroundSize }}>
-                <RecipeThumbnail genre={displayedRecipe.genre || undefined} fallbackIngredientName={displayedRecipe.title} size={320} className={styles.recipeDetailDishIcon} />
+              <div
+                className={`${styles.recipeDetailHero} ${displayedRecipe.meal_format === "set" && displayedRecipe.components?.length ? styles.recipeDetailHeroSet : ""}`}
+                style={{ backgroundImage: `url("${tray.asset}")`, backgroundSize: tray.backgroundSize }}
+              >
+                {displayedRecipe.meal_format === "set" && displayedRecipe.components?.length ? (
+                  <div className={styles.recipeDetailSetGrid}>
+                    {displayedRecipe.components.slice(0, 4).map((component, index) => (
+                      <div className={styles.recipeDetailSetDish} key={`${component.course}-${component.title}-${index}`}>
+                        <RecipeThumbnail
+                          genre={component.genre || displayedRecipe.genre || undefined}
+                          fallbackIngredientName={component.title}
+                          size={150}
+                          className={styles.recipeDetailSetDishIcon}
+                        />
+                        <span className={styles.recipeDetailSetDishCourse}>
+                          <UiIcon slug={COURSE_ICON_SLUGS[component.course] || "other"} size={13} alt="" />
+                          {t.recipe.courseLabel[component.course] || component.course}
+                        </span>
+                        <strong>{component.title}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <RecipeThumbnail genre={displayedRecipe.genre || undefined} fallbackIngredientName={displayedRecipe.title} size={320} className={styles.recipeDetailDishIcon} />
+                )}
               </div>
 
               <div className={styles.recipeDetailSummary}>

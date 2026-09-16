@@ -28,15 +28,78 @@
   color: var(--text-muted);
 }
 
-.historySectionHeading h2 {
-  margin: 0;
-  color: var(--foreground);
-  font-size: 18px;
+/* 「直近のレシピ」「保存したレシピ」を切り替えるタブ */
+.sectionTabs {
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6px 16px rgba(91, 57, 40, 0.05);
+}
+
+.sectionTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-size: 13px;
   font-weight: 900;
 }
 
-.historySectionHeading p {
-  margin: 3px 0 0;
+.sectionTab:hover { transform: none; box-shadow: none; }
+
+.sectionTabActive {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(224, 70, 110, 0.18);
+}
+
+.sectionTabCount {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(111, 78, 59, 0.1);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sectionTabActive .sectionTabCount { background: rgba(255, 255, 255, 0.28); }
+
+/* タブと連動する横スライド。スクロールスナップでページ送りにし、
+   タップでもスワイプでも同じ位置に切り替わるようにする */
+.sectionScroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 0 -3px;
+}
+
+.sectionScroll::-webkit-scrollbar { display: none; }
+
+.sectionPane {
+  flex: 0 0 100%;
+  min-width: 100%;
+  padding: 0 3px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.paneSubtitle {
+  margin: 0;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -82,6 +145,18 @@
 .recentCookedOpen strong { color: var(--foreground); font-size: 12px; font-weight: 900; }
 .recentCookedOpen small { margin-top: 4px; color: var(--text-muted); font-size: 9px; font-weight: 700; }
 .recentCookedOpen img { flex: 0 0 auto; object-fit: contain; }
+
+.recentRecipesEmpty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed rgba(244, 113, 145, 0.2);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
 
 .recentCookedDelete {
   position: absolute;
@@ -320,13 +395,6 @@
 }
 
 .servingsBadge { color: #176d65; font-size: 12px; font-weight: 900; }
-.detailHeadingRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.detailHeadingRow h3 { margin: 0; }
-.servingsControl { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid #b8ddd6; border-radius: 999px; background: #edf8f5; }
-.servingsControl button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: #278d83; color: #fff; font-weight: 900; line-height: 0; }
-.servingsControl button:disabled { opacity: .35; }
-.servingsControl strong { min-width: 48px; color: #176d65; font-size: 12px; text-align: center; }
-.servingScaleNotice { margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: #fff8e8; color: #71551e; font-size: 12px; line-height: 1.5; }
 
 .cookBtn,
 .madeBtn {
@@ -392,196 +460,6 @@
   box-shadow: none;
 }
 
-.expandBtn {
-  background: transparent;
-  color: var(--text-muted);
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  box-shadow: none;
-}
-
-.expandBtn:hover {
-  color: var(--primary);
-  box-shadow: none;
-}
-
-.detailBody {
-  padding: 0 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.section h3 {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.section h3::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.ingredientList {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ingredientList li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px 10px;
-  align-items: center;
-  font-size: 15px;
-  padding-bottom: 8px;
-  min-height: 44px;
-  border-bottom: 1px dashed var(--border);
-}
-
-.ingredientList li:last-child {
-  border-bottom: none;
-}
-
-/* 在庫にない材料は行ごと薄い赤地にして、一目で「買い足す物」だと分かるようにする */
-.ingredientMissing {
-  background: rgba(217, 43, 63, 0.06);
-  border-radius: 12px;
-  padding: 4px 8px 8px;
-  margin: 0 -8px;
-}
-
-.ingredientName {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* 右側(分量+追加ボタン)が長い行(例: 「1/2本〜1本（お好みで）」)だと
-     名前の幅が数文字分まで潰れ、日本語が1文字ずつ縦に折り返されて
-     読めなくなっていたため、最低幅を確保して先に右側を次の行へ逃がす */
-  min-width: 140px;
-  flex: 1 1 140px;
-}
-
-.ingredientRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.ingredientAmount {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* タップ領域を44px確保する（従来は13pxのピンアイコンだけで押しにくかった） */
-.addToCartBtn,
-.addedBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-  border: none;
-  cursor: pointer;
-  box-shadow: none;
-}
-
-.addToCartBtn {
-  background: #d92b3f;
-  color: #ffffff;
-}
-
-.addToCartBtn:hover {
-  background: #b81f31;
-  transform: none;
-  box-shadow: none;
-}
-
-.addedBtn {
-  background: var(--background-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  cursor: default;
-}
-
-.addedBtn:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-/* 番号だけの箇条書きは色も強調もなく読みにくかったため、
-   ステップごとにピンクの丸番号バッジ＋濃色太字テキストのカードにする */
-.stepList {
-  list-style: none;
-  padding-left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stepList li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: rgba(255, 111, 145, 0.05);
-  border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.stepNumber {
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stepText {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.6;
-  color: var(--foreground);
-  padding-top: 3px;
-}
-
-.tipsBox {
-  background: #edf8f5;
-  border: 1px solid #b8ddd6;
-  border-left: 5px solid #278d83;
-  padding: 12px 14px;
-  border-radius: 0 12px 12px 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #294a46;
-}
-
-.tipsBox strong { color: #176d65; }
-
 @media (max-width: 768px) {
 
   .recipeCard:hover {
@@ -589,7 +467,7 @@
     box-shadow: var(--glass-shadow);
   }
 
-  .recookBtn, .deleteBtn, .expandBtn {
+  .recookBtn, .deleteBtn {
     min-height: 44px;
   }
 }
@@ -934,17 +812,6 @@
 }
 
 /* Nutrition section */
-.nutritionSection {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.nutritionTitle {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--primary);
-  margin-bottom: 2px;
-}
 .historyLimitCard {
   display: flex;
   width: 100%;

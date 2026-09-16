@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp, ShoppingCart, Crown, Check, Plus, Minus, AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, ShoppingCart, Check, AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
-import CookedModal from "@/components/CookedModal";
 import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import PremiumPaywall from "@/components/PremiumPaywall";
@@ -25,7 +24,7 @@ import {
   getFreeGenerationsUsed,
   getFreeGenerationsRemaining,
   incrementFreeGenerationsUsed,
-  isIngredientMissing,
+  saveLocalRecentRecipes,
   FREE_WEEKLY_PLAN_GENERATIONS,
   Ingredient,
   UserProfile,
@@ -75,16 +74,12 @@ export default function MealPlanPage() {
   const [generating, setGenerating] = useState(false);
   const [regeneratingKey, setRegeneratingKey] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [weeklyTargets, setWeeklyTargets] = useState<{ calories: number; protein_g: number; fat_g: number; carbs_g: number } | null>(null);
-  const [pinnedToShoppingSet, setPinnedToShoppingSet] = useState<Set<string>>(new Set());
-  // 献立から生成された料理も、レシピ生成画面(recipe/page.tsx)と同じ
-  // CookedModal(在庫消費・自炊記録への連携)を使って「料理完了」できるようにする
-  const [cookedModalEntry, setCookedModalEntry] = useState<WeeklyPlanEntry | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [servingOverrides, setServingOverrides] = useState<Record<string, number>>({});
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
+  // 献立からの削除は一発で戻せないため、実行前に確認を挟む
+  const [confirmRemove, setConfirmRemove] = useState<{ date: string; slot: MealSlot; title: string } | null>(null);
   const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -160,6 +155,8 @@ export default function MealPlanPage() {
     tips: string;
     nutrition?: { calories: number; protein_g: number; fat_g: number; carbs_g: number } | null;
     servings?: number;
+    meal_format?: 'single' | 'set';
+    components?: { course: string; title: string; genre?: string | null }[];
   };
 
   const mapPlanItem = (r: ApiPlanItem): WeeklyPlanEntry => ({
@@ -175,8 +172,22 @@ export default function MealPlanPage() {
       tips: r.tips,
       nutrition: r.nutrition,
       servings: recipeServings(r.servings),
+      meal_format: r.meal_format,
+      components: Array.isArray(r.components) ? r.components : undefined,
     },
   });
+
+  const rememberRecentPlanEntries = (entries: WeeklyPlanEntry[]) => {
+    saveLocalRecentRecipes(entries.map((entry) => ({
+      ...entry.recipe,
+      image_url: null,
+      nutrition: entry.recipe.nutrition || null,
+      genre: entry.recipe.genre || null,
+      dish_badge: entry.recipe.dish_badge || null,
+      source: 'meal-plan',
+      sourceRecipeId: `${entry.date}_${entry.mealSlot}`,
+    })));
+  };
 
   const handleGenerate = async () => {
     const slots = activeSlots();
@@ -202,6 +213,7 @@ export default function MealPlanPage() {
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
       if (entries.length === 0) throw new Error(t.mealPlan.errorNoRecipeFound);
       setLocalWeekPlanEntries(entries);
+      rememberRecentPlanEntries(entries);
       setWeeklyTargets(data.weeklyTargets || null);
       if (!isPremium) incrementFreeGenerationsUsed();
       loadData();
@@ -233,6 +245,7 @@ export default function MealPlanPage() {
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
       const entry = mapPlanItem(r);
       setLocalWeekPlanEntries([entry]);
+      rememberRecentPlanEntries([entry]);
       if (!isPremium) incrementFreeGenerationsUsed();
       loadData();
       showToast(t.mealPlan.regeneratedToast);
@@ -246,6 +259,13 @@ export default function MealPlanPage() {
   const handleRemoveSlot = (date: string, mealSlot: MealSlot) => {
     removeLocalWeekPlanEntry(date, mealSlot);
     loadData();
+  };
+
+  const handleConfirmRemove = () => {
+    if (!confirmRemove) return;
+    handleRemoveSlot(confirmRemove.date, confirmRemove.slot);
+    showToast(t.mealPlan.removedToast(confirmRemove.title));
+    setConfirmRemove(null);
   };
 
   const handleAddMissingToShopping = () => {
@@ -265,14 +285,6 @@ export default function MealPlanPage() {
     }
     needed.forEach(name => addLocalShoppingItem(name));
     showToast(t.mealPlan.addedMissingToast(needed.size));
-  };
-
-  const handlePinToShopping = (slotKey: string, ingredientName: string) => {
-    const pinKey = `${slotKey}-${ingredientName}`;
-    if (pinnedToShoppingSet.has(pinKey)) return;
-    addLocalShoppingItem(ingredientName);
-    setPinnedToShoppingSet(prev => new Set(prev).add(pinKey));
-    showToast(t.mealPlan.pinnedToShoppingToast(ingredientName));
   };
 
   const weeklyNutritionSum = () => {
@@ -444,9 +456,8 @@ export default function MealPlanPage() {
                 {slotsToShow.map(slot => {
                   const entry = findEntry(d.date, slot)!;
                   const key = `${d.date}_${slot}`;
-                  const isExpanded = expandedKey === key;
                   const baseServings = recipeServings(entry.recipe.servings);
-                  const displayServings = servingOverrides[key] || baseServings;
+                  const displayServings = baseServings;
                   const displayedRecipe = {
                     ...entry.recipe,
                     servings: displayServings,
@@ -457,11 +468,32 @@ export default function MealPlanPage() {
                   };
                   return (
                     <div key={key} className={`${recipeStyles.recipeCard} ${styles.planRecipeCard}`}>
-                          <div className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`} onClick={() => setExpandedKey(isExpanded ? null : key)}>
+                          <div
+                            className={`${recipeStyles.cardHeader} ${styles.planRecipeHeader}`}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t.mealPlan.openRecipeLabel(entry.recipe.title)}
+                            onClick={() => setPreviewRecipe({
+                              ...displayedRecipe,
+                              source: 'meal-plan',
+                              sourceRecipeId: key,
+                            })}
+                            onKeyDown={(event) => {
+                              if (event.target !== event.currentTarget) return;
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setPreviewRecipe({
+                                  ...displayedRecipe,
+                                  source: 'meal-plan',
+                                  sourceRecipeId: key,
+                                });
+                              }
+                            }}
+                          >
                             <button
                               type="button"
                               className={styles.planDish}
-                              aria-label={language === 'ja' ? `${entry.recipe.title}をトレーで開く` : `Open ${entry.recipe.title}`}
+                              aria-label={t.mealPlan.openRecipeLabel(entry.recipe.title)}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setPreviewRecipe({
@@ -504,124 +536,14 @@ export default function MealPlanPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleRemoveSlot(d.date, slot); }}
+                                onClick={(e) => { e.stopPropagation(); setConfirmRemove({ date: d.date, slot, title: entry.recipe.title }); }}
                                 title={t.mealPlan.removeTitle}
                                 className={styles.iconButton}
                               >
                                 <Trash2 size={14} />
                               </button>
-                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </div>
                           </div>
-
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                style={{ overflow: 'hidden' }}
-                              >
-                                <div className={styles.planCardContent}>
-                                  {entry.recipe.nutrition && (
-                                    <div className={recipeStyles.nutritionSection}>
-                                      <NutritionChart nutrition={entry.recipe.nutrition} />
-                                    </div>
-                                  )}
-                                  <div className={recipeStyles.section}>
-                                    <div className={recipeStyles.detailSectionHeading}>
-                                      <h3>{t.mealPlan.ingredientsTitle}</h3>
-                                      <div className={recipeStyles.detailServingsControl} aria-label={t.recipe.servingsLabel}>
-                                        <button type="button" disabled={displayServings <= 1} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.max(1, displayServings - 1) }))}><Minus size={17} strokeWidth={3} /></button>
-                                        <strong>{t.recipe.servingsUnit(displayServings)}</strong>
-                                        <button type="button" disabled={displayServings >= 15} onClick={() => setServingOverrides((current) => ({ ...current, [key]: Math.min(15, displayServings + 1) }))}><Plus size={17} strokeWidth={3} /></button>
-                                      </div>
-                                    </div>
-                                    {displayServings !== baseServings && <p className={recipeStyles.servingScaleNotice}>{language === 'ja' ? '分量は目安です。分けにくい食材と調味料は作りやすい量・味見で調整してください。' : 'Amounts are estimates; round indivisible ingredients and season to taste.'}</p>}
-                                    <ul className={recipeStyles.ingredientList}>
-                                      {displayedRecipe.ingredients.map((it, i) => {
-                                        const missing = isIngredientMissing(it.name, ingredients, profile.assumeSeasoningsAvailable);
-                                        const pinKey = `${key}-${it.name}`;
-                                        const isPinned = pinnedToShoppingSet.has(pinKey);
-                                        return (
-                                          <li key={i} className={missing ? recipeStyles.ingredientMissing : undefined}>
-                                            <span className={recipeStyles.ingredientName}>
-                                              <IngredientIcon name={it.name} size={30} />
-                                              <span style={{ color: missing ? '#d92b3f' : 'var(--foreground)', fontWeight: missing ? 800 : 600 }}>
-                                                {it.name}
-                                              </span>
-                                            </span>
-                                            <span className={recipeStyles.ingredientRight}>
-                                              <span className={recipeStyles.ingredientAmount}>{it.amount}</span>
-                                              {missing && (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handlePinToShopping(key, it.name)}
-                                                  className={isPinned ? recipeStyles.addedBtn : recipeStyles.addToCartBtn}
-                                                  disabled={isPinned}
-                                                >
-                                                  {isPinned ? <Check size={15} /> : <Plus size={15} />}
-                                                  {isPinned ? t.mealPlan.added : t.mealPlan.addShort}
-                                                </button>
-                                              )}
-                                            </span>
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
-                                  </div>
-                                  <div className={recipeStyles.section}>
-                                    <h3>{t.mealPlan.stepsTitle}</h3>
-                                    <ol className={recipeStyles.stepList}>
-                                      {(entry.recipe.steps || []).map((s, i) => (
-                                        <li key={i}>
-                                          <span className={recipeStyles.stepNumber}>{i + 1}</span>
-                                          <span className={recipeStyles.stepText}>{s}</span>
-                                        </li>
-                                      ))}
-                                    </ol>
-                                  </div>
-                                  {entry.recipe.tips && isPremium && (
-                                    <div className={recipeStyles.tipsBox}>
-                                      <strong>{t.recipe.tipsPrefix}</strong> {entry.recipe.tips}
-                                    </div>
-                                  )}
-                                  {entry.recipe.tips && !isPremium && (
-                                    <button type="button" className={recipeStyles.premiumTipsGate} onClick={() => setShowPaywall(true)}>
-                                      <Crown size={18} />
-                                      <span><strong>{t.recipe.tipsPlusTitle}</strong>{t.recipe.tipsPlusBody}</span>
-                                    </button>
-                                  )}
-
-                                  {/* 料理完了ボタン (在庫消費 & PFC累積) : レシピ生成画面と同じ導線・見た目にする */}
-                                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                                    <button
-                                      type="button"
-                                      style={{
-                                        width: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: 8,
-                                        background: 'linear-gradient(135deg, #ff6f91 0%, #ff4f7d 100%)',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: 12,
-                                        padding: '12px 14px',
-                                        fontSize: 14,
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        boxShadow: '0 3px 10px rgba(255, 111, 145, 0.25)',
-                                      }}
-                                      onClick={(e) => { e.stopPropagation(); setCookedModalEntry({ ...entry, recipe: displayedRecipe }); }}
-                                    >
-                                      {t.recipe.cookedButton}
-                                    </button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
                     </div>
                   );
                 })}
@@ -630,22 +552,6 @@ export default function MealPlanPage() {
           })}
         </section>
       )}
-
-      {/* 調理完了モーダル: 在庫消費・自炊記録への連携をレシピ生成画面と共通化する */}
-      <AnimatePresence>
-        {cookedModalEntry && (
-          <CookedModal
-            recipe={cookedModalEntry.recipe}
-            source="meal-plan"
-            sourceRecipeId={`${cookedModalEntry.date}_${cookedModalEntry.mealSlot}`}
-            onClose={() => setCookedModalEntry(null)}
-            onCompleted={() => {
-              loadData();
-              showToast(t.recipe.cookedCompletedToast);
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       <RecipeDetailScreen
         recipe={previewRecipe}
@@ -661,6 +567,25 @@ export default function MealPlanPage() {
         onClose={() => setShowPaywall(false)}
         onActivated={() => showToast(t.mealPlan.premiumWelcomeToast)}
       />
+
+      {confirmRemove && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmRemove(null)}>
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmIconCircle}>
+              <Trash2 size={24} />
+            </div>
+            <p className={styles.confirmText}>{t.mealPlan.removeConfirmTitle(confirmRemove.title)}</p>
+            <div className={styles.confirmActions}>
+              <button type="button" className={styles.confirmCancelBtn} onClick={() => setConfirmRemove(null)}>
+                {t.mealPlan.removeConfirmCancel}
+              </button>
+              <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmRemove}>
+                {t.mealPlan.removeConfirmOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
