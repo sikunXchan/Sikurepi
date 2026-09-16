@@ -549,8 +549,19 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
   color: var(--foreground);
+}
+
+.recentCard:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .recentThumbWrap {
