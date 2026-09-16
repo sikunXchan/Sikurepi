@@ -8,11 +8,12 @@ import {
 } from '@/lib/communityRecipeSchema';
 import type { CommunityRecipe } from '@/lib/communityRecipeSchema';
 import { COMMUNITY_RECIPE_SEEDS } from '@/lib/communityRecipeSeeds';
+import { communityServiceError, isMissingCommunityColumn } from '@/lib/communityRecipeErrors';
 
 // ホームタブ「みんなのレシピ」用API。
 // ユーザーが気に入ったレシピをSupabaseの公開テーブル(community_recipes)に共有し、
 // 他のユーザーが一覧を見たり「いいね」できるようにする(ログイン不要)。
-// Supabase未設定の環境では、この機能自体を使わない(空一覧を返す)。
+// DB未設定時も初期レシピは読めるが、共有可能とは扱わない。
 
 export type { CommunityRecipe } from '@/lib/communityRecipeSchema';
 
@@ -28,7 +29,7 @@ async function findLegacyRecipe(recipe: CommunityRecipe): Promise<string | null>
     .select('id, recipe')
     .order('created_at', { ascending: false })
     .limit(200);
-  if (result.error) return null;
+  if (result.error) throw result.error;
   const match = (result.data as CommunityRecipeListRow[] | null)?.find((row) =>
     isCommunityRecipe(row.recipe) && serializeCommunityRecipeIdentity(row.recipe) === target
   );
@@ -106,7 +107,7 @@ export async function GET(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
     const requestedLimit = Number(new URL(req.url).searchParams.get('limit'));
     const limit = Number.isFinite(requestedLimit) ? Math.min(20, Math.max(1, Math.floor(requestedLimit))) : 10;
-    return NextResponse.json({ recipes: mergeSeedRecipes([], limit) });
+    return NextResponse.json({ recipes: mergeSeedRecipes([], limit), sharingAvailable: false, ...communityServiceError({ code: 'COMMUNITY_NOT_CONFIGURED' }) });
   }
 
   const requestedLimit = Number(new URL(req.url).searchParams.get('limit'));
@@ -121,7 +122,7 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (!ranked.error) {
-    return NextResponse.json({ recipes: mergeSeedRecipes((ranked.data || []) as CommunityRecipeListRow[], limit) });
+    return NextResponse.json({ recipes: mergeSeedRecipes((ranked.data || []) as CommunityRecipeListRow[], limit), sharingAvailable: true });
   }
 
   // 新しい評価用カラムのSQLがまだ適用されていない環境でも、従来の一覧は表示する。
@@ -133,14 +134,14 @@ export async function GET(req: Request) {
     .limit(limit);
   if (legacy.error) {
     console.error('Community Recipes List Error:', legacy.error);
-    return NextResponse.json({ recipes: mergeSeedRecipes([], limit) });
+    return NextResponse.json({ recipes: mergeSeedRecipes([], limit), sharingAvailable: false, ...communityServiceError(legacy.error) });
   }
   return NextResponse.json({ recipes: mergeSeedRecipes((legacy.data || []) as CommunityRecipeListRow[], limit) });
 }
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ error: 'Community recipes are not available in this deployment' }, { status: 503 });
+    return NextResponse.json(communityServiceError({ code: 'COMMUNITY_NOT_CONFIGURED' }), { status: 503 });
   }
 
   try {
@@ -161,6 +162,7 @@ export async function POST(req: Request) {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (existing.error && !isMissingCommunityColumn(existing.error)) throw existing.error;
       const existingId = !existing.error && existing.data?.id
         ? existing.data.id
         : await findLegacyRecipe(recipe);
@@ -178,6 +180,7 @@ export async function POST(req: Request) {
         ids.push(insertWithKey.data.id);
         continue;
       }
+      if (insertWithKey.error && !isMissingCommunityColumn(insertWithKey.error)) throw insertWithKey.error;
 
       // スキーマ更新前の環境ではrecipe_keyなしの従来形式で共有を継続する。
       const legacyInsert = await supabase
@@ -191,7 +194,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ids });
   } catch (error: unknown) {
     console.error('Community Recipes Share Error:', error);
-    const message = error instanceof Error ? error.message : 'Failed to share community recipes';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(communityServiceError(error), { status: 503 });
   }
 }
