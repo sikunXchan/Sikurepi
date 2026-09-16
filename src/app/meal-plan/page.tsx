@@ -78,6 +78,8 @@ export default function MealPlanPage() {
   const [weeklyTargets, setWeeklyTargets] = useState<{ calories: number; protein_g: number; fat_g: number; carbs_g: number } | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
+  // 献立からの削除は一発で戻せないため、実行前に確認を挟む
+  const [confirmRemove, setConfirmRemove] = useState<{ date: string; slot: MealSlot; title: string } | null>(null);
   const plannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -257,6 +259,13 @@ export default function MealPlanPage() {
   const handleRemoveSlot = (date: string, mealSlot: MealSlot) => {
     removeLocalWeekPlanEntry(date, mealSlot);
     loadData();
+  };
+
+  const handleConfirmRemove = () => {
+    if (!confirmRemove) return;
+    handleRemoveSlot(confirmRemove.date, confirmRemove.slot);
+    showToast(t.mealPlan.removedToast(confirmRemove.title));
+    setConfirmRemove(null);
   };
 
   const handleAddMissingToShopping = () => {
@@ -527,7 +536,7 @@ export default function MealPlanPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleRemoveSlot(d.date, slot); }}
+                                onClick={(e) => { e.stopPropagation(); setConfirmRemove({ date: d.date, slot, title: entry.recipe.title }); }}
                                 title={t.mealPlan.removeTitle}
                                 className={styles.iconButton}
                               >
@@ -558,6 +567,25 @@ export default function MealPlanPage() {
         onClose={() => setShowPaywall(false)}
         onActivated={() => showToast(t.mealPlan.premiumWelcomeToast)}
       />
+
+      {confirmRemove && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmRemove(null)}>
+          <div className={styles.confirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmIconCircle}>
+              <Trash2 size={24} />
+            </div>
+            <p className={styles.confirmText}>{t.mealPlan.removeConfirmTitle(confirmRemove.title)}</p>
+            <div className={styles.confirmActions}>
+              <button type="button" className={styles.confirmCancelBtn} onClick={() => setConfirmRemove(null)}>
+                {t.mealPlan.removeConfirmCancel}
+              </button>
+              <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmRemove}>
+                {t.mealPlan.removeConfirmOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
