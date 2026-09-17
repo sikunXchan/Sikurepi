@@ -33,6 +33,7 @@ import { DIETARY_RESTRICTION_OPTIONS } from "@/lib/dietaryRules";
 import { FREE_HISTORY_ITEMS } from "@/lib/premiumQuota";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import PremiumPaywall from "./PremiumPaywall";
+import { applyProfileChange, parseExcludedIngredients, type ProfileChange } from "@/lib/profileSettings";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -123,14 +124,12 @@ const STYLE_OPTIONS = [
 type TabType = 'profile' | 'stats' | 'tips' | 'backup';
 
 type Props = {
-  /** 保存ボタン押下後にモーダルを閉じたい場合に渡す（マイページ単体表示では未指定でOK） */
-  onCloseRequest?: () => void;
   onSaved?: () => void;
 };
 
 // マイ設定モーダルとマイページの両方から使われる共通の中身。
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
-export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
+export default function SettingsPanel({ onSaved }: Props) {
   const { t, language } = useLanguage();
   const { isPremium } = usePremium();
   const { user, isSupabaseConfigured, sendLoginCode, verifyLoginCode, signOut } = useAuth();
@@ -152,84 +151,103 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
   const [renderedAt] = useState(() => Date.now());
   const [excludedInput, setExcludedInput] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'failed'>('idle');
+  const writingProfile = useRef(false);
+  const composingExcluded = useRef(false);
+  const editingExcluded = useRef(false);
   const [openRecordSwipeIndex, setOpenRecordSwipeIndex] = useState<number | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const p = getLocalUserProfile();
-    // SSRと初回クライアント描画を一致させるため、端末データはマウント後に復元する。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProfile(p);
-    setExcludedInput((p.excludedIngredients || []).join(", "));
-    setStats(getLocalUserStats());
-    setTips(getLocalSavedTips());
-    setForgottenItems(getForgottenIngredients());
-    setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
+    let active = true;
+    let refreshQueued = false;
+    const refresh = () => {
+      if (writingProfile.current) return;
+      const p = getLocalUserProfile();
+      // SSRと初回クライアント描画を一致させるため、端末データはマウント後に復元する。
+      setProfile(p);
+      if (!editingExcluded.current) setExcludedInput((p.excludedIngredients || []).join(", "));
+      setStats(getLocalUserStats());
+      setTips(getLocalSavedTips());
+      setForgottenItems(getForgottenIngredients());
+      setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
+    };
+    const scheduleRefresh = () => {
+      if (writingProfile.current || refreshQueued) return;
+      refreshQueued = true;
+      // Storage readers may migrate old data during another component's render.
+      // Defer subscriptions and coalesce backup writes to avoid cross-render updates.
+      queueMicrotask(() => {
+        refreshQueued = false;
+        if (active) refresh();
+      });
+    };
+    refresh();
+    window.addEventListener('storage-updated', scheduleRefresh);
+    window.addEventListener('storage', scheduleRefresh);
+    return () => {
+      active = false;
+      window.removeEventListener('storage-updated', scheduleRefresh);
+      window.removeEventListener('storage', scheduleRefresh);
+    };
   }, []);
 
+  const updateProfile = (change: ProfileChange) => {
+    const updated = applyProfileChange(getLocalUserProfile(), change);
+    // Write in the input event, not a state updater/effect: Strict Mode and
+    // mounting the page must never persist defaults or duplicate writes.
+    writingProfile.current = true;
+    const saved = setLocalUserProfile(updated);
+    writingProfile.current = false;
+    setProfile(updated);
+    setSaveState(saved ? 'saved' : 'failed');
+    if (saved) onSaved?.();
+  };
+
+  const updateExcludedInput = (value: string) => {
+    setExcludedInput(value);
+    if (!composingExcluded.current) updateProfile({ excludedIngredients: parseExcludedIngredients(value) });
+  };
+
   const toggleTaste = (taste: string) => {
-    setProfile(prev => {
+    updateProfile(prev => {
       const current = prev.tastePreferences || [];
       const list = current.includes(taste)
         ? current.filter(t => t !== taste)
         : [...current, taste];
-      return { ...prev, tastePreferences: list };
+      return { tastePreferences: list };
     });
   };
 
   const toggleStyle = (style: string) => {
-    setProfile(prev => {
+    updateProfile(prev => {
       const current = prev.cookingStyles || [];
       const list = current.includes(style)
         ? current.filter(s => s !== style)
         : [...current, style];
-      return { ...prev, cookingStyles: list };
+      return { cookingStyles: list };
     });
   };
 
   const toggleDietary = (option: string) => {
-    setProfile(prev => {
+    updateProfile(prev => {
       const current = prev.dietaryRestrictions || [];
       const list = current.includes(option)
         ? current.filter(d => d !== option)
         : [...current, option];
-      return { ...prev, dietaryRestrictions: list };
+      return { dietaryRestrictions: list };
     });
   };
 
   const togglePreferredGenre = (genre: string) => {
-    setProfile(prev => {
+    updateProfile(prev => {
       const current = prev.preferredGenres || [];
       const list = current.includes(genre)
         ? current.filter(g => g !== genre)
         : [...current, genre];
-      return { ...prev, preferredGenres: list };
+      return { preferredGenres: list };
     });
-  };
-
-  const handleSave = () => {
-    const excludedList = excludedInput
-      .split(/[,、\s]+/)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    const updated: UserProfile = {
-      ...profile,
-      excludedIngredients: excludedList,
-      trayTheme: isPremium ? profile.trayTheme : 'wood',
-      shareGeneratedRecipes: isPremium ? profile.shareGeneratedRecipes !== false : true,
-    };
-
-    setLocalUserProfile(updated);
-    if (onSaved) onSaved();
-    if (onCloseRequest) {
-      onCloseRequest();
-    } else {
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 2000);
-    }
   };
 
   const handleDeleteTip = (id: string) => {
@@ -335,6 +353,9 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
           <p className={styles.description}>
             {t.settings.profileDescription}
           </p>
+          <p className={`${styles.autoSaveStatus} ${saveState === 'failed' ? styles.autoSaveError : ''}`} role="status">
+            {saveState === 'failed' ? t.settings.autoSaveFailed : saveState === 'saved' ? t.settings.autoSaved : t.settings.autoSaveHint}
+          </p>
 
           <div className={styles.section}>
             <div className={styles.trayHeadingRow}>
@@ -360,7 +381,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                     className={`${styles.trayOption} ${active ? styles.trayOptionActive : ''} ${locked ? styles.trayOptionLocked : ''}`}
                     onClick={() => {
                       if (locked) setShowPaywall(true);
-                      else setProfile(prev => ({ ...prev, trayTheme: theme.id as TrayThemeId }));
+                      else updateProfile({ trayTheme: theme.id as TrayThemeId });
                     }}
                   >
                     <span
@@ -379,9 +400,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               })}
             </div>
             <span className={styles.hint}>
-              {language === 'ja'
-                ? '設定を保存すると、選んだトレーがレシピ結果に反映されます。'
-                : 'Save settings to apply this tray to recipe results.'}
+              {t.settings.trayAutoSaveHint}
             </span>
           </div>
 
@@ -395,7 +414,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               aria-pressed={isPremium ? profile.shareGeneratedRecipes !== false : true}
               onClick={() => {
                 if (!isPremium) setShowPaywall(true);
-                else setProfile(prev => ({ ...prev, shareGeneratedRecipes: prev.shareGeneratedRecipes === false }));
+                else updateProfile(prev => ({ shareGeneratedRecipes: prev.shareGeneratedRecipes === false }));
               }}
             >
               <span className={styles.shareToggleTrack}><i /></span>
@@ -417,7 +436,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               className={styles.input}
               placeholder={t.settings.addressPlaceholder}
               value={profile.address || ''}
-              onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
+              onChange={(e) => updateProfile({ address: e.target.value })}
             />
             <span className={styles.hint}>{t.settings.addressHint}</span>
           </div>
@@ -427,7 +446,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               <input
                 type="checkbox"
                 checked={profile.assumeSeasoningsAvailable !== false}
-                onChange={(e) => setProfile(prev => ({ ...prev, assumeSeasoningsAvailable: e.target.checked }))}
+                onChange={(e) => updateProfile({ assumeSeasoningsAvailable: e.target.checked })}
                 style={{ width: 16, height: 16, accentColor: '#ff6f91' }}
               />
               <span>{t.settings.seasoningsToggleLabel}</span>
@@ -444,7 +463,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 className={styles.input}
                 placeholder={t.settings.caloriesPlaceholder}
                 value={profile.targetCalories ?? ''}
-                onChange={(e) => setProfile(prev => ({ ...prev, targetCalories: e.target.value ? Number(e.target.value) : null }))}
+                onChange={(e) => updateProfile({ targetCalories: e.target.value ? Math.max(0, Number(e.target.value)) : null })}
               />
               <input
                 type="number"
@@ -452,7 +471,7 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
                 className={styles.input}
                 placeholder={t.settings.proteinPlaceholder}
                 value={profile.targetProtein ?? ''}
-                onChange={(e) => setProfile(prev => ({ ...prev, targetProtein: e.target.value ? Number(e.target.value) : null }))}
+                onChange={(e) => updateProfile({ targetProtein: e.target.value ? Math.max(0, Number(e.target.value)) : null })}
               />
             </div>
             <span className={styles.hint}>{t.settings.pfcHint}</span>
@@ -547,7 +566,11 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               className={styles.input}
               placeholder={t.settings.excludedPlaceholder}
               value={excludedInput}
-              onChange={(e) => setExcludedInput(e.target.value)}
+              onFocus={() => { editingExcluded.current = true; }}
+              onChange={(e) => updateExcludedInput(e.target.value)}
+              onCompositionStart={() => { composingExcluded.current = true; }}
+              onCompositionEnd={(e) => { composingExcluded.current = false; updateExcludedInput(e.currentTarget.value); }}
+              onBlur={(e) => { editingExcluded.current = false; composingExcluded.current = false; updateExcludedInput(e.currentTarget.value); }}
             />
             <span className={styles.hint}>{t.settings.excludedHint}</span>
           </div>
@@ -839,16 +862,6 @@ export default function SettingsPanel({ onCloseRequest, onSaved }: Props) {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* フッター (マイ設定時のみ保存ボタン表示) */}
-      {activeTab === 'profile' && (
-        <div className={styles.footer}>
-          <button type="button" className={styles.saveBtn} onClick={handleSave}>
-            <Check size={18} />
-            {savedFlash ? t.settings.savedButton : t.settings.saveButton}
-          </button>
         </div>
       )}
 

@@ -1,5 +1,16 @@
 export const DISH_ICON_BASE_PATH = "/dishes/icons/";
 
+// These illustrations include tall/full bowls. Use the shared compact tray size,
+// regardless of whether the recipe is viewed in a list or full screen.
+const BOWL_DISH_SLUGS = new Set([
+  "plain_rice", "rice_bowl", "rice_porridge", "oyakodon", "gyudon", "katsudon",
+  "bibimbap", "poke_bowl", "ramen", "pho", "udon", "soba", "noodle_soup", "shellfish",
+]);
+
+export function getDishIconShape(slug: string | null): "bowl" | undefined {
+  return slug && BOWL_DISH_SLUGS.has(slug) ? "bowl" : undefined;
+}
+
 type DishIconRule = {
   slug: string;
   keywords: readonly string[];
