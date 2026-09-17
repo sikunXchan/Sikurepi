@@ -1,0 +1,22 @@
+.helpButton, .textButton { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 7px 9px; border: 0; border-radius: 12px; background: transparent; color: #336d67; font-size: 12px; box-shadow: none; white-space: nowrap; }
+.helpButton::before, .textButton::before, .directory::before, .topics button::before, .hint button::before { display: none; }
+.helpButton:hover, .textButton:hover { background: #eaf4f0; transform: none; box-shadow: none; }
+.hint { display: flex; align-items: center; gap: 9px; margin: 2px 0 16px; padding: 10px 12px; border: 1px solid #cee1d9; border-radius: 14px; background: #f0f7f3; color: #375d56; }
+.hint > svg { flex-shrink: 0; }
+.hint p { flex: 1; min-width: 0; font-size: 12px; line-height: 1.65; margin: 0; }
+.hint button { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 10px; background: transparent; color: #375d56; box-shadow: none; }
+.directory { display: flex; align-items: center; gap: 12px; width: 100%; padding: 18px; border: 1px solid #d7e4dc; border-radius: 18px; color: #335e57; background: #f4f8f4; box-shadow: none; text-align: left; }
+.directory > svg:last-child { margin-left: auto; }
+.steps { display: grid; gap: 18px; padding-left: 25px; margin: 0 0 20px; }
+.steps li { padding-left: 5px; line-height: 1.8; font-size: 14px; }
+.steps li::marker { color: #31786e; font-weight: 800; }
+.description { margin: 0 0 18px; font-size: 14px; line-height: 1.7; color: #6d6057; }
+.topics { display: grid; gap: 8px; }
+.topics button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 12px 15px; border: 1px solid #e6ded2; border-radius: 12px; background: #fff; color: #4c423c; box-shadow: none; font-size: 14px; text-align: left; }
+.welcome { display: flex; align-items: flex-start; gap: 12px; padding: 20px; margin: 12px 0 20px; background: #f2f7ef; border: 1px solid #d7e5cf; border-radius: 22px; }
+.welcome img { flex-shrink: 0; object-fit: contain; }
+.welcome h2 { font-size: 19px; margin: 0 0 8px; line-height: 1.5; color: #35483b; }
+.welcome p { color: #556457; font-size: 13px; line-height: 1.8; margin: 0; }
+.welcomeActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.primary { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 12px; background: #377b6d; color: white; box-shadow: none; font-size: 13px; }
+@media (max-width: 440px) { .welcome { padding: 16px; gap: 8px; } .welcome img { width: 42px; height: 48px; } .welcome h2 { font-size: 17px; } .helpButton { font-size: 11px; padding: 6px; } }

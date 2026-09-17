@@ -33,6 +33,8 @@ import {
 } from "@/lib/storage";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useGenerationRequest } from "@/lib/useGenerationRequest";
+import { generationCopy } from "@/lib/i18n/generation";
 import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
@@ -81,6 +83,7 @@ export default function MealPlanPage() {
   // 献立からの削除は一発で戻せないため、実行前に確認を挟む
   const [confirmRemove, setConfirmRemove] = useState<{ date: string; slot: MealSlot; title: string } | null>(null);
   const plannerRef = useRef<HTMLElement | null>(null);
+  const generationRequest = useGenerationRequest();
 
   useEffect(() => {
     loadData();
@@ -190,6 +193,7 @@ export default function MealPlanPage() {
   };
 
   const handleGenerate = async () => {
+    if (generationRequest.isRunning()) return;
     const slots = activeSlots();
     if (slots.length === 0) {
       setErrorMsg(t.mealPlan.errorNoSlots);
@@ -199,15 +203,19 @@ export default function MealPlanPage() {
       setShowPaywall(true);
       return;
     }
+    const request = generationRequest.begin(315_000);
+    if (!request) return;
     setGenerating(true);
     setErrorMsg("");
     try {
       const res = await fetch("/api/recipes/weekly-plan", {
+        signal: request.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildPayload(slots)),
       });
       const data = await res.json();
+      request.signal.throwIfAborted();
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorGenerateFailed);
 
       const entries: WeeklyPlanEntry[] = (data.plan || []).map(mapPlanItem);
@@ -219,27 +227,34 @@ export default function MealPlanPage() {
       loadData();
       showToast(t.mealPlan.generatedToast(entries.length));
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : t.mealPlan.errorGeneric);
+      if (request.signal.reason?.name !== 'AbortError') setErrorMsg(request.signal.reason?.name === 'TimeoutError'
+        ? generationCopy[language].timeout : err instanceof Error ? err.message : t.mealPlan.errorGeneric);
     } finally {
+      request.dispose();
       setGenerating(false);
     }
   };
 
   const handleRegenerateSlot = async (date: string, mealSlot: MealSlot) => {
+    if (generationRequest.isRunning()) return;
     if (!isPremium && getFreeGenerationsUsed() >= FREE_WEEKLY_PLAN_GENERATIONS) {
       setShowPaywall(true);
       return;
     }
+    const request = generationRequest.begin(315_000);
+    if (!request) return;
     const key = `${date}_${mealSlot}`;
     setRegeneratingKey(key);
     setErrorMsg("");
     try {
       const res = await fetch("/api/recipes/weekly-plan", {
+        signal: request.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildPayload([{ date, mealSlot }])),
       });
       const data = await res.json();
+      request.signal.throwIfAborted();
       if (!res.ok) throw new Error(data.error || t.mealPlan.errorRegenFailed);
       const r = (data.plan || [])[0];
       if (!r) throw new Error(t.mealPlan.errorNoRecipeFound);
@@ -250,8 +265,10 @@ export default function MealPlanPage() {
       loadData();
       showToast(t.mealPlan.regeneratedToast);
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : t.mealPlan.errorRegenFailed);
+      if (request.signal.reason?.name !== 'AbortError') showToast(request.signal.reason?.name === 'TimeoutError'
+        ? generationCopy[language].timeout : err instanceof Error ? err.message : t.mealPlan.errorRegenFailed);
     } finally {
+      request.dispose();
       setRegeneratingKey(null);
     }
   };
