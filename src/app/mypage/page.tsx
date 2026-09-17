@@ -4,6 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import SettingsPanel from "@/components/SettingsPanel";
 import PremiumStatusCard from "@/components/PremiumStatusCard";
 import IngredientEncyclopedia from "@/components/IngredientEncyclopedia";
+import { GuideButton } from "@/components/AppGuide";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import styles from "./MyPage.module.css";
 
@@ -18,6 +19,8 @@ export default function MyPage() {
       />
 
       <PremiumStatusCard />
+
+      <GuideButton all />
 
       <IngredientEncyclopedia />
 

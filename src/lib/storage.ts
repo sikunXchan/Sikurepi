@@ -1,6 +1,7 @@
 // LocalStorage Unified Storage Service with JSON Backup & Restore
 
 import { toHiragana } from './kana';
+import { normalizeGuideProgress, mergeGuideProgress, type GuideKey, type GuideProgress } from './guideProgress';
 import type { TrayThemeId } from './trayThemes';
 import {
   FREE_DAILY_RECEIPT_SCANS,
@@ -457,6 +458,7 @@ export type ClimateState = {
 };
 
 const KEYS = {
+  GUIDE_PROGRESS: 'sikurepi_guide_progress_v1',
   INVENTORY: 'lily_app_inventory',
   SHOPPING: 'lily_app_shopping',
   SAVED_RECIPES: 'lily_app_saved_recipes',
@@ -616,12 +618,8 @@ export function consumePendingDailyPickHandoff(): DailyPickHandoffRecipe | null 
 // --- 在庫 (Inventory) ---
 
 export function getLocalIngredients(): Ingredient[] {
-  const list = getStorage<Ingredient[]>(KEYS.INVENTORY, [
-    { id: 1, name: '豚バラ肉', is_pinned: true, category: '肉・魚介', created_at: new Date().toISOString() },
-    { id: 2, name: 'キャベツ', is_pinned: false, category: '野菜・果物', created_at: new Date().toISOString() },
-    { id: 3, name: 'トマト', is_pinned: false, category: '野菜・果物', created_at: new Date().toISOString() },
-    { id: 4, name: '卵', is_pinned: false, category: '乳製品・卵', created_at: new Date().toISOString() },
-  ]);
+  // 未登録の食材を実在庫として扱わない。初回はガイドから追加できる。
+  const list = getStorage<Ingredient[]>(KEYS.INVENTORY, []);
   // 旧12カテゴリ時代に保存された既存データも、新しい7カテゴリへ読み込み時に変換する
   return list.map(i => ({ ...i, category: normalizeCategory(i.category || 'その他') }));
 }
@@ -696,10 +694,7 @@ export function consumeLocalIngredients(ingredientNames: string[]): number {
 // --- 買い物リスト (Shopping) ---
 
 export function getLocalShoppingItems(): ShoppingItem[] {
-  const list = getStorage<ShoppingItem[]>(KEYS.SHOPPING, [
-    { id: 1, name: '牛乳', category: '乳製品・卵', is_completed: false, created_at: new Date().toISOString() },
-    { id: 2, name: '玉ねぎ', category: '野菜・果物', is_completed: false, created_at: new Date().toISOString() },
-  ]);
+  const list = getStorage<ShoppingItem[]>(KEYS.SHOPPING, []);
   // 旧12カテゴリ時代に保存された既存データも、新しい7カテゴリへ読み込み時に変換する
   return list.map(i => ({ ...i, category: normalizeCategory(i.category || 'その他') }));
 }
@@ -1372,6 +1367,7 @@ export function setLocalClimateState(state: ClimateState): void {
 // --- バックアップ (Download JSON) & 復元 (Upload JSON) ---
 
 export type AppBackupPayload = {
+  guideProgress?: GuideProgress;
   version: '2.0';
   exportedAt: string;
   inventory: Ingredient[];
@@ -1395,6 +1391,7 @@ export type AppBackupPayload = {
 // 手動バックアップ(exportBackupJSON)と共通化しておく。
 export function buildBackupPayload(): AppBackupPayload {
   return {
+    guideProgress: getLocalGuideProgress(),
     version: '2.0',
     exportedAt: new Date().toISOString(),
     inventory: getLocalIngredients(),
@@ -1442,6 +1439,8 @@ export function applyBackupPayload(data: unknown): void {
 
   const payload = data as Record<string, unknown>;
 
+  if (payload.guideProgress) setStorage(KEYS.GUIDE_PROGRESS, mergeGuideProgress(getLocalGuideProgress(), payload.guideProgress));
+
   if (Array.isArray(payload.inventory)) setStorage(KEYS.INVENTORY, payload.inventory);
   if (Array.isArray(payload.shopping)) setStorage(KEYS.SHOPPING, payload.shopping);
   if (Array.isArray(payload.savedRecipes)) setStorage(KEYS.SAVED_RECIPES, payload.savedRecipes);
@@ -1476,6 +1475,8 @@ export function applyBackupPayload(data: unknown): void {
 // 「ローカルにデータがあるならサーバーへ送る」を判断するのに使う。
 export function hasLocalData(): boolean {
   return (
+    getLocalGuideProgress().welcomeDismissed ||
+    getLocalGuideProgress().dismissed.length > 0 ||
     getLocalIngredients().length > 0 ||
     getLocalShoppingItems().length > 0 ||
     getLocalSavedRecipes().length > 0 ||
@@ -1484,6 +1485,17 @@ export function hasLocalData(): boolean {
     getLocalWeekPlan().length > 0 ||
     getLocalLastRecipeGeneration() !== null
   );
+}
+
+export function getLocalGuideProgress(): GuideProgress {
+  return normalizeGuideProgress(getStorage(KEYS.GUIDE_PROGRESS, null));
+}
+
+export function dismissLocalGuide(key: GuideKey | 'welcome'): void {
+  const progress = getLocalGuideProgress();
+  setStorage(KEYS.GUIDE_PROGRESS, key === 'welcome'
+    ? { ...progress, welcomeDismissed: true }
+    : { ...progress, dismissed: [...new Set([...progress.dismissed, key])] });
 }
 
 export function importBackupJSON(jsonStr: string): { success: boolean; error?: string } {

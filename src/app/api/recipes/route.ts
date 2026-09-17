@@ -27,6 +27,10 @@ import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
+import { normalizeCookingTips } from '@/lib/cookingTips';
+import { AiTimeoutError, AiUsageLimitError } from '@/lib/ai';
+
+export const maxDuration = 180;
 
 // 初回生成は低遅延のFlash-Liteを使い、品質検証で不採用になった場合だけ
 // Flashへ昇格する。無条件に重いモデルを複数回呼ばない。
@@ -52,9 +56,11 @@ function compactValidationErrors(errors: string[]): string[] {
 function generationHeaders(
   startedAt: number,
   attempt: RecipeAttemptTelemetry,
+  attempts: RecipeAttemptTelemetry[],
 ): HeadersInit {
+  const aiDuration = attempts.reduce((sum, item) => sum + item.aiDurationMs, 0);
   return {
-    'Server-Timing': `ai;dur=${attempt.aiDurationMs}, total;dur=${Date.now() - startedAt}`,
+    'Server-Timing': `ai;dur=${aiDuration}, total;dur=${Date.now() - startedAt}`,
     'X-Sikurepi-AI-Model': attempt.model.replace(/^models\//, ''),
     'X-Sikurepi-AI-Rescue': String(attempt.attempt > 1 || attempt.model === QUALITY_AI_MODEL),
     'X-Sikurepi-Validation-Attempts': String(attempt.attempt),
@@ -80,6 +86,7 @@ function logRecipeGeneration(
 
 export async function POST(req: Request) {
   const generationStartedAt = Date.now();
+  let transportDurationMs = 0;
   const requestId = `${generationStartedAt.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const generationAttempts: RecipeAttemptTelemetry[] = [];
   let language: Language = 'ja';
@@ -295,13 +302,15 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
 
       const models = [...RECIPE_MODEL_ORDER[attempt]];
       const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
+      const callStartedAt = Date.now();
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
           thinkingConfig: { thinkingLevel },
         }
-      }, models, 2);
+      }, models, 2, { deadlineAt: generationStartedAt + 165_000, signal: req.signal })
+        .finally(() => { transportDurationMs += Date.now() - callStartedAt; });
       const aiTelemetry = getAiCallTelemetry(response);
       const attemptBase = {
         attempt: attempt + 1,
@@ -356,7 +365,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
               ? feasibility.missingKeyIngredients.filter((name): name is string => typeof name === 'string')
               : [],
           },
-        }, { headers: generationHeaders(generationStartedAt, attemptTelemetry) });
+        }, { headers: generationHeaders(generationStartedAt, attemptTelemetry, generationAttempts) });
       }
 
       const recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
@@ -370,26 +379,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       if (!isSetMeal && recipeArray.length !== 1) {
         shapeErrors.push('single-dish suggestions must contain exactly 1 recipe');
       }
-      if (!Array.isArray(json.cooking_tips) || json.cooking_tips.length !== 3) {
-        shapeErrors.push('cooking_tips must contain exactly 3 items');
-      } else {
-        json.cooking_tips.forEach((tip, index) => {
-          if (!tip || typeof tip !== 'object') {
-            shapeErrors.push(`cooking_tips[${index}] must be an object`);
-            return;
-          }
-          const entry = tip as Record<string, unknown>;
-          if (typeof entry.category !== 'string' || !entry.category.trim()) {
-            shapeErrors.push(`cooking_tips[${index}].category is missing`);
-          }
-          if (typeof entry.tip !== 'string' || !entry.tip.trim()) {
-            shapeErrors.push(`cooking_tips[${index}].tip is missing`);
-          }
-          if (/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/u.test(`${entry.category || ''} ${entry.tip || ''}`)) {
-            shapeErrors.push(`cooking_tips[${index}] must not contain emoji`);
-          }
-        });
-      }
+      json.cooking_tips = normalizeCookingTips(json.cooking_tips);
 
       if (shapeErrors.length > 0) {
         lastErrors = shapeErrors;
@@ -448,7 +438,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
           servings: targetServings,
         })),
       }, {
-        headers: generationHeaders(generationStartedAt, attemptTelemetry),
+        headers: generationHeaders(generationStartedAt, attemptTelemetry, generationAttempts),
       });
     }
 
@@ -461,10 +451,23 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         ? 'The AI could not produce a recipe that satisfies your conditions after multiple attempts. Please try again or adjust your request.'
         : '条件を満たすレシピをAIが生成できませんでした。条件を変えるか、もう一度お試しください。',
     }, latestAttemptTelemetry
-      ? { status: 422, headers: generationHeaders(generationStartedAt, latestAttemptTelemetry) }
+      ? { status: 422, headers: generationHeaders(generationStartedAt, latestAttemptTelemetry, generationAttempts) }
       : { status: 422 });
 
   } catch (error: unknown) {
+    const headers = { 'Server-Timing': `ai;dur=${transportDurationMs}, total;dur=${Date.now() - generationStartedAt}` };
+    if (error instanceof AiUsageLimitError) {
+      return NextResponse.json({ code: 'AI_USAGE_LIMIT', error: language === 'en'
+        ? 'AI generation is unavailable because the service usage limit was reached. Your conditions are kept. Saved recipes are still available.'
+        : '現在、AIの利用上限に達しているため生成できません。入力した条件は画面に残っています。復旧後に再試行してください。保存済みレシピは引き続き利用できます。',
+      }, { status: 503, headers });
+    }
+    if (error instanceof AiTimeoutError) {
+      return NextResponse.json({ error: language === 'en'
+        ? 'Generation took too long. Your conditions are kept; please try again. No generation credit was used.'
+        : '生成に時間がかかっているため中断しました。条件はそのままで再試行できます。生成回数は消費していません。',
+      }, { status: 504, headers });
+    }
     console.error('Recipe Gen Error:', error);
     logRecipeGeneration(requestId, generationStartedAt, 'request_failed', generationAttempts);
     const details = typeof error === 'object' && error !== null
@@ -481,12 +484,12 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         error: language === 'en'
           ? 'The AI model is temporarily busy. Please try again in a moment.'
           : 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。',
-      }, { status: 503 });
+      }, { status: 503, headers });
     }
     return NextResponse.json({
       error: language === 'en'
         ? 'Failed to generate recipes. Please try again in a moment.'
         : 'レシピの生成に失敗しました。しばらく時間をおいてもう一度お試しください。',
-    }, { status: 500 });
+    }, { status: 500, headers });
   }
 }
