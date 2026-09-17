@@ -717,8 +717,10 @@ const en: typeof ja = {
     accountSyncNote: "Changes on this device are synced to your account automatically",
     accountLogout: "Sign out",
     accountNotConfigured: "Account sync isn't set up yet",
-    saveButton: "Save & apply settings",
-    savedButton: "Saved!",
+    autoSaveHint: "Changes are saved and applied automatically.",
+    autoSaved: "Saved and applied on this device.",
+    autoSaveFailed: "Could not save on this device. Check your browser storage settings or free space, then make the change again.",
+    trayAutoSaveHint: "Your selected tray is applied to recipes immediately.",
   },
 };
 

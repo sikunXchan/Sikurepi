@@ -487,13 +487,15 @@ function getStorage<T>(key: string, defaultValue: T): T {
   }
 }
 
-function setStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
+function setStorage<T>(key: string, value: T): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(key, JSON.stringify(value));
     window.dispatchEvent(new Event('storage-updated'));
+    return true;
   } catch (e) {
     console.error(`Failed to write localStorage for key ${key}:`, e);
+    return false;
   }
 }
 
@@ -1318,8 +1320,8 @@ export function getLocalUserProfile(): UserProfile {
   return getStorage<UserProfile>(KEYS.PROFILE, DEFAULT_USER_PROFILE);
 }
 
-export function setLocalUserProfile(profile: UserProfile): void {
-  setStorage(KEYS.PROFILE, profile);
+export function setLocalUserProfile(profile: UserProfile): boolean {
+  return setStorage(KEYS.PROFILE, profile);
 }
 
 // --- 料理のコツ＆豆知識ライブラリ (Saved Tips) ---
