@@ -3,6 +3,9 @@ import { ThinkingLevel } from '@google/genai';
 import {
   ai,
   generateWithRetry,
+  getAiCallTelemetry,
+  AiTimeoutError,
+  AiUsageLimitError,
   FAST_AI_MODEL,
   QUALITY_AI_MODEL,
   buildProfileSection,
@@ -28,6 +31,7 @@ import {
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
+export const maxDuration = 300;
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
 const WEEKLY_PLAN_MODEL_ORDER = [
   [FAST_AI_MODEL, QUALITY_AI_MODEL],
@@ -90,6 +94,15 @@ function computeDailyTargets(profile: RecipeProfile | null | undefined) {
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
+  let aiDurationMs = 0;
+  let validationAttempts = 0;
+  let model = '';
+  const metrics = () => ({
+    'Server-Timing': `ai;dur=${aiDurationMs}, total;dur=${Date.now() - startedAt}`,
+    'X-Sikurepi-Validation-Attempts': String(validationAttempts),
+    'X-Sikurepi-AI-Model': model.replace(/^models\//, ''),
+  });
   let language: Language = 'ja';
   try {
     const body = await req.json();
@@ -341,6 +354,9 @@ ${targetedRepair
 
       const models = [...WEEKLY_PLAN_MODEL_ORDER[attempt]];
       const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
+      validationAttempts = attempt + 1;
+      const callStartedAt = Date.now();
+      model = models[0];
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: attemptPrompt }] }],
         config: {
@@ -348,7 +364,9 @@ ${targetedRepair
           maxOutputTokens: 24576,
           thinkingConfig: { thinkingLevel },
         }
-      }, models, 2);
+      }, models, 2, { deadlineAt: startedAt + 285_000, attemptTimeoutMs: 90_000, signal: req.signal })
+        .finally(() => { aiDurationMs += Date.now() - callStartedAt; });
+      model = getAiCallTelemetry(response)?.model || models[0];
 
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || response.text || '';
       if (!text) throw new Error('AI output was empty');
@@ -411,7 +429,7 @@ ${targetedRepair
           servings: targetServings,
         })),
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
-      });
+      }, { headers: metrics() });
     }
 
     console.error('Weekly plan validation failed after retries:', lastErrors);
@@ -420,26 +438,39 @@ ${targetedRepair
       error: language === 'en'
         ? 'The AI could not produce a plan that satisfies your conditions. Retry or review the selected meals.'
         : '条件を満たす献立を生成できませんでした。同じ条件で再試行するか、選択する食事枠を見直してください。',
-    }, { status: 422 });
+    }, { status: 422, headers: metrics() });
 
   } catch (error: unknown) {
+    if (error instanceof AiUsageLimitError) {
+      return NextResponse.json({ code: 'AI_USAGE_LIMIT', error: language === 'en'
+        ? 'AI generation is unavailable because the service usage limit was reached. Your existing plan and saved recipes are still available.'
+        : '現在、AIの利用上限に達しているため生成できません。復旧後に再試行してください。作成済みの献立や保存済みレシピは引き続き利用できます。',
+      }, { status: 503, headers: metrics() });
+    }
+    if (error instanceof AiTimeoutError) {
+      return NextResponse.json({ error: language === 'en'
+        ? 'Generation took too long. Retry with the same conditions or fewer meals. No generation credit was used.'
+        : '生成に時間がかかっているため中断しました。同じ条件で再試行するか、食事枠を減らしてお試しください。生成回数は消費していません。',
+      }, { status: 504, headers: metrics() });
+    }
     console.error('Weekly Plan Gen Error:', error);
     const details = typeof error === 'object' && error !== null
       ? error as { status?: unknown; httpStatusCode?: unknown; code?: unknown }
       : {};
     const status = details.status || details.httpStatusCode || details.code;
-    const message = error instanceof Error ? error.message : String(error);
     if (status === 429 || status === 503 || status === 'UNAVAILABLE') {
       return NextResponse.json({
         error: language === 'en'
           ? 'The AI model is temporarily busy. Please try again in a moment.'
           : 'AIモデルが一時的に混雑しています。しばらく時間をおいてから再度お試しください。',
-      }, { status: 503 });
+      }, { status: 503, headers: metrics() });
     }
     return NextResponse.json({
       error: language === 'en'
-        ? `Failed to generate weekly plan: ${message}`
-        : `週間献立の生成に失敗しました: ${message}`,
-    }, { status: 500 });
+        ? 'Failed to generate the meal plan. Please try again in a moment.'
+        : '献立の生成に失敗しました。しばらく時間をおいて再度お試しください。',
+    }, { status: 500, headers: metrics() });
+  } finally {
+    console.info('[WEEKLY_PLAN_TIMING]', JSON.stringify({ totalDurationMs: Date.now() - startedAt, aiDurationMs, validationAttempts, model }));
   }
 }

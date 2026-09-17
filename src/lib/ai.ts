@@ -1,36 +1,10 @@
-import {
-  GoogleGenAI,
-  type GenerateContentParameters,
-  type GenerateContentResponse,
-} from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
 
 export { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
-
+export { generateWithRetry, getAiCallTelemetry, AiTimeoutError, AiUsageLimitError, FAST_AI_MODEL, QUALITY_AI_MODEL, DEFAULT_AI_MODELS } from './aiTransport';
+export type { AiCallTelemetry, AiRequestPolicy } from './aiTransport';
 export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-export const FAST_AI_MODEL = 'models/gemini-3.5-flash-lite';
-export const QUALITY_AI_MODEL = 'models/gemini-3.5-flash';
-export const DEFAULT_AI_MODELS = [FAST_AI_MODEL, QUALITY_AI_MODEL];
-
-export type AiCallTelemetry = {
-  model: string;
-  durationMs: number;
-  modelIndex: number;
-  attempt: number;
-  failedAttempts: Array<{
-    model: string;
-    durationMs: number;
-    reason: string;
-    retryable: boolean;
-  }>;
-};
-
-const aiCallTelemetry = new WeakMap<object, AiCallTelemetry>();
-
-export function getAiCallTelemetry(response: GenerateContentResponse): AiCallTelemetry | null {
-  return aiCallTelemetry.get(response) || null;
-}
 
 const SEASONING_NOT_ASSUMED_SECTION = `\n【調味料・味付けの前提】\n水・お湯は使用できます。塩・こしょうなどの基本的な調味料であっても「常備されている」とは仮定しないでください。レシピで使用する調味料は、ユーザーが指定した在庫食材に含まれているもの、または最小限の塩・こしょうに留め、それ以外の調味料を使う場合は必ず材料リストに明記してください。\n`;
 
@@ -69,7 +43,6 @@ export function buildSeasoningSection(
 
   return `\n【調味料・味付けの前提】\n${seasonings.join('・')}は「常備されている」前提で使用できます。食事制限で禁止される通常品や動物性のだし・エキスへ置き換えないでください。使用する調味料は少量でも必ず材料リストに明記してください。\n`;
 }
-
 export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に文字だけの短いタグで示してください（例：「洗い物少なめ（2点）」「洗い物やや多め（5点）」）。絵文字や装飾記号は含めないでください。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
 
 // 「味を濃くする = 塩分を増やす」にならないよう、味の輪郭を旨味・酸味・香り・
@@ -204,75 +177,4 @@ export function buildClimateSection(climate: ClimateInfo | null | undefined): st
 ・時間帯: ${tod}
 ・気候アドバイス方針: ${advice}
 ※ 気候や気温に合わせた調理法（例：猛暑ならさっぱり冷製・酸味・水分ミネラル補給、寒い日ならあったかスープや生姜、夜遅い時間なら消化の良いヘルシーメニュー等）を自然に取り入れてください。ただし「酸味」を加える手段は梅干しに限らず、酢の物・レモンや柑橘・トマト・ヨーグルト・ピクルスなど料理のジャンルに合わせて多様な選択肢から選び、同じ食材ばかりに偏らないようにしてください。\n`;
-}
-
-export async function generateWithRetry(
-  aiInstance: GoogleGenAI,
-  config: Omit<GenerateContentParameters, 'model'>,
-  models: string[] = DEFAULT_AI_MODELS,
-  maxRetries = 3
-): Promise<GenerateContentResponse> {
-  const callStartedAt = Date.now();
-  const failedAttempts: AiCallTelemetry['failedAttempts'] = [];
-  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
-    const model = models[modelIndex];
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const attemptStartedAt = Date.now();
-      try {
-        const response = await aiInstance.models.generateContent({ ...config, model });
-        const telemetry: AiCallTelemetry = {
-          model,
-          durationMs: Date.now() - callStartedAt,
-          modelIndex,
-          attempt: attempt + 1,
-          failedAttempts: [...failedAttempts],
-        };
-        aiCallTelemetry.set(response, telemetry);
-        console.info('[AI_CALL]', JSON.stringify({
-          outcome: 'success',
-          ...telemetry,
-          failedAttempts: telemetry.failedAttempts.length,
-        }));
-        return response;
-      } catch (err: unknown) {
-        const details = typeof err === 'object' && err !== null
-          ? err as { status?: unknown; httpStatusCode?: unknown; code?: unknown; message?: unknown }
-          : {};
-        const status = details.status ?? details.httpStatusCode;
-        const code = details.code;
-        const reason = status ?? code ?? details.message ?? 'unknown error';
-        const retryable = status === 503 || status === 429 || code === 'UNAVAILABLE' || code === 'RESOURCE_EXHAUSTED';
-        failedAttempts.push({
-          model,
-          durationMs: Date.now() - attemptStartedAt,
-          reason: String(reason).slice(0, 160),
-          retryable,
-        });
-        if (retryable) {
-          if (attempt < maxRetries - 1) {
-            const delay = Math.pow(2, attempt) * 1000;
-            console.warn(`Model ${model} attempt ${attempt + 1} failed (${String(reason)}), retrying in ${delay}ms...`);
-            await new Promise((r) => setTimeout(r, delay));
-          } else {
-            console.warn(`All retries exhausted for model ${model}, trying next model...`);
-          }
-        } else {
-          // リトライ対象外(不正なパラメータ・非対応モデル等)のエラーでも、
-          // フォールバック配列に他のモデルが残っていれば試す価値があるため
-          // (例: 世代の異なるモデルを混在させた際、片方だけthinkingConfig等の
-          // パラメータを受け付けない、といったモデル固有の非互換を吸収する)、
-          // ここでは即座に諦めず次のモデルに進む。全モデルを使い切った時だけ
-          // 最終的にエラーを投げる。
-          console.warn(`Model ${model} failed with non-retryable error (${String(reason)}), trying next model...`);
-          break;
-        }
-      }
-    }
-  }
-  console.error('[AI_CALL]', JSON.stringify({
-    outcome: 'failed',
-    durationMs: Date.now() - callStartedAt,
-    failedAttempts,
-  }));
-  throw new Error('すべてのAIモデルが一時的に利用不可です。しばらく時間をおいてお試しください。');
 }

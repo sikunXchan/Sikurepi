@@ -1,0 +1,24 @@
+.context { border-left: 4px solid #79a49a; padding: 10px 14px; border-radius: 8px; background: #edf5ef; }
+.context small { display: block; color: #567c6c; font-size: 11px; margin-bottom: 5px; }
+.context strong { font-size: 13px; line-height: 1.5; display: block; }
+.context p { margin: 5px 0 0; font-size: 12px; line-height: 1.7; color: #526356; }
+.label { display: block; font-size: 13px; font-weight: 800; margin: 18px 0 10px; }
+.issues { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.issues button { min-height: 46px; padding: 9px 10px; border: 1px solid #dcded5; border-radius: 12px; background: white; color: #525c50; font-size: 12px; line-height: 1.5; box-shadow: none; }
+.issues button::before, .shopping::before { display: none; }
+.issues button[aria-pressed="true"] { border-color: #3e8273; background: #e4f1ea; color: #245e50; }
+.answer { margin-top: 18px; font-size: 14px; line-height: 1.8; }
+.answer select { width: 100%; padding: 12px; min-height: 46px; font: inherit; border-radius: 12px; border: 1px solid #d5dccc; background: white; color: #3d4037; }
+.answer h3 { font-size: 14px; margin: 18px 0 10px; }
+.answer ul { list-style: none; padding: 0; display: grid; gap: 10px; }
+.answer ul li { border: 1px solid #dce7d9; background: #f5f8ef; border-radius: 14px; padding: 12px; }
+.answer ul p { margin: 4px 0 0; font-size: 13px; }
+.note { font-size: 12px; color: #736d60; line-height: 1.7; }
+.shopping { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 16px; margin-top: 10px; border: 0; border-radius: 13px; background: #377e6e; color: white; box-shadow: none; font-size: 13px; }
+.steps { padding-left: 22px; display: grid; gap: 15px; }
+.steps li { padding-left: 5px; }
+.steps li::marker { font-weight: 800; color: #367b6c; }
+.terms { display: grid; gap: 15px; margin: 0; }
+.terms dt { color: #33725f; font-weight: 800; }
+.terms dd { margin: 4px 0 0; font-size: 13px; }
+.source { display: inline-block; color: #376c60; font-size: 12px; text-decoration: underline; margin-top: 10px; }
