@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { getSafeSubstitutions, getCookingContext } from '../src/lib/cookingHelp.ts';
+import { normalizeGuideProgress, mergeGuideProgress } from '../src/lib/guideProgress.ts';
+import { normalizeCookingTips } from '../src/lib/cookingTips.ts';
+
+const milk = [{ name: '牛乳', amount: '200ml' }];
+assert.equal(getSafeSubstitutions('牛乳', milk, {}, 'ミルクスープ')[0]?.ja, '無調整豆乳');
+assert.deepEqual(getSafeSubstitutions('牛乳', milk, { allergies: ['大豆'] }, 'ミルクスープ'), []);
+assert.deepEqual(getSafeSubstitutions('milk', [{ name: 'milk' }], { dietaryRestrictions: ['大豆不使用'] }, 'milk soup'), []);
+assert.deepEqual(getSafeSubstitutions('牛乳', milk, {}, 'プリン'), []);
+assert.deepEqual(getSafeSubstitutions('牛乳', milk, {}, 'オムレツ'), []);
+assert.deepEqual(getSafeSubstitutions('卵', [{ name: '卵' }], {}, '茶碗蒸し'), []);
+assert.deepEqual(getSafeSubstitutions('小麦粉', [{ name: '小麦粉' }], {}, 'パン'), []);
+assert.equal(getSafeSubstitutions('ほうれん草', [{ name: 'ほうれん草' }], {}, '炒め物')[0]?.ja, '小松菜');
+assert.deepEqual(getSafeSubstitutions('ほうれん草', [{ name: 'ほうれん草' }], { excludedIngredients: ['小松菜'] }, '炒め物'), []);
+assert.deepEqual(getSafeSubstitutions('しめじ', [{ name: 'しめじ' }, { name: '牛肉' }], { dietaryRestrictions: ['ヴィーガン'] }, '炒め物'), []);
+assert.equal(getCookingContext('唐揚げ', '油で揚げる', []).deepFrying, true);
+assert.equal(getCookingContext('カキフライ', '油で揚げる', [{ name: '牡蠣' }]).shellfish, true);
+assert.equal(getCookingContext('カレースープ', '煮込む', []).soup, true);
+assert.equal(getCookingContext('スープ', 'フライを添える', []).soup, false);
+assert.equal(getCookingContext('スープ', 'フライパンで煮る', []).soup, true);
+assert.equal(getCookingContext('mushroom soup', 'simmer', [{ name: 'king oyster mushrooms' }]).shellfish, false);
+
+assert.deepEqual(normalizeGuideProgress(null), { welcomeDismissed: false, dismissed: [] });
+assert.deepEqual(normalizeGuideProgress({ welcomeDismissed: 'yes', dismissed: ['recipe', 'bad', 'recipe'] }), { welcomeDismissed: false, dismissed: ['recipe'] });
+assert.deepEqual(mergeGuideProgress({ welcomeDismissed: true, dismissed: ['recipe'] }, { welcomeDismissed: false, dismissed: ['inventory'] }), { welcomeDismissed: true, dismissed: ['recipe', 'inventory'] });
+assert.deepEqual(normalizeCookingTips(undefined), []);
+assert.deepEqual(normalizeCookingTips([null, {}, { category: '味 🍳', tip: '最後に調整 🐻' }, { category: '', tip: 'bad' }]), [{ category: '味', tip: '最後に調整' }]);
+assert.equal(normalizeCookingTips(Array(5).fill({ category: '味', tip: '調整' })).length, 3);
+console.log('Cooking help, dietary filtering, guide merge and optional tips: passed');

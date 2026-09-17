@@ -47,6 +47,8 @@ import {
   incrementFreeRecipeGeneration,
 } from "@/lib/storage";
 import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
+import { useGenerationRequest } from "@/lib/useGenerationRequest";
+import { generationCopy } from "@/lib/i18n/generation";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
@@ -126,6 +128,7 @@ export default function RecipePage() {
   const [cookingTips, setCookingTips] = useState<CookingTip[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const requestCardRef = useRef<HTMLDivElement>(null);
+  const generationRequest = useGenerationRequest();
   const [expandedIndex, setExpandedIndex] = useState<number>(-1);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
@@ -272,6 +275,7 @@ export default function RecipePage() {
   };
 
   const handleGenerate = async (forceRefresh = false) => {
+    if (generationRequest.isRunning()) return;
     const selectedNames = creationMode === 'inventory'
       ? ingredients.filter(i => validSelectedIngredientIds.length === 0 ? true : validSelectedIngredientIds.includes(i.id)).map(i => i.name)
       : [];
@@ -356,6 +360,8 @@ export default function RecipePage() {
       return;
     }
 
+    const request = generationRequest.begin(195_000);
+    if (!request) return;
     setLoading(true);
     setNavLocked(true);
     setErrorMsg("");
@@ -367,12 +373,14 @@ export default function RecipePage() {
 
     try {
       const res = await fetch("/api/recipes", {
+        signal: request.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+      request.signal.throwIfAborted();
       if (!res.ok) {
         // API内部の例外文が別言語でも、そのままUIへ漏らさず現在の表示言語で案内する。
         throw new Error(typeof data.error === 'string' && data.error.trim()
@@ -457,8 +465,10 @@ export default function RecipePage() {
       setLocalCachedRecipeGeneration(generationSnapshot);
     } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(err instanceof Error ? err.message : t.recipe.errorGeneric);
+      if (request.signal.reason?.name !== 'AbortError') setErrorMsg(request.signal.reason?.name === 'TimeoutError'
+        ? generationCopy[language].timeout : err instanceof Error ? err.message : t.recipe.errorGeneric);
     } finally {
+      request.dispose();
       setLoading(false);
       setNavLocked(false);
     }

@@ -1,0 +1,10 @@
+.dialog { position: fixed; inset: 0; margin: auto; width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 0; border: 1px solid #e6ddd3; border-radius: 24px; background: #fffdf9; color: #3d3431; overflow: auto; box-shadow: 0 20px 70px #38291a33; }
+.dialog::backdrop { background: #251d195e; }
+.inner { min-width: 0; }
+.header { display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid #e8e2da; background: #fffdf9; }
+.header h2 { font-size: 19px; line-height: 1.5; margin: 0; }
+.header button { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; color: #51433c; background: #f0ebe5; box-shadow: none; }
+.header button::before { display: none; }
+.body { padding: 20px; }
+.dialog button:focus-visible, .dialog a:focus-visible { outline: 3px solid #267c76; outline-offset: 3px; }
+@media (max-width: 440px) { .body { padding: 16px; } .header { padding: 14px 16px; } }

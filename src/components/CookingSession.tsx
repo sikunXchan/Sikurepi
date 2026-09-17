@@ -20,6 +20,8 @@ import CookedModal from "./CookedModal";
 import IngredientIcon from "./IngredientIcon";
 import UiIcon from "./UiIcon";
 import styles from "./CookingSession.module.css";
+import CookingHelp from "./CookingHelp";
+import { cookingHelpCopy } from "@/lib/i18n/cookingHelp";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { CookedRecord, NutritionData } from "@/lib/storage";
 
@@ -96,7 +98,8 @@ export default function CookingSession({
   autoGenerateImages = false,
   onClose,
 }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [showHelp, setShowHelp] = useState(false);
   const [index, setIndex] = useState(0);
   const [finished, setFinished] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState<number | null>(null);
@@ -241,13 +244,14 @@ export default function CookingSession({
   // Keyboard support (desktop testing / accessibility)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (showHelp || showIngredients || showCookedModal) return;
       if (e.key === "ArrowRight") goNext();
       if (e.key === "ArrowLeft") goPrev();
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev, onClose]);
+  }, [goNext, goPrev, onClose, showHelp, showIngredients, showCookedModal]);
 
   // Timer countdown
   useEffect(() => {
@@ -303,6 +307,11 @@ export default function CookingSession({
           <X size={22} />
         </button>
       </div>
+
+      {!finished && <button type="button" className={styles.helpButton} onClick={() => setShowHelp(true)}>
+        {cookingHelpCopy[language].open}
+      </button>}
+      {showHelp && <CookingHelp title={title} step={steps[index] || ''} index={index} ingredients={ingredients || []} onClose={() => setShowHelp(false)} />}
 
       <AnimatePresence>
         {showIngredients && (

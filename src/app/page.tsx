@@ -40,6 +40,7 @@ import {
   mergeCommunityRecipesWithLocal,
 } from "@/lib/communityRecipes";
 import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
+import { GuideButton, WelcomeGuide } from "@/components/AppGuide";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -262,8 +263,11 @@ export default function HomePage() {
             {isPremium && <span className={styles.greetingPlusBadge}><Crown size={12} aria-hidden="true" />Plus</span>}
           </div>
           <p className={styles.greetingSubtitle}>{t.home.greetingSubtitle}</p>
+          <GuideButton />
         </div>
       </header>
+
+      <WelcomeGuide />
 
       <ChefProfileBadge />
 
@@ -350,7 +354,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className={`${styles.card} ${styles.cardCommunity}`}>
+      <div id="community-recipes" tabIndex={-1} className={`${styles.card} ${styles.cardCommunity}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}><UiIcon slug="side_dish" size={24} alt="" />{t.home.communityTitle}</span>
           <button

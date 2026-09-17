@@ -3,6 +3,7 @@
 import { Crown } from "lucide-react";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import styles from "./PageHeader.module.css";
+import { GuideButton, TabGuide } from "./AppGuide";
 
 /**
  * 各ページ共通のヘッダー。
@@ -24,6 +25,7 @@ export default function PageHeader({
   const { isPremium } = usePremium();
 
   return (
+    <>
     <div className={styles.header}>
       <img
         className={styles.mascot}
@@ -42,8 +44,11 @@ export default function PageHeader({
           )}
         </div>
         {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+        <GuideButton />
       </div>
       {actions && <div className={styles.actions}>{actions}</div>}
     </div>
+    <TabGuide />
+    </>
   );
 }
