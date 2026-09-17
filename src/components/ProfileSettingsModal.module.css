@@ -515,3 +515,14 @@
   .body { padding-inline: 14px; }
   .footer { padding-inline: 14px; }
 }
+
+.autoSaveStatus {
+  margin: -4px 0 18px;
+  color: #347268;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.autoSaveError {
+  color: #b13947;
+}

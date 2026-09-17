@@ -713,8 +713,10 @@ const ja = {
     accountSyncNote: "この端末の変更は自動でアカウントに同期されます",
     accountLogout: "ログアウト",
     accountNotConfigured: "アカウント機能は現在準備中です",
-    saveButton: "設定を保存して適用",
-    savedButton: "保存しました！",
+    autoSaveHint: "変更は自動で保存・適用されます。",
+    autoSaved: "この端末に保存・適用しました。",
+    autoSaveFailed: "この端末に保存できませんでした。ブラウザーの保存設定や空き容量を確認し、もう一度変更してください。",
+    trayAutoSaveHint: "選んだトレーはすぐにレシピ表示へ反映されます。",
   },
 };
 

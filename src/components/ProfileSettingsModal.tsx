@@ -27,7 +27,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onSaved }: Props
           </button>
         </div>
 
-        <SettingsPanel onCloseRequest={onClose} onSaved={onSaved} />
+        <SettingsPanel onSaved={onSaved} />
       </div>
     </div>
   );
