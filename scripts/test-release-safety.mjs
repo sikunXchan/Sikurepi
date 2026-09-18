@@ -46,6 +46,13 @@ assert.ok(!readFileSync(new URL('../src/components/KitchenLoader.module.css', im
 const capacitorConfig = readFileSync(new URL('../capacitor.config.ts', import.meta.url), 'utf8');
 assert.ok(capacitorConfig.includes("https://sikurepi.vercel.app"), 'native shell must use the stable production alias');
 assert.ok(!capacitorConfig.includes("https://lily-cooking.vercel.app"), 'removed deployment must never be embedded');
+const codemagicConfig = readFileSync(new URL('../codemagic.yaml', import.meta.url), 'utf8');
+assert.ok(codemagicConfig.includes('Sikurepi-unsigned.ipa'), 'artifact must use the current product name');
+assert.ok(!codemagicConfig.includes('LilyCooking-unsigned.ipa'), 'legacy artifact name must not return');
+const iosInfo = readFileSync(new URL('../ios/App/App/Info.plist', import.meta.url), 'utf8');
+assert.match(iosInfo, /<key>CFBundleDisplayName<\/key>\s*<string>Sikurepi<\/string>/);
+const androidStrings = readFileSync(new URL('../android/app/src/main/res/values/strings.xml', import.meta.url), 'utf8');
+assert.match(androidStrings, /<string name="app_name">Sikurepi<\/string>/);
 const xcode = await import('xcode');
 const project = xcode.default.project(new URL('../ios/App/App.xcodeproj/project.pbxproj', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 project.parseSync();
