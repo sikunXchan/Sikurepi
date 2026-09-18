@@ -72,8 +72,8 @@ workflows:
           mkdir -p "$CM_BUILD_DIR/Payload"
           cp -r "$APP_PATH" "$CM_BUILD_DIR/Payload/"
           cd "$CM_BUILD_DIR"
-          zip -r LilyCooking-unsigned.ipa Payload
-          echo "Generated: $CM_BUILD_DIR/LilyCooking-unsigned.ipa"
+          zip -r Sikurepi-unsigned.ipa Payload
+          echo "Generated: $CM_BUILD_DIR/Sikurepi-unsigned.ipa"
 
     artifacts:
       - "*.ipa"
