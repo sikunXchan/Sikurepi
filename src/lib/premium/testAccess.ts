@@ -1,7 +1,8 @@
 const PREMIUM_TEST_ACCESS_KEY = "sikurepi_premium_test_access_v1";
-// Never enable on the public production deployment. Opt in only on a test build.
-export const PREMIUM_TEST_ACCESS_ENABLED = process.env.NODE_ENV === 'development'
-  || process.env.NEXT_PUBLIC_ENABLE_PREMIUM_TEST_ACCESS === 'true';
+// Hackathon judging requires a password-accessible Plus preview in the submitted build.
+// This is only a local UI/quota preview; it never grants RevenueCat or server privileges.
+// A later commercial build can explicitly disable it with `false`.
+export const PREMIUM_TEST_ACCESS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PREMIUM_TEST_ACCESS !== 'false';
 const PREMIUM_TEST_PASSWORD_SHA256 = "b1bca771e233b6c216af5c341d125edc468de6d78fcdac47b795758d189adeaa";
 
 function bytesToHex(bytes: Uint8Array): string {
