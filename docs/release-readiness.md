@@ -13,7 +13,7 @@ Automated web checks pass, but acceptance of the native hackathon build remains 
 - API mutations have origin checks, request-size limits and bounded process-local request budgets.
 - Receipt uploads accept only the supported image formats, at most five files and at most 6 MB per file.
 - API responses are network-only in the service worker and use `Cache-Control: no-store`.
-- The submitted hackathon build includes the required Plus test-password UI. It only changes local preview state and does not grant RevenueCat or server-side privileges.
+- Plus access is based on RevenueCat entitlements. The optional local password preview has been removed, and its legacy localStorage flag is retired at startup. Next Gen does not require a judge-access promo code; this is separate from the RevenueCat integration requirement.
 - Native purchase entry points reject Test Store, missing and wrong-platform keys before calling the SDK. Mock-SDK integration tests cover launch, purchase, restore, listeners and paywall analytics; they do not replace physical-device testing.
 - The iOS icon is packaged from the approved Sikurepi logo as a 1024px opaque PNG. Codemagic regenerates it before building the IPA.
 - Community seed recipes have Japanese and English data. Published recipes missing the selected language are translated from the canonical stored recipe, validated for structure and numeric quantities, cached locally, and fall back to the original without hiding the recipe.
@@ -24,7 +24,7 @@ Automated web checks pass, but acceptance of the native hackathon build remains 
 1. Apply and inspect `supabase/migrations/202609160001_community_recipes.sql` in the production project. Confirm every account-owned table has RLS enabled and test cross-account reads and writes with two real accounts.
 2. Put a distributed quota/WAF in front of AI, OCR and anonymous community endpoints. The in-process limiter is defense in depth and resets when a serverless instance is replaced.
 3. Decide whether anonymous community posting is acceptable. Device IDs prevent ordinary duplicate actions but are not authentication; a hostile client can replace them. Require Supabase Auth or a server-only publication credential before describing the community feature as abuse-resistant.
-4. Run RevenueCat sandbox purchase, restore and cancellation tests on physical iOS and Android devices. Keep the test-access flag enabled for the hackathon judging build, then set it to false before a later commercial store release.
+4. Run RevenueCat sandbox purchase, restore and cancellation tests on physical iOS and Android devices. For a Next Gen-only demo, a dedicated Debug build using Test Store can demonstrate the integration without real-money purchases; this path is not configured or verified yet. Never enable Test Store keys in the current Release IPA.
 5. Run Japanese and English device tests for receipt camera permissions, offline/reconnect sync, recipe completion, community publication, account restore and accessibility text scaling.
 6. Complete privacy disclosures for receipt images, recipe feedback, account sync and AI processing. Rotate any credential ever pasted into a chat or log, even if it was restricted.
 

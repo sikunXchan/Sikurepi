@@ -18,26 +18,18 @@ import {
   type PremiumPlan,
   type PurchaseActionResult,
 } from "@/lib/purchases";
-import {
-  hasPremiumTestAccess,
-  setPremiumTestAccess,
-  verifyPremiumTestPassword,
-} from "@/lib/premium/testAccess";
 
 type PremiumLoadState = PremiumAvailability | "loading";
 
 type PremiumContextValue = {
   availability: PremiumLoadState;
   isPremium: boolean;
-  isTestPremium: boolean;
   plans: PremiumPlan[];
   offeringId: string | null;
   busy: boolean;
   refresh: () => Promise<void>;
   purchase: (packageIdentifier?: string) => Promise<PurchaseActionResult>;
   restore: () => Promise<PurchaseActionResult>;
-  activateTestPremium: (password: string) => Promise<boolean>;
-  deactivateTestPremium: () => void;
   trackPaywallImpression: () => Promise<void>;
 };
 
@@ -46,7 +38,6 @@ const PremiumContext = createContext<PremiumContextValue | null>(null);
 export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [availability, setAvailability] = useState<PremiumLoadState>("loading");
   const [storePremium, setStorePremium] = useState(false);
-  const [isTestPremium, setIsTestPremium] = useState(false);
   const [plans, setPlans] = useState<PremiumPlan[]>([]);
   const [offeringId, setOfferingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +54,12 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     let disposed = false;
     let unsubscribe: () => void = () => undefined;
 
-    setIsTestPremium(hasPremiumTestAccess());
+    // Retire the old device-only preview flag; entitlement now comes only from RevenueCat.
+    try {
+      window.localStorage.removeItem("sikurepi_premium_test_access_v1");
+    } catch {
+      // Storage may be unavailable. The legacy flag is never read or used.
+    }
     void refresh();
     void subscribeToPremiumStatus((active) => {
       if (!disposed) setStorePremium(active);
@@ -100,35 +96,17 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const activateTestPremium = useCallback(async (password: string) => {
-    const accepted = await verifyPremiumTestPassword(password);
-    if (!accepted) return false;
-    setPremiumTestAccess(true);
-    setIsTestPremium(true);
-    return true;
-  }, []);
-
-  const deactivateTestPremium = useCallback(() => {
-    setPremiumTestAccess(false);
-    setIsTestPremium(false);
-  }, []);
-
-  const isPremium = storePremium || isTestPremium;
-
   const value = useMemo<PremiumContextValue>(() => ({
     availability,
-    isPremium,
-    isTestPremium,
+    isPremium: storePremium,
     plans,
     offeringId,
     busy,
     refresh,
     purchase,
     restore,
-    activateTestPremium,
-    deactivateTestPremium,
     trackPaywallImpression: trackPremiumPaywallImpression,
-  }), [activateTestPremium, availability, busy, deactivateTestPremium, isPremium, isTestPremium, offeringId, plans, purchase, refresh, restore]);
+  }), [availability, busy, storePremium, offeringId, plans, purchase, refresh, restore]);
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;
 }
