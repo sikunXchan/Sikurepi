@@ -1,12 +1,10 @@
 "use client";
 
-import { PREMIUM_TEST_ACCESS_ENABLED } from "@/lib/premium/testAccess";
-
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Crown, KeyRound, Loader2, Palette, RotateCcw, X } from "lucide-react";
+import { Check, Crown, Loader2, Palette, RotateCcw, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import type { PurchaseActionResult } from "@/lib/purchases";
@@ -41,7 +39,6 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   const premium = usePremium();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [testPassword, setTestPassword] = useState("");
 
   const selectedPlan = useMemo(
     () => premium.plans.find((plan) => plan.id === selectedPlanId) ?? premium.plans[0] ?? null,
@@ -51,7 +48,6 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   useEffect(() => {
     if (!open) return;
     setMessage("");
-    setTestPassword("");
     void premium.refresh();
     void premium.trackPaywallImpression();
   // 開くたびに一度だけ更新・計測する。Context関数は安定している。
@@ -91,20 +87,6 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
     setMessage("");
     const result = await premium.restore();
     finishIfActivated(result, true);
-  };
-
-  const handleTestAccess = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage("");
-    const accepted = await premium.activateTestPremium(testPassword);
-    if (!accepted) {
-      setMessage(t.premium.testAccessError);
-      return;
-    }
-    setMessage(t.premium.testAccessSuccess);
-    setTestPassword("");
-    onActivated?.();
-    window.setTimeout(onClose, 650);
   };
 
   const unavailableMessage = premium.availability === "web"
@@ -163,24 +145,10 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
             </ul>
 
             {premium.isPremium ? (
-              <>
-                <div className={styles.activeState}>
-                  <Crown size={18} />
-                  <span>{premium.isTestPremium ? t.premium.testAccessActive : t.premium.active}</span>
-                </div>
-                {premium.isTestPremium && (
-                  <button
-                    type="button"
-                    className={styles.deactivateTestButton}
-                    onClick={() => {
-                      premium.deactivateTestPremium();
-                      setMessage(t.premium.testAccessDisabled);
-                    }}
-                  >
-                    {t.premium.testAccessDisable}
-                  </button>
-                )}
-              </>
+              <div className={styles.activeState}>
+                <Crown size={18} />
+                <span>{t.premium.active}</span>
+              </div>
             ) : (
               <>
                 {premium.availability === "loading" && (
@@ -239,25 +207,6 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   <RotateCcw size={14} />{t.premium.restore}
                 </button>
                 <p className={styles.legal}>{t.premium.legal}</p>
-                {PREMIUM_TEST_ACCESS_ENABLED && <>
-                <div className={styles.testDivider}><span>{t.premium.testAccessDivider}</span></div>
-                <form className={styles.testAccessForm} onSubmit={handleTestAccess}>
-                  <label htmlFor="premium-test-password">{t.premium.testAccessLabel}</label>
-                  <div className={styles.testPasswordRow}>
-                    <span><KeyRound size={15} /></span>
-                    <input
-                      id="premium-test-password"
-                      type="password"
-                      autoComplete="off"
-                      value={testPassword}
-                      onChange={(event) => setTestPassword(event.target.value)}
-                      placeholder={t.premium.testAccessPlaceholder}
-                    />
-                    <button type="submit" disabled={!testPassword.trim()}>{t.premium.testAccessButton}</button>
-                  </div>
-                  <small>{t.premium.testAccessHint}</small>
-                </form>
-                </>}
               </>
             )}
           </motion.section>
