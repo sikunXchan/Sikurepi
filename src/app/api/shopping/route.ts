@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
     const item = await addShoppingItem(name, category || 'その他', userId);
     return NextResponse.json(item);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { PREMIUM_TEST_ACCESS_ENABLED } from "@/lib/premium/testAccess";
+
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
@@ -237,6 +239,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   <RotateCcw size={14} />{t.premium.restore}
                 </button>
                 <p className={styles.legal}>{t.premium.legal}</p>
+                {PREMIUM_TEST_ACCESS_ENABLED && <>
                 <div className={styles.testDivider}><span>{t.premium.testAccessDivider}</span></div>
                 <form className={styles.testAccessForm} onSubmit={handleTestAccess}>
                   <label htmlFor="premium-test-password">{t.premium.testAccessLabel}</label>
@@ -254,6 +257,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   </div>
                   <small>{t.premium.testAccessHint}</small>
                 </form>
+                </>}
               </>
             )}
           </motion.section>

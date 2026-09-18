@@ -21,8 +21,8 @@ export async function POST(req: Request) {
       consumedCount,
       stats: updatedStats,
     });
-  } catch (error: any) {
-    console.error('Consume error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    console.error('Legacy consume request failed');
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

@@ -52,7 +52,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'deviceId and rating are required' }, { status: 400 });
     }
 
-    const recipe = sanitizeCommunityRecipe(body.recipe);
+    const candidateId = body.recipe.communityRecipeId || (body.recipe.source === 'community' ? body.recipe.sourceRecipeId : null);
+    const sourceId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidateId || '') ? candidateId : null;
+    const sourceLookup = sourceId
+      ? await supabase.from('community_recipes').select('id, recipe').eq('id', sourceId).maybeSingle() : null;
+    if (sourceLookup?.error) throw sourceLookup.error;
+    if (sourceId && !sourceLookup?.data) return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+    // Language and serving-size changes must not create a second ranking entry.
+    const recipe = sanitizeCommunityRecipe(sourceLookup?.data?.recipe || body.recipe);
     const recipeKey = getRecipeKey(recipe);
     const keyedLookup = await supabase
       .from('community_recipes')
@@ -64,7 +71,7 @@ export async function POST(req: Request) {
 
     if (keyedLookup.error && !isMissingCommunityColumn(keyedLookup.error)) throw keyedLookup.error;
 
-    let recipeId = !keyedLookup.error ? keyedLookup.data?.id || null : null;
+    let recipeId = sourceLookup?.data?.id || (!keyedLookup.error ? keyedLookup.data?.id || null : null);
     const supportsRecipeKey = !keyedLookup.error;
     if (!recipeId) recipeId = await findLegacyRecipe(recipe);
 

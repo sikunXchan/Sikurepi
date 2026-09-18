@@ -73,9 +73,6 @@ export default function KitchenLoader({ text, phaseMessages, compact = false, cl
       aria-live="polite"
     >
       <div className={styles.scene} aria-hidden="true">
-        <span className={`${styles.steam} ${styles.steamOne}`} />
-        <span className={`${styles.steam} ${styles.steamTwo}`} />
-        <span className={`${styles.steam} ${styles.steamThree}`} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={asset}

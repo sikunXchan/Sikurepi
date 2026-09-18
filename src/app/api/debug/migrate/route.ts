@@ -18,8 +18,8 @@ export async function GET() {
     await sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS genre VARCHAR(100)`;
 
     return NextResponse.json({ success: true, message: 'Migration completed successfully' });
-  } catch (error: any) {
-    console.error('Migration Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch {
+    console.error('Legacy migration request failed');
+    return NextResponse.json({ success: false, error: 'Request failed' }, { status: 500 });
   }
 }

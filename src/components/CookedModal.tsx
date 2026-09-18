@@ -32,6 +32,7 @@ import { isCommunityRecipe } from "@/lib/communityRecipeSchema";
 import styles from "./CookedModal.module.css";
 
 type RecipeLike = {
+  communityRecipeId?: string;
   title: string;
   time?: string;
   ingredients: { name: string; amount?: string }[];
@@ -197,6 +198,7 @@ export default function CookedModal({
           source,
           sourceRecipeId,
           recipe: recipe ? {
+            communityRecipeId: recipe.communityRecipeId,
             title,
             time: recipe.time || '',
             ingredients: rawIngredients.map((item) => ({ name: item.name, amount: item.amount || '' })),
@@ -216,7 +218,7 @@ export default function CookedModal({
       // 図鑑・自炊回数と同じく「料理完了」を共有の起点にする。みんなのレシピを
       // 作った場合は自分の記録には数えるが、公開レシピを再投稿しない。
       const shareEnabled = !isPremium || getLocalUserProfile().shareGeneratedRecipes !== false;
-      if (source !== 'community' && shareEnabled && isCommunityRecipe(feedbackRecipe)) {
+      if (source !== 'community' && !feedbackRecipe.communityRecipeId && shareEnabled && isCommunityRecipe(feedbackRecipe)) {
         setShareStatus('sharing');
         void shareCookedRecipes([{
           ...feedbackRecipe,

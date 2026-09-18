@@ -31,12 +31,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>("ja");
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "ja" || saved === "en") setLanguageState(saved);
-    } catch {
-      // localStorage不可の環境ではデフォルト(ja)のまま
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === "ja" || saved === "en") setLanguageState(saved);
+      } catch {
+        // localStorage不可の環境ではデフォルト(ja)のまま
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {

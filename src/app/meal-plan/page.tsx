@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw, Trash2, ShoppingCart, Check, AlertTriangle, SlidersHorizontal } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import NutritionChart from "@/components/NutritionChart";
 import IngredientIcon from "@/components/IngredientIcon";
 import UiIcon from "@/components/UiIcon";
@@ -364,12 +363,12 @@ export default function MealPlanPage() {
                 </div>
                 <div className={styles.mealSlots}>
                   <button type="button" onClick={() => toggleSlot(d.date, 'lunch')} className={`${styles.mealSlot} ${lunchOn ? styles.mealSlotActive : ''}`}>
-                    <UiIcon slug="clear" size={22} alt="" />
+                    <UiIcon slug="clear" size={28} alt="" />
                     <span>{t.mealPlan.slotLunch}</span>
                     <i className={styles.slotCheck}>{lunchOn && <Check size={11} />}</i>
                   </button>
                   <button type="button" onClick={() => toggleSlot(d.date, 'dinner')} className={`${styles.mealSlot} ${dinnerOn ? styles.mealSlotActive : ''}`}>
-                    <span className={styles.moonMark} aria-hidden="true" />
+                    <UiIcon slug="dinner" size={28} alt="" />
                     <span>{t.mealPlan.slotDinner}</span>
                     <i className={styles.slotCheck}>{dinnerOn && <Check size={11} />}</i>
                   </button>

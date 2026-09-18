@@ -1,4 +1,7 @@
 export type CommunityRecipe = {
+  source?: string;
+  sourceRecipeId?: string;
+  communityRecipeId?: string;
   title: string;
   time: string;
   ingredients: { name: string; amount: string }[];
@@ -72,6 +75,21 @@ function sanitizeTranslation(translation: CommunityRecipeTranslation): Community
   };
 }
 
+function sanitizeNutrition(value: unknown): CommunityRecipe['nutrition'] {
+  if (!value || typeof value !== 'object') return null;
+  const nutrition = value as Record<string, unknown>;
+  const read = (key: string, max: number) => {
+    const number = Number(nutrition[key]);
+    return Number.isFinite(number) ? Math.max(0, Math.min(max, number)) : 0;
+  };
+  return {
+    calories: read('calories', 10000),
+    protein_g: read('protein_g', 1000),
+    fat_g: read('fat_g', 1000),
+    carbs_g: read('carbs_g', 2000),
+  };
+}
+
 export function isCommunityRecipe(value: unknown): value is CommunityRecipe {
   if (!value || typeof value !== 'object') return false;
   const recipe = value as Partial<CommunityRecipe>;
@@ -99,7 +117,7 @@ export function sanitizeCommunityRecipe(recipe: CommunityRecipe): CommunityRecip
     tips: recipe.tips.normalize('NFKC').trim().slice(0, 1200),
     genre: typeof recipe.genre === 'string' ? recipe.genre.normalize('NFKC').trim().slice(0, 80) : null,
     dish_badge: typeof recipe.dish_badge === 'string' ? recipe.dish_badge.normalize('NFKC').trim().slice(0, 120) : null,
-    nutrition: recipe.nutrition || null,
+    nutrition: sanitizeNutrition(recipe.nutrition),
     servings: Math.max(1, Math.min(15, Math.round(Number(recipe.servings) || 2))),
     creator_comment: typeof recipe.creator_comment === 'string'
       ? recipe.creator_comment.normalize('NFKC').trim().slice(0, 280)
@@ -122,6 +140,10 @@ export function localizeCommunityRecipe(recipe: CommunityRecipe, language: 'ja' 
 
 // JSONBはキー順を保持しないため、照合対象を固定順の配列にして同じレシピを安定して識別する。
 export function serializeCommunityRecipeIdentity(recipe: CommunityRecipe): string {
+  const communityId = recipe.communityRecipeId || (recipe.source === 'community' ? recipe.sourceRecipeId : undefined);
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(communityId || '')) {
+    return JSON.stringify(['community', communityId]);
+  }
   const sanitized = sanitizeCommunityRecipe(recipe);
   return JSON.stringify([
     sanitized.title.toLocaleLowerCase(),

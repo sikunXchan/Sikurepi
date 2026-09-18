@@ -30,6 +30,8 @@ import { getTrayTheme } from "@/lib/trayThemes";
 import styles from "@/app/recipe/Recipe.module.css";
 
 export type RecipeDetailData = {
+  communityRecipeId?: string;
+  translationNotice?: string;
   title: string;
   time: string;
   genre?: string | null;
@@ -126,6 +128,7 @@ export default function RecipeDetailScreen({
   const handleSave = () => {
     if (!displayedRecipe || saved) return;
     saveLocalRecipe({
+      communityRecipeId: displayedRecipe.communityRecipeId,
       title: displayedRecipe.title,
       time: displayedRecipe.time,
       ingredients: displayedRecipe.ingredients,
@@ -211,6 +214,7 @@ export default function RecipeDetailScreen({
                     <span className={styles.genreBadge}><UiIcon slug={COURSE_ICON_SLUGS[displayedRecipe.course] || "other"} size={16} alt="" /> {t.recipe.courseLabel[displayedRecipe.course] || displayedRecipe.course}</span>
                   )}
                   {displayedRecipe.genre && <span className={styles.genreBadge}>{t.tagLabel[displayedRecipe.genre] || displayedRecipe.genre}</span>}
+                  {displayedRecipe.translationNotice && <p role="status">{displayedRecipe.translationNotice}</p>}
                   {displayedRecipe.climate_badge && <span className={styles.climateBadge}><UiIcon slug="clear" size={15} alt="" />{stripLeadingEmoji(displayedRecipe.climate_badge)}</span>}
                   {displayedRecipe.dish_badge && <span className={styles.climateBadge}><UiIcon slug="dishwashing" size={15} alt="" />{stripLeadingEmoji(displayedRecipe.dish_badge)}</span>}
                 </div>

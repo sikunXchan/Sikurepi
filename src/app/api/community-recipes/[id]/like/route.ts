@@ -17,8 +17,9 @@ export async function POST(
     const { id } = await params;
     const body = await req.json();
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.trim() : '';
-    if (!deviceId) {
-      return NextResponse.json({ error: 'deviceId is required' }, { status: 400 });
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      || !deviceId || deviceId.length > 120) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
     // 既にいいね済みなら重複エラーを無視する(unique制約違反=すでにいいね済み、と
@@ -36,8 +37,8 @@ export async function POST(
     if (error) throw error;
 
     return NextResponse.json({ likes_count: data?.likes_count ?? 0, alreadyLiked: Boolean(insertError) });
-  } catch (error: any) {
-    console.error('Community Recipe Like Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    console.error('Community recipe like request failed');
+    return NextResponse.json({ error: 'Unable to save like' }, { status: 500 });
   }
 }

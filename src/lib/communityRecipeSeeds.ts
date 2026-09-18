@@ -10,7 +10,8 @@ function bilingualRecipe(
   japanese: Omit<CommunityRecipe, 'translations'>,
   english: CommunityRecipeTranslation,
 ): CommunityRecipe {
-  return { servings: 2, ...japanese, translations: { en: english } };
+  // Sample recipes are not evidence of real user reviews.
+  return { servings: 2, ...japanese, creator_comment: null, translations: { en: { ...english, creator_comment: null } } };
 }
 
 // 初回から「みんなのレシピ」が空にならないよう、分量・加熱目安・味の調整方法を

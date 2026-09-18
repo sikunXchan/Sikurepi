@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       userId
     );
     return NextResponse.json(saved);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }
