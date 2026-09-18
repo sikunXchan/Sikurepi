@@ -433,7 +433,7 @@ const en: typeof ja = {
     purchaseError: "We couldn't complete the purchase. Check your connection and try again.",
     unavailable: "Purchases are currently unavailable",
     nativeOnly: "Purchases are available in the iOS and Android apps",
-    setupRequired: "Add a RevenueCat public key to enable test purchases",
+    setupRequired: "Purchases are not available yet. If you have a test password, enter it below to try Plus.",
     loadError: "We couldn't load purchase details. Please try again shortly.",
     noOffering: "No purchase plan has been configured yet",
     legal: "Subscriptions renew automatically until cancelled. Price and duration are also shown in the store confirmation.",

@@ -2,7 +2,7 @@
 
 ## Current verdict
 
-The repository is feature-complete for the hackathon demo after the checks below pass. It is not yet appropriate to describe the public service as independently security-audited or App Store release-complete. Store purchases, the production Supabase migration and distributed abuse controls must be verified in the real deployment.
+Automated web checks pass, but acceptance of the native hackathon build remains pending a fresh IPA install and launch on a physical device. It is not yet appropriate to describe the public service as independently security-audited or App Store release-complete. Store purchases, the production Supabase migration and distributed abuse controls must be verified in the real deployment.
 
 ## Verified in this repository
 
@@ -14,6 +14,8 @@ The repository is feature-complete for the hackathon demo after the checks below
 - Receipt uploads accept only the supported image formats, at most five files and at most 6 MB per file.
 - API responses are network-only in the service worker and use `Cache-Control: no-store`.
 - The submitted hackathon build includes the required Plus test-password UI. It only changes local preview state and does not grant RevenueCat or server-side privileges.
+- Native purchase entry points reject Test Store, missing and wrong-platform keys before calling the SDK. Mock-SDK integration tests cover launch, purchase, restore, listeners and paywall analytics; they do not replace physical-device testing.
+- The iOS icon is packaged from the approved Sikurepi logo as a 1024px opaque PNG. Codemagic regenerates it before building the IPA.
 - Community seed recipes have Japanese and English data. Published recipes missing the selected language are translated from the canonical stored recipe, validated for structure and numeric quantities, cached locally, and fall back to the original without hiding the recipe.
 - The loading component no longer renders the unintended steam layer.
 

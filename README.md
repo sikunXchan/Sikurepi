@@ -73,13 +73,15 @@ GitHubへのpushやVercelの再デプロイだけでは、Supabaseのテーブ�
 
 無料版は、単品レシピを1日3回（定食は3枠を使って1日1回）、週間献立を週1回、画像解析を1日1回まで利用できます。履歴は最新3件、みんなのレシピは上位1件を表示します。`premium` Entitlementが有効な利用者は生成回数・履歴・みんなのレシピが無制限になり、料理のコツ、限定トレー、自動共有OFFを利用できます。食事制限・アレルギーなどの安全機能は課金状態に関係なく利用できます。
 
-1. RevenueCatでプロジェクトを作成し、Product catalogに商品を追加します。ストア契約前の動作確認にはRevenueCat Test Storeを利用できます。
+1. RevenueCatでプロジェクトを作成し、App Store / Google Playのアプリと商品を登録します。CodemagicのIPAはRelease構成のため、Test Storeの `test_` キーは使用できません（SDKがアプリを終了します）。購入設定前のPlus確認はアプリ内のテスト用パスワードから行えます。
 2. `premium` という識別子のEntitlementを作り、商品を紐づけます。
 3. Offeringを作成してPackageを追加し、Current Offeringに設定します。
 4. Vercelの環境変数に公開SDKキーを設定して再デプロイします。
-   - Test Store: `NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`
-   - iOS: `NEXT_PUBLIC_REVENUECAT_IOS_API_KEY`
-   - Android: `NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY`
+   - iOS: `NEXT_PUBLIC_REVENUECAT_IOS_API_KEY`（`appl_` で始まる公開SDKキー）
+   - Android: `NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY`（`goog_` で始まる公開SDKキー）
+   - ストアのSandbox購入も各プラットフォーム用キーを使います。キー未設定・種類不一致の場合はSDKを起動せず、アプリとパスワードによるPlus確認を継続できます。
 5. `npm run build` の後に `npx cap sync` を実行し、iOSまたはAndroidの実機で購入・復元を確認します。
 
 公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。
+
+iOSアイコンは `public/icon.png` を元に `npm run prepare:ios-icon` で作成します。Codemagicもこの処理を実行し、1024px・不透明のアイコンをアセットカタログへ組み込みます。アイコン変更にはIPAの再ビルドとインストールが必要です。
