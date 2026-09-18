@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const userId = getUserIdFromRequest(req);
     const count = await transferCompletedShoppingToInventory(userId);
     return NextResponse.json({ success: true, count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

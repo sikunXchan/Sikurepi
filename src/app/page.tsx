@@ -40,6 +40,9 @@ import {
   mergeCommunityRecipesWithLocal,
 } from "@/lib/communityRecipes";
 import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
+import { needsCommunityTranslation } from "@/lib/communityTranslation";
+import { communityTranslationCopy } from "@/lib/i18n/community";
+import { getIngredientIconDisplayName, getIngredientIconSlug } from "@/lib/ingredientIcons";
 import { GuideButton, WelcomeGuide } from "@/components/AppGuide";
 
 type BilingualText = { ja: string; en: string };
@@ -185,7 +188,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadCommunityRecipes = () => {
-      fetch(`/api/community-recipes?limit=${isPremium ? 20 : FREE_COMMUNITY_RECIPE_ITEMS}`)
+      fetch(`/api/community-recipes?limit=${isPremium ? 20 : FREE_COMMUNITY_RECIPE_ITEMS}&v=2`, { cache: "no-store" })
         .then(res => res.ok ? res.json() : null)
         .then(data => setCommunityRecipes(mergeCommunityRecipesWithLocal(Array.isArray(data?.recipes) ? data.recipes : [])))
         .catch(() => setCommunityRecipes(mergeCommunityRecipesWithLocal([])));
@@ -237,6 +240,11 @@ export default function HomePage() {
       components: recipe.components,
       source: 'community',
       sourceRecipeId: row.id,
+      communityRecipeId: row.id,
+      translationNotice: needsCommunityTranslation(row.recipe, language)
+        ? communityTranslationCopy[language].original
+        : row.recipe.translations?.[language] && !row.id.startsWith('51000000-0000-4000-8000-')
+          ? communityTranslationCopy[language].translated : undefined,
     });
   };
 
@@ -273,7 +281,7 @@ export default function HomePage() {
 
       <div className={styles.quickActions}>
         <Link href="/receipt" className={styles.quickActionBtn}>
-          <span className={`${styles.quickIcon} ${styles.quickIconWarm}`}><UiIcon slug="receipt" collection="core" size={28} alt="" /></span>
+          <span className={`${styles.quickIcon} ${styles.quickIconWarm}`}><UiIcon slug="receipt_scan" size={40} alt="" /></span>
           <span><strong>{t.home.quickScanReceipt}</strong><small>SCAN</small></span>
         </Link>
         <Link href="/inventory" className={styles.quickActionBtn}>
@@ -293,8 +301,8 @@ export default function HomePage() {
               <IngredientIcon name={rescueTarget.name} size={76} />
             </span>
             <div className={styles.rescueCopy}>
-              <strong>{rescueTarget.name}</strong>
-              <p>{t.home.rescueCandidate(rescueTarget.name, getIngredientAgeDays(rescueTarget))}</p>
+              <strong>{language === 'en' && getIngredientIconSlug(rescueTarget.name) ? getIngredientIconDisplayName(getIngredientIconSlug(rescueTarget.name)!, language) : rescueTarget.name}</strong>
+              <p>{t.home.rescueCandidate(language === 'en' && getIngredientIconSlug(rescueTarget.name) ? getIngredientIconDisplayName(getIngredientIconSlug(rescueTarget.name)!, language) : rescueTarget.name, getIngredientAgeDays(rescueTarget))}</p>
               <div className={styles.rescueActions}>
                 <Link href={`/recipe?ingredient=${rescueTarget.id}&rescue=1`} className={styles.rescueCta}>
                   {t.home.rescueCta}<ChevronRight size={15} />

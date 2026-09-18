@@ -258,6 +258,9 @@ export type RecipeFeedbackSubmission = {
 };
 
 export type CommunityFeedbackRecipe = {
+  communityRecipeId?: string;
+  source?: string;
+  sourceRecipeId?: string;
   title: string;
   time?: string;
   ingredients: { name: string; amount?: string }[];

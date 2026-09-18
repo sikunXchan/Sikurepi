@@ -88,6 +88,7 @@ export type RescuedIngredientSnapshot = {
 };
 
 export type SavedRecipe = {
+  communityRecipeId?: string;
   id: number;
   title: string;
   time: string;

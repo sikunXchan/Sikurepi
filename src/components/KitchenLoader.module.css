@@ -42,23 +42,6 @@
 .bear_reading { animation: readingFloat 1.9s ease-in-out infinite; }
 .bear_basket { animation: basketPeek 1.55s ease-in-out infinite; }
 
-.steam {
-  position: absolute;
-  z-index: 3;
-  top: 14%;
-  width: 8px;
-  height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.82);
-  border-top-color: transparent;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  animation: steamRise 1.8s ease-in-out infinite;
-}
-
-.steamOne { left: 42%; }
-.steamTwo { left: 50%; animation-delay: 0.45s; }
-.steamThree { left: 58%; animation-delay: 0.9s; }
-
 .copy {
   display: flex;
   align-items: center;
@@ -121,12 +104,6 @@
   padding: 4px 10px 10px;
 }
 
-@keyframes steamRise {
-  0% { opacity: 0; transform: translateY(12px) scale(0.8); }
-  35% { opacity: 0.86; }
-  100% { opacity: 0; transform: translateY(-18px) scale(1.2); }
-}
-
 @keyframes dotBounce {
   0%, 70%, 100% { transform: translateY(0); opacity: 0.35; }
   35% { transform: translateY(-4px); opacity: 1; }
@@ -164,5 +141,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bear, .phaseCopy { animation: none; }
-  .steam, .dots i { animation: none; }
+  .dots i { animation: none; }
 }

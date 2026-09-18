@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "./NutritionChart.module.css";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type NutritionData = {
   calories: number;
@@ -35,15 +36,16 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 }
 
 export default function NutritionChart({ nutrition }: Props) {
+  const { t } = useLanguage();
   const { calories, protein_g, carbs_g, fat_g } = nutrition;
   const total = protein_g + carbs_g + fat_g;
 
   if (total === 0) return null;
 
   const slices: Slice[] = [
-    { label: 'タンパク質', value: protein_g, color: '#ff6f91' },
-    { label: '炭水化物', value: carbs_g, color: '#20b2aa' },
-    { label: '脂質', value: fat_g, color: '#fbbf24' },
+    { label: t.nutritionChart.protein, value: protein_g, color: '#ff6f91' },
+    { label: t.nutritionChart.carbohydrates, value: carbs_g, color: '#20b2aa' },
+    { label: t.nutritionChart.fat, value: fat_g, color: '#fbbf24' },
   ];
 
   const cx = 60;

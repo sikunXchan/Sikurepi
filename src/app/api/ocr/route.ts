@@ -11,6 +11,14 @@ export async function POST(req: Request) {
     const singleFile = formData.get('file') as File | null;
 
     const allFiles = files.length > 0 ? files : singleFile ? [singleFile] : [];
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+    if (allFiles.length > 5 || allFiles.some(file => !(file instanceof File)
+      || file.size === 0 || file.size > 6 * 1024 * 1024 || !allowedTypes.has(file.type))) {
+      return NextResponse.json({
+        error: language === 'en' ? 'Use up to 5 JPEG, PNG, WebP or HEIC images, each under 6 MB.'
+          : 'JPEG・PNG・WebP・HEIC画像を5枚以内、1枚6MB以内で選択してください。',
+      }, { status: 400 });
+    }
     if (allFiles.length === 0) {
       return NextResponse.json({
         error: language === 'en' ? 'Please select an image.' : '画像を選択してください。',
@@ -60,7 +68,7 @@ ${CATEGORY_ORDER.map((c) => `「${c}」`).join('')}
     const json = JSON.parse(text);
     return NextResponse.json(json);
   } catch (error: unknown) {
-    console.error('OCR Error:', error);
+    console.error('OCR request failed'); // Do not log receipt contents or provider request details.
     const status = typeof error === 'object' && error !== null && 'status' in error
       ? (error as { status?: number | string }).status
       : undefined;

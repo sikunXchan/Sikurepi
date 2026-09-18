@@ -14,7 +14,10 @@ export async function POST(req: Request) {
       ingredients?: string[];
     };
 
-    if (!step || typeof step !== 'string') {
+    if (!step || typeof step !== 'string' || step.length > 2000
+      || (title !== undefined && (typeof title !== 'string' || title.length > 200))
+      || (ingredients !== undefined && (!Array.isArray(ingredients) || ingredients.length > 40
+        || ingredients.some(item => typeof item !== 'string' || item.length > 100)))) {
       return NextResponse.json({ error: 'step is required' }, { status: 400 });
     }
 
@@ -59,7 +62,7 @@ export async function POST(req: Request) {
 
     throw lastError instanceof Error ? lastError : new Error('画像生成に失敗しました');
   } catch (error: unknown) {
-    console.error('Step Image Gen Error:', error);
+    console.error('Step image request failed');
     const status = (error as { status?: number })?.status;
     if (status === 429 || status === 503) {
       return NextResponse.json({ error: 'AIモデルが混雑しています。しばらくしてから再度お試しください。' }, { status: 503 });

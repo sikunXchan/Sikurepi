@@ -11,7 +11,8 @@ import {
   normalizeDailyFeatureUsage,
   normalizeFreeGenerationUsage,
 } from "../src/lib/premiumQuota.ts";
-import { verifyPremiumTestPassword } from "../src/lib/premium/testAccess.ts";
+process.env.NEXT_PUBLIC_ENABLE_PREMIUM_TEST_ACCESS = "true";
+const { verifyPremiumTestPassword } = await import("../src/lib/premium/testAccess.ts");
 
 const monday = new Date(2026, 8, 7, 12);
 const sunday = new Date(2026, 8, 13, 23, 59);

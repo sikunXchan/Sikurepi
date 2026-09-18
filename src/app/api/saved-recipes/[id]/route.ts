@@ -11,8 +11,8 @@ export async function DELETE(
     const userId = getUserIdFromRequest(req);
     const success = await deleteSavedRecipe(parseInt(id, 10), userId);
     return NextResponse.json({ success });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }
 
@@ -25,7 +25,7 @@ export async function PATCH(
     const userId = getUserIdFromRequest(req);
     const updated = await touchSavedRecipe(parseInt(id, 10), userId);
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

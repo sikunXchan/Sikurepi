@@ -329,6 +329,11 @@ const ja = {
     nextStreakBadge: (remaining: number, milestone: number) => `あと${remaining}日続けると${milestone}日バッジを獲得`,
     allStreakBadges: "すべての連続自炊バッジを獲得しました",
   },
+  nutritionChart: {
+    protein: "タンパク質",
+    carbohydrates: "炭水化物",
+    fat: "脂質",
+  },
   mealPlan: {
     title: "週間献立プランナー",
     subtitle: "1週間ぶん、まとめて考えるよ",

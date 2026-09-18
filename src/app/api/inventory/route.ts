@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to add ingredient' }, { status: 500 });
     }
     return NextResponse.json(ingredient);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

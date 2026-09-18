@@ -14,8 +14,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
     }
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }
 
@@ -36,7 +36,7 @@ export async function PATCH(
 
     const updated = await togglePinIngredient(numId, userId);
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

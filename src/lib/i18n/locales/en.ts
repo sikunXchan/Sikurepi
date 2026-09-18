@@ -342,6 +342,11 @@ const en: typeof ja = {
     nextStreakBadge: (remaining: number, milestone: number) => `${remaining} more days to earn the ${milestone}-day badge`,
     allStreakBadges: "All cooking streak badges earned",
   },
+  nutritionChart: {
+    protein: "Protein",
+    carbohydrates: "Carbohydrates",
+    fat: "Fat",
+  },
   mealPlan: {
     title: "Weekly Meal Planner",
     subtitle: "Plan a whole week at once",

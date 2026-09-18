@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     const userId = getUserIdFromRequest(req);
     const stats = await getUserStats(userId);
     return NextResponse.json(stats);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

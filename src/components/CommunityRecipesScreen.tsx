@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { CircleDot, Clock3, MessageSquareText, RefreshCw, ThumbsDown, ThumbsUp, Users, X } from "lucide-react";
@@ -8,6 +8,8 @@ import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { localizeCommunityRecipe } from "@/lib/communityRecipeSchema";
+import { useCommunityTranslation } from "@/lib/useCommunityTranslation";
+import { communityTranslationCopy } from "@/lib/i18n/community";
 import {
   COMMUNITY_RECIPES_CHANGED_EVENT,
   mergeCommunityRecipesWithLocal,
@@ -35,7 +37,26 @@ export function CommunityRecipeRowCard({
   onSelect: (row: CommunityRecipeRow) => void;
 }) {
   const { t, language } = useLanguage();
-  const recipe = localizeCommunityRecipe(row.recipe, language);
+  const translated = useCommunityTranslation(row.id, row.recipe, language);
+  const { missing, failed, busy, ensureTranslation } = translated;
+  const recipe = localizeCommunityRecipe(translated.recipe, language);
+  const copy = communityTranslationCopy[language];
+  const card = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const element = card.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (visible && missing && !failed && !busy && row.sync_status !== 'pending') {
+      void ensureTranslation();
+    }
+  }, [visible, missing, failed, busy, ensureTranslation, row.sync_status]);
   const sentiment = getSentiment(row);
   const sentimentLabel = sentiment === "positive"
     ? t.home.communityHighRating
@@ -51,13 +72,17 @@ export function CommunityRecipeRowCard({
       : CircleDot;
 
   return (
-    <button type="button" className={styles.recipeRow} onClick={() => onSelect(row)}>
+    <button ref={card} type="button" className={styles.recipeRow} aria-busy={translated.busy} onClick={async () => {
+      const recipe = translated.missing && row.sync_status !== 'pending'
+        ? await translated.ensureTranslation() : translated.recipe;
+      onSelect({ ...row, recipe });
+    }}>
       <span className={styles.thumbnail}>
         <RecipeThumbnail genre={recipe.genre} fallbackIngredientName={recipe.title} size={70} />
       </span>
       <span className={styles.recipeCopy}>
         <span className={styles.recipeTopline}>
-          <span className={styles.identity}>{t.home.communityAnonymousAuthor}</span>
+          <span className={styles.identity}>{row.id.startsWith('51000000-0000-4000-8000-') ? copy.curated : t.home.communityAnonymousAuthor}</span>
           <span className={styles.statuses}>
             {row.sync_status === 'pending' && (
               <span className={styles.syncPending}>{t.home.communityPendingSync}</span>
@@ -68,6 +93,9 @@ export function CommunityRecipeRowCard({
           </span>
         </span>
         <strong className={styles.recipeTitle}>{recipe.title}</strong>
+        {(translated.busy || translated.failed) && <span className={styles.commentText} role="status">
+          {translated.busy ? copy.translating : copy.unavailable}
+        </span>}
         <span className={styles.recipeMeta}>
           <span><Clock3 size={12} aria-hidden="true" />{recipe.time}</span>
           <span><Users size={12} aria-hidden="true" />{t.recipe.servingsUnit(recipe.servings || 2)}</span>
@@ -101,7 +129,7 @@ export default function CommunityRecipesScreen({
     setLoading(true);
     setFailed(false);
     try {
-      const response = await fetch("/api/community-recipes?limit=20", { signal });
+      const response = await fetch("/api/community-recipes?limit=20&v=2", { signal, cache: "no-store" });
       if (!response.ok) throw new Error("community recipes request failed");
       const data = await response.json();
       setRecipes(mergeCommunityRecipesWithLocal(Array.isArray(data?.recipes) ? data.recipes : []));
