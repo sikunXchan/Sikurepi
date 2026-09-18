@@ -43,6 +43,9 @@ assert.notEqual(translationSourceKey(source), translationSourceKey({ ...source, 
 assert.equal(validateCommunityTranslation({ ...source, creator_comment: 'おいしい' }, en, 'en'), null);
 assert.ok(!readFileSync(new URL('../src/components/KitchenLoader.tsx', import.meta.url), 'utf8').includes('styles.steam'));
 assert.ok(!readFileSync(new URL('../src/components/KitchenLoader.module.css', import.meta.url), 'utf8').includes('steamRise'));
+const capacitorConfig = readFileSync(new URL('../capacitor.config.ts', import.meta.url), 'utf8');
+assert.ok(capacitorConfig.includes("https://sikurepi.vercel.app"), 'native shell must use the stable production alias');
+assert.ok(!capacitorConfig.includes("https://lily-cooking.vercel.app"), 'removed deployment must never be embedded');
 const xcode = await import('xcode');
 const project = xcode.default.project(new URL('../ios/App/App.xcodeproj/project.pbxproj', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 project.parseSync();
