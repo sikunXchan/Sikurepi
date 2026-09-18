@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare:ios-icon": "node scripts/prepare-ios-icon.mjs",
+    "test:purchases": "node --no-warnings --experimental-strip-types scripts/test-purchases.mjs",
     "test:release-safety": "node --no-warnings --experimental-strip-types scripts/test-release-safety.mjs",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
@@ -52,6 +54,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "sharp": "0.35.4",
     "typescript": "^5"
   }
 }

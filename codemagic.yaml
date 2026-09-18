@@ -1,8 +1,9 @@
 # Codemagic CI設定: Macを使わずクラウドで「署名なしiOS .ipa」をビルドするための設定。
 #
 # 前提と狙い:
-# - RevenueCatの課金はWeb Billing(purchases-js)を使うため、StoreKitの署名や
-#   App Store Connectの実機課金設定は一切不要。
+# - RevenueCatはネイティブSDKを使用。Release版にはiOS用appl_キーが必要。
+#   キーはVercel環境変数で設定する。未設定でもアプリと審査用パスワードは使える。
+#   Test Storeのtest_キーはRelease版で強制終了するため使用しない。
 # - ここで作る.ipaは意図的に「未署名」。Sideloadlyが手元のWindows PCで
 #   あなたの無料Apple IDを使って再署名・インストールする前提の成果物。
 # - このファイルは実際にCodemagic上で実行検証できていません(このセッションには
@@ -30,6 +31,10 @@ workflows:
       - name: Install npm dependencies
         script: |
           npm ci
+
+      - name: Prepare Sikurepi iOS icon
+        script: |
+          npm run prepare:ios-icon
 
       - name: Sync Capacitor iOS platform (プラグイン・www反映)
         script: |

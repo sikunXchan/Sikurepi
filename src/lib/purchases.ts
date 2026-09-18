@@ -11,6 +11,7 @@ import {
   type PurchasesPackage,
 } from "@revenuecat/purchases-capacitor";
 import { getOrCreateClientUserId } from "@/lib/user";
+import { selectRevenueCatApiKey } from "@/lib/premium/revenueCatConfig";
 
 export const PREMIUM_ENTITLEMENT_ID = "premium";
 const CUSTOM_PAYWALL_ID = "sikurepi-plus-v1";
@@ -51,25 +52,11 @@ export function isNativeApp(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
-function cleanPublicKey(value: string | undefined): string | null {
-  const key = value?.trim();
-  if (!key || key.includes("XXXXX")) return null;
-  return key;
-}
-
-/**
- * Test Storeの公開キーは、App Store / Play Storeの設定前でも実機で課金導線を
- * 検証するためのフォールバック。プラットフォーム別キーがあれば必ずそちらを使う。
- */
 function getRevenueCatApiKey(): string | null {
-  const platform = Capacitor.getPlatform();
-  const platformKey = platform === "ios"
-    ? cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY)
-    : platform === "android"
-      ? cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY)
-      : null;
-
-  return platformKey || cleanPublicKey(process.env.NEXT_PUBLIC_REVENUECAT_TEST_API_KEY);
+  return selectRevenueCatApiKey(Capacitor.getPlatform(), {
+    ios: process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY,
+    android: process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY,
+  });
 }
 
 export function hasRevenueCatConfiguration(): boolean {
