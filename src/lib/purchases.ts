@@ -96,18 +96,28 @@ async function ensurePurchasesConfigured(): Promise<void> {
   await configurationPromise;
 }
 
-function isPremiumCustomer(customerInfo: CustomerInfo): boolean {
+function isPremiumCustomer(customerInfo: CustomerInfo, purchasedProductIdentifier?: string): boolean {
   // 本番では契約した entitlement ID を厳密に見る。Test StoreのDebug IPAでは、
   // RevenueCatが自動作成した別名のentitlementでも購入シミュレーション直後に
   // Plus表示を確認できるよう、検証済みのactive entitlementを1件だけ許容する。
   const activeEntitlements = customerInfo.entitlements.active;
   const entitlement = activeEntitlements[PREMIUM_ENTITLEMENT_ID]
     ?? (isTestStoreBuild() ? Object.values(activeEntitlements).find((entry) => entry.isActive) : undefined);
-  if (!entitlement?.isActive) return false;
-
   // 改ざんが検知されたCustomerInfoでは有料機能を解放しない。
-  return entitlement.verification !== VERIFICATION_RESULT.FAILED
-    && customerInfo.entitlements.verification !== VERIFICATION_RESULT.FAILED;
+  const verificationFailed = entitlement?.verification === VERIFICATION_RESULT.FAILED
+    || customerInfo.entitlements.verification === VERIFICATION_RESULT.FAILED;
+  if (verificationFailed) return false;
+  if (entitlement?.isActive) return true;
+
+  // Test Storeは商品をEntitlementへ紐づけ忘れていても購入自体は成功する。
+  // 動画・審査用Debug IPAに限り、SDKが返した購入商品またはCustomerInfo内の
+  // テスト購入履歴をPlusとして扱う。本番キーではこのフォールバックを使わない。
+  return isTestStoreBuild() && Boolean(
+    purchasedProductIdentifier
+    || customerInfo.activeSubscriptions?.length
+    || customerInfo.allPurchasedProductIdentifiers?.length
+    || customerInfo.nonSubscriptionTransactions?.length,
+  );
 }
 
 function planRank(aPackage: PurchasesPackage): number {
@@ -208,8 +218,8 @@ export async function purchasePremium(packageIdentifier?: string): Promise<Purch
     const aPackage = findPackage(offering, packageIdentifier);
     if (!aPackage) return { status: "unavailable", isPremium: false };
 
-    const { customerInfo } = await Purchases.purchasePackage({ aPackage });
-    return isPremiumCustomer(customerInfo)
+    const { customerInfo, productIdentifier } = await Purchases.purchasePackage({ aPackage });
+    return isPremiumCustomer(customerInfo, productIdentifier)
       ? { status: "success", isPremium: true }
       : { status: "not-entitled", isPremium: false };
   } catch (error) {

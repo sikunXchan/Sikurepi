@@ -19,6 +19,7 @@ function loadPurchases(platform, env = {}, debug = false, options = {}) {
         case 'isConfigured': return { isConfigured: false };
         case 'getCustomerInfo': return { customerInfo };
         case 'getOfferings': return options.offerings || { current: null, all: {} };
+        case 'purchasePackage': return options.purchaseResult || { customerInfo, productIdentifier: 'test_plus_monthly' };
         case 'addCustomerInfoUpdateListener': return 'listener';
         default: return undefined;
       }
@@ -66,6 +67,31 @@ for (const platform of ['ios', 'android']) {
   const debugSnapshot = await debugEntitled.api.getPremiumSnapshot();
   assert.equal(debugSnapshot.isPremium, true, 'Debug Test Store accepts an active test entitlement');
   assert.equal(debugSnapshot.offeringId, 'test', 'falls back to an existing offering when current is unset');
+
+  const testPurchaseWithoutEntitlement = loadPurchases(platform, {
+    NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',
+  }, true, {
+    customerInfo: {
+      entitlements: { active: {}, verification: 'VERIFIED' },
+      activeSubscriptions: ['test_plus_monthly'],
+      allPurchasedProductIdentifiers: ['test_plus_monthly'],
+      nonSubscriptionTransactions: [],
+    },
+    offerings: {
+      current: {
+        identifier: 'test',
+        availablePackages: [{ identifier: '$rc_monthly', packageType: 'MONTHLY', product: {
+          identifier: 'test_plus_monthly', title: 'Plus', description: 'Plus', price: 1,
+          priceString: '$1.00', pricePerMonthString: '$1.00', subscriptionPeriod: 'P1M',
+        } }],
+      },
+      all: {},
+    },
+  });
+  assert.equal((await testPurchaseWithoutEntitlement.api.getPremiumSnapshot()).isPremium, true,
+    'Debug Test Store accepts a verified test purchase even when no entitlement is attached');
+  assert.equal((await testPurchaseWithoutEntitlement.api.purchasePremium('$rc_monthly')).status, 'success',
+    'a successful Test Store purchase immediately enables Plus');
 
   const release = loadPurchases(platform, {
     NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',

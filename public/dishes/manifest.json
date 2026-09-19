@@ -2328,11 +2328,11 @@
             ],
             "content_bbox": [
               72,
-              46,
-              440,
+              44,
+              441,
               466
             ],
-            "minimum_margin": 46,
+            "minimum_margin": 44,
             "edge_clear": true
           }
         }
