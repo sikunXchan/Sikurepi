@@ -1,5 +1,12 @@
 # Release readiness — 2026-09-18
 
+## Follow-up verification — 2026-09-19
+
+- Fixed English meat detection so `minced garlic` and `slivered almonds` are not treated as raw meat. Added regression cases for vegetables and real mince/offal; actual ground meat still requires cooking and safe-doneness cues.
+- Repeated the English vegan/nut-exclusion live generation case that failed in the final audit: HTTP 200 in approximately 4.3 seconds on the updated local production build. This is one successful sample, not a success-rate or latency guarantee.
+- All 13 test scripts, explicit TypeScript checking and the production build passed; ESLint reported no errors and 12 existing image-element warnings.
+- This focused fix does not complete the distributed spending controls or physical-device RevenueCat tests listed below. Production deployment and the submission license must be verified separately.
+
 ## Current verdict
 
 Automated web checks pass, but acceptance of the native hackathon build remains pending a fresh IPA install and launch on a physical device. It is not yet appropriate to describe the public service as independently security-audited or App Store release-complete. Store purchases, the production Supabase migration and distributed abuse controls must be verified in the real deployment.
