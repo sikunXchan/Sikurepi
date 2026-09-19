@@ -9,7 +9,7 @@ const purchasesSource = readFileSync(new URL('../src/lib/purchases.ts', import.m
 const compiled = ts.transpileModule(purchasesSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-function loadPurchases(platform, env = {}) {
+function loadPurchases(platform, env = {}, debug = false) {
   const calls = [];
   const customerInfo = { entitlements: { active: {} } };
   const Purchases = new Proxy({}, {
@@ -29,7 +29,7 @@ function loadPurchases(platform, env = {}) {
     exports, window: {}, process: { env }, console,
     require: (id) => {
       if (id === '@capacitor/core') return { Capacitor: {
-        getPlatform: () => platform, isNativePlatform: () => platform !== 'web',
+        DEBUG: debug, getPlatform: () => platform, isNativePlatform: () => platform !== 'web',
       } };
       if (id === '@revenuecat/purchases-capacitor') return {
         Purchases, ENTITLEMENT_VERIFICATION_MODE: { INFORMATIONAL: 'INFORMATIONAL' },
@@ -41,6 +41,21 @@ function loadPurchases(platform, env = {}) {
     },
   });
   return { api: exports, calls };
+}
+
+for (const platform of ['ios', 'android']) {
+  const debug = loadPurchases(platform, {
+    NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',
+  }, true);
+  assert.equal(debug.api.hasRevenueCatConfiguration(), true);
+  await debug.api.getPremiumSnapshot();
+  assert.equal(debug.calls.find(call => call.method === 'configure')?.options.apiKey, 'test_showcase');
+
+  const release = loadPurchases(platform, {
+    NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',
+  }, false);
+  assert.equal(release.api.hasRevenueCatConfiguration(), false);
+  assert.equal(release.calls.length, 0, `${platform}: Release must never configure Test Store`);
 }
 
 for (const platform of ['ios', 'android']) {
@@ -70,4 +85,4 @@ for (const platform of ['ios', 'android']) {
 const web = loadPurchases('web', { NEXT_PUBLIC_REVENUECAT_IOS_API_KEY: 'appl_example' });
 assert.equal((await web.api.getPremiumSnapshot()).availability, 'web');
 assert.equal(web.calls.length, 0);
-console.log('Native purchase startup: test/wrong/missing keys never call SDK; platform keys configure once.');
+console.log('Native purchase startup: Test Store is Debug-only; Release rejects test/wrong/missing keys; platform keys configure once.');

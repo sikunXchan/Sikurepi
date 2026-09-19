@@ -73,14 +73,21 @@ GitHubへのpushやVercelの再デプロイだけでは、Supabaseのテーブ�
 
 無料版は、単品レシピを1日3回（定食は3枠を使って1日1回）、週間献立を週1回、画像解析を1日1回まで利用できます。履歴は最新3件、みんなのレシピは上位1件を表示します。`premium` Entitlementが有効な利用者は生成回数・履歴・みんなのレシピが無制限になり、料理のコツ、限定トレー、自動共有OFFを利用できます。食事制限・アレルギーなどの安全機能は課金状態に関係なく利用できます。
 
-1. RevenueCatでプロジェクトを作成し、App Store / Google Playのアプリと商品を登録します。CodemagicのIPAはRelease構成のため、Test Storeの `test_` キーは使用できません（SDKがアプリを終了します）。PlusはRevenueCatのEntitlementから判定し、端末内パスワードによる解放はありません。
+1. RevenueCatでプロジェクトを作成し、App Store / Google Playのアプリと商品を登録します。通常のCodemagic IPAはRelease構成のため、Test Storeの `test_` キーは使用できません（SDKがアプリを終了します）。PlusはRevenueCatのEntitlementから判定し、端末内パスワードによる解放はありません。
 2. `premium` という識別子のEntitlementを作り、商品を紐づけます。
 3. Offeringを作成してPackageを追加し、Current Offeringに設定します。
 4. Vercelの環境変数に公開SDKキーを設定して再デプロイします。
    - iOS: `NEXT_PUBLIC_REVENUECAT_IOS_API_KEY`（`appl_` で始まる公開SDKキー）
    - Android: `NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY`（`goog_` で始まる公開SDKキー）
+   - 動画・審査用Debug IPA: `NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`（`test_` で始まるTest Store公開キー）
    - ストアのSandbox購入も各プラットフォーム用キーを使います。キー未設定・種類不一致の場合はSDKを起動せず、無料プランでアプリを継続利用できます。
 5. `npm run build` の後に `npx cap sync` を実行し、iOSまたはAndroidの実機で購入・復元を確認します。
+
+Next Gen向けに実購入なしでRevenueCatの購入完了まで撮影する場合は、Vercelへ
+`NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`を設定して再デプロイし、Codemagicの
+`Sikurepi iOS Test Store Build`を実行します。このワークフローだけがDebug構成で
+Test Storeを許可します。通常の`iOS Unsigned Build (for Sideloadly)`はReleaseのまま、
+`test_`キーを受け付けません。
 
 公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。
 

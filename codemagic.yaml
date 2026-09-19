@@ -18,6 +18,70 @@
 # 4. Windows PCでSideloadlyを使い、その.ipaを自分のiPhoneにインストール
 
 workflows:
+  ios-test-store-sideload:
+    name: Sikurepi iOS Test Store Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      node: 24
+      vars:
+        XCODE_SCHEME: "App"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+
+      - name: Prepare Sikurepi iOS icon
+        script: |
+          npm run prepare:ios-icon
+
+      - name: Sync Capacitor iOS platform
+        script: |
+          npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        script: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme "$XCODE_SCHEME"
+
+      - name: Build unsigned Debug app for RevenueCat Test Store
+        script: |
+          set -e
+          cd ios/App
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$CM_BUILD_DIR/DerivedData-TestStore" \
+            CAPACITOR_DEBUG=true \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM=""
+
+      - name: Package Test Store IPA
+        script: |
+          set -e
+          APP_PATH=$(find "$CM_BUILD_DIR/DerivedData-TestStore/Build/Products" -maxdepth 2 -name "App.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "App.app was not found. Check the preceding build log."
+            exit 1
+          fi
+          rm -rf "$CM_BUILD_DIR/Payload-TestStore"
+          mkdir -p "$CM_BUILD_DIR/Payload-TestStore/Payload"
+          cp -r "$APP_PATH" "$CM_BUILD_DIR/Payload-TestStore/Payload/"
+          cd "$CM_BUILD_DIR/Payload-TestStore"
+          zip -r "$CM_BUILD_DIR/Sikurepi-TestStore-unsigned.ipa" Payload
+
+    artifacts:
+      - "$CM_BUILD_DIR/Sikurepi-TestStore-unsigned.ipa"
+
   ios-unsigned-sideload:
     name: iOS Unsigned Build (for Sideloadly)
     max_build_duration: 30
