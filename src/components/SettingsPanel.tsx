@@ -23,7 +23,7 @@ import {
   SavedTip,
   Ingredient
 } from "@/lib/storage";
-import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw, Crown } from "lucide-react";
+import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw, Crown, Film } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -34,6 +34,7 @@ import { FREE_HISTORY_ITEMS } from "@/lib/premiumQuota";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import PremiumPaywall from "./PremiumPaywall";
 import { applyProfileChange, parseExcludedIngredients, type ProfileChange } from "@/lib/profileSettings";
+import { hasVideoShowcaseBackup, installVideoShowcaseData, restoreBeforeVideoShowcaseData } from "@/lib/videoShowcaseData";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -130,7 +131,7 @@ type Props = {
 // マイ設定モーダルとマイページの両方から使われる共通の中身。
 // モーダル側はこのコンポーネントをオーバーレイでラップし、マイページはPageHeaderの下にそのまま埋め込む。
 export default function SettingsPanel({ onSaved }: Props) {
-  const { t, language } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { isPremium } = usePremium();
   const { user, isSupabaseConfigured, sendLoginCode, verifyLoginCode, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
@@ -157,6 +158,8 @@ export default function SettingsPanel({ onSaved }: Props) {
   const editingExcluded = useRef(false);
   const [openRecordSwipeIndex, setOpenRecordSwipeIndex] = useState<number | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showcaseStatus, setShowcaseStatus] = useState<string | null>(null);
+  const [canRestoreShowcase, setCanRestoreShowcase] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -172,6 +175,7 @@ export default function SettingsPanel({ onSaved }: Props) {
       setTips(getLocalSavedTips());
       setForgottenItems(getForgottenIngredients());
       setIgnoredForgottenCount(getIgnoredForgottenIngredientIds().length);
+      setCanRestoreShowcase(hasVideoShowcaseBackup());
     };
     const scheduleRefresh = () => {
       if (writingProfile.current || refreshQueued) return;
@@ -306,6 +310,22 @@ export default function SettingsPanel({ onSaved }: Props) {
       setAccountMessage(t.settings.accountCodeError(res.error || ""));
     }
     // 成功時はuseAuthのsessionが更新され、ログイン後の画面に自動で切り替わる
+  };
+
+  const handleInstallShowcase = () => {
+    if (!window.confirm(t.settings.showcaseConfirm)) return;
+    installVideoShowcaseData();
+    setLanguage('en');
+    setCanRestoreShowcase(true);
+    setShowcaseStatus(t.settings.showcaseLoaded);
+  };
+
+  const handleRestoreShowcase = () => {
+    const restoredLanguage = restoreBeforeVideoShowcaseData();
+    if (!restoredLanguage) return;
+    setLanguage(restoredLanguage);
+    setCanRestoreShowcase(false);
+    setShowcaseStatus(t.settings.showcaseRestored);
   };
 
   return (
@@ -861,6 +881,26 @@ export default function SettingsPanel({ onSaved }: Props) {
                 {importStatus}
               </div>
             )}
+          </div>
+
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>{t.settings.showcaseTitle}</label>
+            <p className={styles.hint} style={{ display: 'block', marginBottom: 10 }}>
+              {t.settings.showcaseDescription}
+            </p>
+            <div className={styles.backupActionRow}>
+              <button type="button" className={styles.downloadBtn} onClick={handleInstallShowcase}>
+                <Film size={15} />
+                <span>{t.settings.showcaseLoad}</span>
+              </button>
+              {canRestoreShowcase && (
+                <button type="button" className={styles.uploadBtn} onClick={handleRestoreShowcase}>
+                  <RotateCcw size={15} />
+                  <span>{t.settings.showcaseRestore}</span>
+                </button>
+              )}
+            </div>
+            {showcaseStatus && <div className={styles.importStatusAlert}>{showcaseStatus}</div>}
           </div>
         </div>
       )}

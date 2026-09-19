@@ -56,7 +56,8 @@ function getRevenueCatApiKey(): string | null {
   return selectRevenueCatApiKey(Capacitor.getPlatform(), {
     ios: process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY,
     android: process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY,
-  });
+    test: process.env.NEXT_PUBLIC_REVENUECAT_TEST_API_KEY,
+  }, Capacitor.DEBUG === true);
 }
 
 export function hasRevenueCatConfiguration(): boolean {

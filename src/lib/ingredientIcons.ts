@@ -431,6 +431,26 @@ const ICON_KEYWORDS: Record<string, string[]> = {
   mitarashidango: ["みたらし団子"],
 };
 
+// 英語UIで登録・生成された一般的な食材も、オフラインのまま同じアイコンへ
+// 解決できるようにする。動画用データに限らず、英語利用時に「その他」へ落ちる
+// 時間をなくし、日本語と同等の在庫・図鑑表示にするための基本語彙。
+const ENGLISH_ICON_ALIASES: Record<string, string[]> = {
+  onion: ['onion', 'shallot'], carrot: ['carrot', 'parsnip'], potato2: ['potato'], tomato: ['tomato'],
+  cucumber: ['cucumber'], cabbage2: ['cabbage'], broccoli: ['broccoli'], spinach: ['spinach'],
+  greenpepper: ['green pepper', 'bell pepper'], pumpkin: ['pumpkin', 'squash'], negi: ['green onion', 'scallion'],
+  garlic: ['garlic'], ginger: ['ginger'], mushroom: ['mushroom'], basil: ['basil'],
+  chicken: ['chicken', 'chicken breast', 'chicken thigh'], pork: ['pork'], beef: ['beef'],
+  salmon: ['salmon'], shrimp2: ['shrimp', 'prawn'], egg: ['egg'], milk: ['milk'], cheese: ['cheese'],
+  yogurt: ['yogurt', 'greek yogurt'], tofu: ['tofu'], soymilk: ['soy milk'], rice: ['rice'],
+  bread: ['bread', 'toast'], pasta: ['pasta', 'spaghetti'], oatmeal: ['oatmeal', 'oats'],
+  chickpea: ['chickpea', 'chickpeas'], avocado2: ['avocado'], lemon: ['lemon'], strawberry: ['strawberry', 'strawberries'],
+  miso: ['miso'], soysauce: ['soy sauce'], pepper: ['black pepper'], oatmilk: ['oat milk'],
+};
+
+for (const [slug, aliases] of Object.entries(ENGLISH_ICON_ALIASES)) {
+  if (ICON_KEYWORDS[slug]) ICON_KEYWORDS[slug].push(...aliases);
+}
+
 // 見た目の面積が小さすぎる/表記ゆれで衝突しやすい短いキーワードより、
 // 長く具体的なキーワードを優先してマッチさせるための一覧（長い順）。
 const FLAT: { keyword: string; slug: string }[] = Object.entries(ICON_KEYWORDS)
