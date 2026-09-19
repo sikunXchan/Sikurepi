@@ -124,6 +124,57 @@ const englishChicken = {
 };
 assert.equal(assessRecipeQuality(englishChicken).errors.some((error) => error.includes('never used')), false);
 
+// Cooking descriptors are not meat. This previously rejected vegan generation
+// whenever the model listed "Garlic, minced" or "slivered almonds".
+const chickpeaStew = {
+  title: 'Chickpea tomato stew',
+  time: '20 minutes',
+  genre: 'その他',
+  ingredients: [
+    { name: 'Canned chickpeas', amount: '240g' },
+    { name: 'Tomato', amount: '2' },
+    { name: 'Onion', amount: '1' },
+    { name: 'Garlic', amount: '2 cloves' },
+    { name: 'Olive oil', amount: '1 tsp' },
+    { name: 'Lemon juice', amount: '1 tbsp' },
+  ],
+  steps: [
+    'Chop the tomato, onion, and garlic.',
+    'Heat olive oil over medium heat and cook the onion and garlic for 3 minutes until fragrant.',
+    'Add the chickpeas and tomato; simmer for 10 minutes until tender.',
+    'Finish with lemon juice and serve.',
+  ],
+  tips: 'Keep the chickpeas tender and finish with lemon for bright acidity.',
+  nutrition: { calories: 300, protein_g: 12, fat_g: 10, carbs_g: 40 },
+};
+assert.deepEqual(qualityGateErrors(chickpeaStew), []);
+for (const name of ['Garlic, minced', 'Minced garlic', 'Finely minced ginger', 'Slivered almonds']) {
+  const plantRecipe = {
+    ...chickpeaStew,
+    ingredients: chickpeaStew.ingredients.map((item, index) => index === 3 ? { name, amount: '5g' } : item),
+  };
+  assert.deepEqual(qualityGateErrors(plantRecipe), [], name);
+  const coldRecipe = {
+    ...plantRecipe,
+    steps: ['Mix the chickpeas, tomato, onion, garlic, ginger, almonds, olive oil, and lemon juice for 1 minute.'],
+  };
+  assert.equal(assessRecipeQuality(coldRecipe).errors.some((error) => /raw animal|safe-doneness/.test(error)), false, name);
+}
+
+// Actual mince/offal must still require both heat and safe doneness, including
+// ground beef/lamb rather than only chicken and pork.
+for (const name of ['Mince', 'Minced beef', 'Ground lean beef', 'Ground extra-lean lamb', 'Beef (minced)', 'Ground venison', 'Pork mince', 'Chicken liver', 'Livers', '鶏ひき肉', '豚肉', 'レバー']) {
+  const meatRecipe = {
+    ...chickpeaStew,
+    ingredients: [{ name, amount: '200g' }, ...chickpeaStew.ingredients.slice(1)],
+  };
+  assert.equal(assessRecipeQuality(meatRecipe).errors.some((error) => error.includes('safe-doneness')), true, name);
+  const rawRecipe = { ...meatRecipe, steps: ['Mix all ingredients for 1 minute.'] };
+  assert.equal(assessRecipeQuality(rawRecipe).errors.some((error) => error.includes('raw animal')), true, name);
+  const cookedRecipe = { ...meatRecipe, steps: [...meatRecipe.steps, 'Cook the meat until its internal temperature reaches 75°C and hold for 1 minute.'] };
+  assert.equal(assessRecipeQuality(cookedRecipe).errors.some((error) => /raw animal|safe-doneness/.test(error)), false, name);
+}
+
 const annotatedIngredients = {
   ...goodChicken,
   ingredients: [

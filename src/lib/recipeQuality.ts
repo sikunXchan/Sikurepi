@@ -44,8 +44,11 @@ const HEAT_ACTION = /焼|炒|煮|茹|ゆで|蒸|揚|炊|加熱|火にかけ|電�
 const TIME_OR_CUE = /\d+\s*(秒|分|時間|sec|second|min|minute|hour)|弱火|中火|強火|予熱|沸騰|きつね色|透明|しんなり|とろみ|香り|焼き色|火が通|中心まで|泡立|固ま|soft|tender|golden|bubbl|fragrant|translucent|cooked through|no longer pink|until set|low heat|medium heat|high heat/i;
 const SAFE_DONENESS = /75\s*℃|75\s*度|中心.{0,8}(火|加熱|75)|中まで.{0,8}(火|加熱)|肉汁.{0,8}(透明|澄)|赤み.{0,8}(なく|消)|ピンク色.{0,8}(なく|消)|完全に火|十分に加熱|火が通るまで|火を通す|内部温度|中心温度|cooked through|no longer pink|clear juices|internal temperature|165\s*°?f|74\s*°?c|75\s*°?c/i;
 const UNSAFE_MEAT = /半生|生焼け|鶏.{0,8}レア|豚.{0,8}レア|ひき肉.{0,8}レア|挽肉.{0,8}レア|rare\s+(chicken|pork|poultry|ground)|pink\s+(chicken|pork|poultry|ground)/i;
-const RAW_MEAT = /鶏(?:肉|もも|むね|胸|ささみ|手羽|ひき|挽)|チキン|豚(?:肉|バラ|ロース|こま|ひき|挽)|ポーク|牛(?:肉|バラ|ロース|ひき|挽)|ビーフ|羊肉|ラム肉|ひき肉|挽肉|ミンチ|レバー|\bchicken\b|\bpoultry\b|\bpork\b|\bbeef\b|\blamb\b|ground meat|mince|liver/i;
-const HIGH_RISK_MEAT = /鶏(?:肉|もも|むね|胸|ささみ|手羽|ひき|挽)|チキン|豚(?:肉|バラ|ロース|こま|ひき|挽)|ポーク|ひき肉|挽肉|ミンチ|レバー|\bchicken\b|\bpoultry\b|\bpork\b|ground meat|mince|liver/i;
+// Match meat nouns, not preparation words: "minced garlic" and "slivered
+// almonds" must not inherit the safety requirements for mince or liver.
+const RAW_MEAT = /鶏(?:肉|もも|むね|胸|ささみ|手羽|ひき|挽)|チキン|豚(?:肉|バラ|ロース|こま|ひき|挽)|ポーク|牛(?:肉|バラ|ロース|ひき|挽)|ビーフ|羊肉|ラム肉|ひき肉|挽肉|ミンチ|レバー|\b(?:chicken|poultry|pork|beef|lamb|ground meat|mince|livers?)\b/i;
+const HIGH_RISK_MEAT = /鶏(?:肉|もも|むね|胸|ささみ|手羽|ひき|挽)|チキン|豚(?:肉|バラ|ロース|こま|ひき|挽)|ポーク|ひき肉|挽肉|ミンチ|レバー|\b(?:chicken|poultry|pork|ground meat|mince|livers?)\b/i;
+const ENGLISH_GROUND_MEAT = /\b(?:ground|minced)\s+(?:(?:extra[- ]?)?lean\s+)?(?:meat|beef|veal|lamb|mutton|venison)\b|\b(?:meat|beef|veal|lamb|mutton|venison)\s*[,(-]?\s*(?:ground|minced)\b/i;
 const RAW_FISH = /魚|鮭|さけ|サーモン|鯖|さば|たら|鯛|まぐろ|ツナ|えび|海老|いか|烏賊|たこ|蛸|貝|fish|salmon|mackerel|cod|tuna|shrimp|prawn|squid|octopus|shellfish/i;
 const RAW_EGG = /卵|たまご|玉子|\beggs?\b/i;
 const SASHIMI_GRADE = /刺身用|生食用|寿司用|sashimi.grade|sushi.grade/i;
@@ -259,8 +262,12 @@ export function assessRecipeQuality(
   }
 
   const animalIngredients = recipe.ingredients.map((item) => item.name);
-  const hasMeat = animalIngredients.some((name) => RAW_MEAT.test(name) && !READY_TO_EAT_ANIMAL.test(name));
-  const hasHighRiskMeat = animalIngredients.some((name) => HIGH_RISK_MEAT.test(name) && !READY_TO_EAT_ANIMAL.test(name));
+  const hasMeat = animalIngredients.some((name) =>
+    (RAW_MEAT.test(name) || ENGLISH_GROUND_MEAT.test(name)) && !READY_TO_EAT_ANIMAL.test(name)
+  );
+  const hasHighRiskMeat = animalIngredients.some((name) =>
+    (HIGH_RISK_MEAT.test(name) || ENGLISH_GROUND_MEAT.test(name)) && !READY_TO_EAT_ANIMAL.test(name)
+  );
   const hasFishNeedingHeat = animalIngredients.some((name) =>
     RAW_FISH.test(name) && !READY_TO_EAT_ANIMAL.test(name) && !SASHIMI_GRADE.test(name)
   );
