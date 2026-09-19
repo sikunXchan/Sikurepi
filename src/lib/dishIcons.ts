@@ -84,7 +84,7 @@ const DISH_ICON_RULES: readonly DishIconRule[] = [
   { slug: "rice_bowl", keywords: ["丼", "どんぶり", "rice bowl", "donburi", "bibimbap", "ビビンバ"] },
   { slug: "mixed_rice", keywords: ["炊き込みご飯", "混ぜご飯", "takikomi", "mixed rice", "jollof"] },
   { slug: "couscous", keywords: ["クスクス", "couscous"] },
-  { slug: "plain_rice", keywords: ["白ご飯", "白米", "ごはん", "ご飯", "steamed rice", "plain rice"] },
+  { slug: "plain_rice", keywords: ["白ご飯", "白米", "ごはん", "ご飯", "steamed white rice", "white rice", "steamed rice", "plain rice", "cooked rice"] },
 
   { slug: "baked_pasta", keywords: ["ラザニア", "グラタン", "baked pasta", "lasagna", "pasta bake"] },
   { slug: "stuffed_pasta", keywords: ["ラビオリ", "トルテリーニ", "ravioli", "tortellini", "stuffed pasta"] },

@@ -147,7 +147,7 @@ const mappingCases = [
   ["ラクサ", "laksa"], ["ナシゴレン", "nasi_goreng"], ["チキンティッカマサラカレー", "chicken_tikka_masala"],
   ["チャナマサラ", "chana_masala"], ["タジン鍋", "tagine"], ["タブーリ", "tabbouleh"],
   ["エンチラーダ", "enchiladas"], ["タマレス", "tamales"], ["mac and cheese", "mac_and_cheese"],
-  ["shepherd’s pie", "shepherds_pie"],
+  ["shepherd’s pie", "shepherds_pie"], ["Steamed White Rice", "plain_rice"],
 ];
 for (const [name, expected] of mappingCases) {
   const actual = getDishIconSlug(name);
