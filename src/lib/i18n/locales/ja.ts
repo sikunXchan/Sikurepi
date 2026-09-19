@@ -423,6 +423,7 @@ const ja = {
     setupRequired: "購入機能は準備中です。現在は無料プランをご利用いただけます。",
     loadError: "購入情報を読み込めませんでした。時間をおいてお試しください。",
     noOffering: "購入可能なプランがまだ設定されていません",
+    testStoreNoOffering: "Test Storeには接続できていますが、RevenueCatのOfferingに商品が登録されていません。",
     legal: "定期購入は解約するまで自動更新されます。価格と期間は購入確認画面にも表示されます。",
     cardEyebrow: "SIKUREPI PLUS",
     cardFreeTitle: "毎日の自炊をもっと自由に",
@@ -712,13 +713,6 @@ const ja = {
     autoSaved: "この端末に保存・適用しました。",
     autoSaveFailed: "この端末に保存できませんでした。ブラウザーの保存設定や空き容量を確認し、もう一度変更してください。",
     trayAutoSaveHint: "選んだトレーはすぐにレシピ表示へ反映されます。",
-    showcaseTitle: "動画撮影用データ",
-    showcaseDescription: "在庫・買い物・保存/直近レシピ・12日連続記録・72件の調理履歴・食材図鑑・コツ・7日分の献立が入った英語のデモアカウントへ切り替えます。ログイン中はアカウントへ自動同期します。現在のデータは先にこの端末へ退避します。",
-    showcaseLoad: "英語の撮影用データを読み込む",
-    showcaseRestore: "元のデータへ戻す",
-    showcaseConfirm: "現在のアプリデータを英語の動画撮影用データに切り替えますか？ 元のデータはこの端末に復元可能な状態で退避します。",
-    showcaseLoaded: "英語の撮影用データを準備しました。各タブを開いて撮影できます。",
-    showcaseRestored: "切り替え前のデータへ戻しました。",
   },
 };
 

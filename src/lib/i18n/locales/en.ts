@@ -436,6 +436,7 @@ const en: typeof ja = {
     setupRequired: "Purchases are not available yet. You can continue using the free plan.",
     loadError: "We couldn't load purchase details. Please try again shortly.",
     noOffering: "No purchase plan has been configured yet",
+    testStoreNoOffering: "Test Store is connected, but no product is attached to an Offering in RevenueCat.",
     legal: "Subscriptions renew automatically until cancelled. Price and duration are also shown in the store confirmation.",
     cardEyebrow: "SIKUREPI PLUS",
     cardFreeTitle: "Make everyday cooking more flexible",
@@ -716,13 +717,6 @@ const en: typeof ja = {
     autoSaved: "Saved and applied on this device.",
     autoSaveFailed: "Could not save on this device. Check your browser storage settings or free space, then make the change again.",
     trayAutoSaveHint: "Your selected tray is applied to recipes immediately.",
-    showcaseTitle: "Video showcase data",
-    showcaseDescription: "Loads a polished English demo account with a full pantry, shopping list, saved and recent recipes, a 12-day streak, 72 cooking records, collection discoveries, tips, and a seven-day meal plan. If you are signed in, it syncs to your account automatically. Your current data is backed up on this device first.",
-    showcaseLoad: "Load English showcase data",
-    showcaseRestore: "Restore my previous data",
-    showcaseConfirm: "Replace the current app data with the English video showcase? A restorable backup will be kept on this device.",
-    showcaseLoaded: "English showcase data is ready. Open the tabs and start recording.",
-    showcaseRestored: "Your previous app data has been restored.",
   },
 };
 

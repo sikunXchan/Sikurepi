@@ -445,6 +445,17 @@ const ENGLISH_ICON_ALIASES: Record<string, string[]> = {
   bread: ['bread', 'toast'], pasta: ['pasta', 'spaghetti'], oatmeal: ['oatmeal', 'oats'],
   chickpea: ['chickpea', 'chickpeas'], avocado2: ['avocado'], lemon: ['lemon'], strawberry: ['strawberry', 'strawberries'],
   miso: ['miso'], soysauce: ['soy sauce'], pepper: ['black pepper'], oatmilk: ['oat milk'],
+  asparagus: ['asparagus'], zucchini: ['zucchini', 'courgette'], kale: ['kale'], arugula: ['arugula', 'rocket'],
+  leaflettuce: ['lettuce', 'leaf lettuce'], celery: ['celery'], leek: ['leek'], fennel: ['fennel'],
+  parsley: ['parsley'], cilantro: ['cilantro', 'coriander leaves'], rosemary: ['rosemary'], thyme: ['thyme'], oregano: ['oregano'], dill: ['dill'],
+  satsumaimo: ['sweet potato', 'sweet potatoes'], lentil: ['lentil', 'lentils'], beansprout2: ['bean sprout', 'bean sprouts'],
+  wakame: ['wakame'], kombu: ['kombu', 'kelp'], nori: ['nori', 'seaweed'],
+  tuna: ['tuna'], squid: ['squid'], tako: ['octopus'], saba: ['mackerel'], tara: ['cod'],
+  oyster: ['oyster', 'oysters'], kani: ['crab'], hotate: ['scallop', 'scallops'],
+  bacon: ['bacon'], ham: ['ham'], wiener: ['sausage', 'sausages'],
+  flour: ['flour', 'wheat flour'], butter: ['butter'], oliveoil: ['olive oil', 'extra virgin olive oil'],
+  salt: ['salt'], sugar: ['sugar'], vinegar: ['vinegar'], mayonnaise: ['mayonnaise', 'mayo'], ketchup: ['ketchup'],
+  currypowder: ['curry powder'], katakuriko: ['potato starch'], honey: ['honey'],
 };
 
 for (const [slug, aliases] of Object.entries(ENGLISH_ICON_ALIASES)) {
@@ -488,7 +499,41 @@ export const ICON_ANCHOR_LIST: { keyword: string; slug: string }[] = FLAT;
 // アイコンslugの一覧(重複なし)。AI判定プロンプトの選択肢として使う。
 export const ICON_SLUGS: string[] = Object.keys(ICON_KEYWORDS);
 
+function normalizeEnglishLookup(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function singularEnglishWord(value: string): string {
+  if (value.length > 4 && value.endsWith('ies')) return `${value.slice(0, -3)}y`;
+  if (value.length > 4 && /(ches|shes|xes|zes|oes)$/.test(value)) return value.slice(0, -2);
+  if (value.length > 3 && value.endsWith('s') && !value.endsWith('ss')) return value.slice(0, -1);
+  return value;
+}
+
+const ENGLISH_SLUG_LOOKUP = ICON_SLUGS.map((slug) => ({
+  slug,
+  key: normalizeEnglishLookup(slug.replace(/\d+$/, '')).replace(/\s/g, ''),
+})).filter((entry) => entry.key.length >= 3);
+
+function getSlugFromEnglishName(name: string): string | null {
+  if (!/[a-z]/i.test(name)) return null;
+  const words = normalizeEnglishLookup(name).split(/\s+/).filter(Boolean);
+  const wordKeys = new Set(words.flatMap((word) => [word, singularEnglishWord(word)]));
+  const compact = words.join('');
+  const compactSingular = words.map(singularEnglishWord).join('');
+  for (const entry of ENGLISH_SLUG_LOOKUP) {
+    if (entry.key === compact || entry.key === compactSingular || wordKeys.has(entry.key)) return entry.slug;
+  }
+  return null;
+}
+
 export const ICON_BASE_PATH = "/ingredients/";
+export const ICON_THUMB_BASE_PATH = "/ingredients/thumbs/";
 
 export type IngredientIconCategory =
   | 'vegetable'
@@ -516,19 +561,27 @@ export function getIngredientIconDisplayName(slug: string, language: 'ja' | 'en'
   return readableSlug.charAt(0).toUpperCase() + readableSlug.slice(1);
 }
 
-export function getIngredientIconCategory(slug: string): IngredientIconCategory {
-  const terms = `${slug} ${(ICON_KEYWORDS[slug] || []).join(' ')}`.toLocaleLowerCase();
+function inferCategoryFromTerms(terms: string): IngredientIconCategory {
   if (/水|コーヒー|茶|ワイン|ビール|酒|ジュース|coffee|tea|wine|beer|juice|water/.test(terms)) return 'drink';
   if (/ケーキ|菓子|クッキー|チョコ|アイス|プリン|キャンディ|飴|グミ|大福|団子|どら焼|たい焼|ジャム|クリーム|cake|cookie|candy|chocolate|icecream|pudding|gummy|daifuku|dorayaki|taiyaki/.test(terms)) return 'sweet';
   if (/塩|砂糖|酢|醤油|しょうゆ|味噌|みそ|油|ソース|だし|こしょう|胡椒|スパイス|カレー粉|マスタード|ケチャップ|マヨ|みりん|ペースト|サフラン|クミン|ターメリック|シナモン|バニラ|麹|片栗粉|コーンスターチ|salt|sugar|vinegar|sauce|oil|spice|mustard|ketchup|mayonnaise|seasoning|starch/.test(terms)) return 'seasoning';
+  if (/卵|牛乳|ミルク|チーズ|ヨーグルト|バター|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|おから|湯葉|egg|milk|cheese|yogurt|butter|tofu|natto|tempeh/.test(terms)) return 'egg_dairy_soy';
   if (/豚|鶏|牛|肉|ベーコン|ハム|ソーセージ|ラム|マトン|鴨|七面鳥|ヤギ|レバー|ホルモン|pork|chicken|beef|meat|bacon|ham|sausage|lamb|duck|turkey|goat/.test(terms)) return 'meat';
   if (/魚|鮭|まぐろ|ツナ|えび|海老|いか|たこ|鯖|さば|アジ|イワシ|サンマ|タラ|鯛|あさり|しじみ|かつお|かまぼこ|ちくわ|牡蠣|かに|ホタテ|しらす|たらこ|いくら|ぶり|うなぎ|fish|salmon|tuna|shrimp|squid|octopus|mackerel|oyster|crab|scallop|seafood/.test(terms)) return 'seafood';
-  if (/卵|牛乳|ミルク|チーズ|ヨーグルト|バター|豆腐|納豆|油揚げ|厚揚げ|豆乳|テンペ|おから|湯葉|egg|milk|cheese|yogurt|butter|tofu|natto|tempeh/.test(terms)) return 'egg_dairy_soy';
   if (/米|ご飯|パン|うどん|そば|パスタ|マカロニ|春雨|麺|小麦|粉|餅|そうめん|キヌア|クスクス|トルティーヤ|ピタ|ナン|オートミール|シリアル|イースト|rice|bread|pasta|noodle|flour|quinoa|couscous|tortilla|oat|cereal|yeast|bulgur/.test(terms)) return 'grain';
   if (/りんご|バナナ|レモン|オレンジ|みかん|いちご|ぶどう|パイン|すいか|メロン|マンゴー|キウイ|桃|チェリー|梨|ベリー|柿|アーモンド|ピーナッツ|くるみ|ナッツ|栗|種|レーズン|ライム|フルーツ|ざくろ|いちじく|ゆず|梅|ライチ|パパイヤ|プラム|apple|banana|lemon|orange|fruit|berry|nut|almond|peanut|walnut|seed|lime|coconut|dates/.test(terms)) return 'fruit_nut';
   if (/しいたけ|えのき|しめじ|エリンギ|舞茸|マッシュルーム|なめこ|きくらげ|わかめ|もずく|めかぶ|ひじき|昆布|こんぶ|海苔|のり|mushroom|wakame|kombu|nori|seaweed/.test(terms)) return 'mushroom_seaweed';
-  if (/野菜|いも|芋|豆|玉ねぎ|にんじん|トマト|きゅうり|キャベツ|大根|なす|ピーマン|パプリカ|ブロッコリー|葉|ねぎ|にんにく|しょうが|ハーブ|バジル|パセリ|ミント|plantain|cassava|taro|vegetable|onion|carrot|tomato|cucumber|cabbage|pepper|broccoli|herb/.test(terms)) return 'vegetable';
+  if (/野菜|いも|芋|豆|玉ねぎ|にんじん|トマト|きゅうり|キャベツ|大根|なす|かぼちゃ|ピーマン|パプリカ|ブロッコリー|葉|ねぎ|にんにく|しょうが|ハーブ|バジル|パセリ|ミント|plantain|cassava|taro|vegetable|onion|carrot|potato|tomato|cucumber|cabbage|pumpkin|squash|pepper|broccoli|spinach|lettuce|zucchini|asparagus|celery|leek|herb/.test(terms)) return 'vegetable';
   return 'other';
+}
+
+export function getIngredientIconCategory(slug: string): IngredientIconCategory {
+  return inferCategoryFromTerms(`${slug} ${(ICON_KEYWORDS[slug] || []).join(' ')}`.toLocaleLowerCase());
+}
+
+export function getIngredientCategoryForName(name: string): IngredientIconCategory {
+  const slug = getIngredientIconSlug(name);
+  return slug ? getIngredientIconCategory(slug) : inferCategoryFromTerms(name.toLocaleLowerCase());
 }
 
 export function getIngredientIconSlug(ingredientName: string): string | null {
@@ -539,7 +592,7 @@ export function getIngredientIconSlug(ingredientName: string): string | null {
     const { keyword, slug } = FLAT[i];
     if (normalizedName.includes(NORMALIZED_FLAT_KEYWORDS[i]) && !isExcludedMatch(name, keyword)) return slug;
   }
-  return null;
+  return getSlugFromEnglishName(name);
 }
 
 export function getIngredientIconUrl(ingredientName: string): string | null {

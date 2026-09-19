@@ -9,16 +9,16 @@ const purchasesSource = readFileSync(new URL('../src/lib/purchases.ts', import.m
 const compiled = ts.transpileModule(purchasesSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-function loadPurchases(platform, env = {}, debug = false) {
+function loadPurchases(platform, env = {}, debug = false, options = {}) {
   const calls = [];
-  const customerInfo = { entitlements: { active: {} } };
+  const customerInfo = options.customerInfo || { entitlements: { active: {} } };
   const Purchases = new Proxy({}, {
-    get: (_, method) => async (options) => {
-      calls.push({ method, options });
+    get: (_, method) => async (methodOptions) => {
+      calls.push({ method, options: methodOptions });
       switch (method) {
         case 'isConfigured': return { isConfigured: false };
         case 'getCustomerInfo': return { customerInfo };
-        case 'getOfferings': return { current: null };
+        case 'getOfferings': return options.offerings || { current: null, all: {} };
         case 'addCustomerInfoUpdateListener': return 'listener';
         default: return undefined;
       }
@@ -50,6 +50,22 @@ for (const platform of ['ios', 'android']) {
   assert.equal(debug.api.hasRevenueCatConfiguration(), true);
   await debug.api.getPremiumSnapshot();
   assert.equal(debug.calls.find(call => call.method === 'configure')?.options.apiKey, 'test_showcase');
+
+  const testEntitlement = {
+    entitlements: {
+      active: { automatically_created_test_access: { isActive: true, verification: 'VERIFIED' } },
+      verification: 'VERIFIED',
+    },
+  };
+  const debugEntitled = loadPurchases(platform, {
+    NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',
+  }, true, {
+    customerInfo: testEntitlement,
+    offerings: { current: null, all: { test: { identifier: 'test', availablePackages: [] } } },
+  });
+  const debugSnapshot = await debugEntitled.api.getPremiumSnapshot();
+  assert.equal(debugSnapshot.isPremium, true, 'Debug Test Store accepts an active test entitlement');
+  assert.equal(debugSnapshot.offeringId, 'test', 'falls back to an existing offering when current is unset');
 
   const release = loadPurchases(platform, {
     NODE_ENV: 'production', NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',

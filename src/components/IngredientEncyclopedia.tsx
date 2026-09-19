@@ -12,6 +12,7 @@ import {
   type IngredientCollectionEntry,
   STREAK_BADGE_MILESTONES,
 } from "@/lib/ingredientCollection";
+import { ICON_BASE_PATH } from "@/lib/ingredientIcons";
 import styles from "./IngredientEncyclopedia.module.css";
 
 type Filter = "all" | "unlocked" | "rescued";
@@ -45,16 +46,22 @@ function safeParseRecords(snapshot: string) {
 }
 
 function CollectionIcon({ entry, size = 64 }: { entry: CollectionEntry; size?: number }) {
+  const [source, setSource] = useState(entry.imageUrl);
   if (!entry.imageUrl) return <UiIcon slug="other" size={size} alt={entry.unlocked ? entry.displayName : ""} />;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={entry.imageUrl}
+      src={source || entry.imageUrl}
       alt={entry.unlocked ? entry.displayName : ""}
       width={size}
       height={size}
-      loading="lazy"
+      loading={entry.unlocked ? "eager" : "lazy"}
+      decoding="async"
+      fetchPriority={entry.unlocked ? "high" : "low"}
       draggable={false}
+      onError={() => {
+        if (entry.slug && source?.includes('/thumbs/')) setSource(`${ICON_BASE_PATH}${entry.slug}.png`);
+      }}
     />
   );
 }
@@ -73,6 +80,20 @@ export default function IngredientEncyclopedia() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CollectionEntry | null>(null);
   const [visibleLimit, setVisibleLimit] = useState(COLLECTION_PAGE_SIZE);
+
+  // 図鑑を開いてから数十枚を読み始めると、モバイル回線では同じプレース
+  // ホルダーが一斉に見える。発見済みの食材だけを先にキャッシュへ温め、未発見
+  // 385種は従来どおり遅延読み込みにして通信量を増やさない。
+  useEffect(() => {
+    ingredientSummary.entries
+      .filter((entry) => entry.unlocked && entry.imageUrl)
+      .slice(0, 80)
+      .forEach((entry) => {
+        const image = new window.Image();
+        image.decoding = 'async';
+        image.src = entry.imageUrl!;
+      });
+  }, [ingredientSummary.entries]);
 
   useEffect(() => {
     if (!open) return;

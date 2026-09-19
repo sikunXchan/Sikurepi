@@ -60,6 +60,14 @@ function getRevenueCatApiKey(): string | null {
   }, Capacitor.DEBUG === true);
 }
 
+function isTestStoreBuild(): boolean {
+  return Capacitor.DEBUG === true && getRevenueCatApiKey()?.startsWith("test_") === true;
+}
+
+export function isRevenueCatTestStoreBuild(): boolean {
+  return isNativeApp() && isTestStoreBuild();
+}
+
 export function hasRevenueCatConfiguration(): boolean {
   return isNativeApp() && getRevenueCatApiKey() !== null;
 }
@@ -89,7 +97,12 @@ async function ensurePurchasesConfigured(): Promise<void> {
 }
 
 function isPremiumCustomer(customerInfo: CustomerInfo): boolean {
-  const entitlement = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID];
+  // 本番では契約した entitlement ID を厳密に見る。Test StoreのDebug IPAでは、
+  // RevenueCatが自動作成した別名のentitlementでも購入シミュレーション直後に
+  // Plus表示を確認できるよう、検証済みのactive entitlementを1件だけ許容する。
+  const activeEntitlements = customerInfo.entitlements.active;
+  const entitlement = activeEntitlements[PREMIUM_ENTITLEMENT_ID]
+    ?? (isTestStoreBuild() ? Object.values(activeEntitlements).find((entry) => entry.isActive) : undefined);
   if (!entitlement?.isActive) return false;
 
   // 改ざんが検知されたCustomerInfoでは有料機能を解放しない。
@@ -127,7 +140,9 @@ function toPremiumPlan(aPackage: PurchasesPackage): PremiumPlan {
 async function loadOffering(): Promise<PurchasesOffering | null> {
   await ensurePurchasesConfigured();
   const offerings = await Purchases.getOfferings();
-  cachedOffering = offerings.current ?? null;
+  // current指定を忘れていても、Test Store/開発中に作成済みのOfferingが1つなら
+  // 購入導線を止めない。本番でも選ぶのはRevenueCatから返ったOfferingだけ。
+  cachedOffering = offerings.current ?? Object.values(offerings.all || {})[0] ?? null;
   return cachedOffering;
 }
 

@@ -1,7 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import vm from "node:vm";
 import sharp from "sharp";
+import ts from "typescript";
 
 const root = path.resolve(import.meta.dirname, "..");
 const dishDirectory = path.join(root, "public", "dishes", "icons");
@@ -107,6 +109,34 @@ for (const slug of ingredientFiles) {
   if (!metadata.width || !metadata.height) errors.push(`${slug}: unreadable ingredient icon`);
 }
 
+const compiledIngredientSource = ts.transpileModule(ingredientSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const ingredientExports = {};
+vm.runInNewContext(compiledIngredientSource, {
+  exports: ingredientExports,
+  require: (id) => {
+    if (id === './kana') return { toHiragana: (value) => String(value).toLocaleLowerCase() };
+    throw new Error(`Unexpected ingredient module: ${id}`);
+  },
+});
+const { getIngredientIconSlug, getIngredientCategoryForName } = ingredientExports;
+const englishIngredientCases = [
+  ["Cabbage", "cabbage2", "vegetable"], ["Cheese", "cheese", "egg_dairy_soy"],
+  ["Chickpeas", "chickpea", "vegetable"], ["Ginger", "ginger", "vegetable"],
+  ["Milk", "milk", "egg_dairy_soy"], ["Pasta", "pasta", "grain"],
+  ["Pork", "pork", "meat"], ["Potato", "potato2", "vegetable"],
+  ["Pumpkin", "pumpkin", "vegetable"], ["Shrimp", "shrimp2", "seafood"],
+  ["Tofu", "tofu", "egg_dairy_soy"], ["Yogurt", "yogurt", "egg_dairy_soy"],
+  ["Sweet potatoes", "satsumaimo", "vegetable"], ["Cod", "tara", "seafood"],
+];
+for (const [name, expectedSlug, expectedCategory] of englishIngredientCases) {
+  const actualSlug = getIngredientIconSlug(name);
+  if (actualSlug !== expectedSlug) errors.push(`ingredient mapping ${name}: expected ${expectedSlug}, got ${actualSlug}`);
+  const actualCategory = getIngredientCategoryForName(name);
+  if (actualCategory !== expectedCategory) errors.push(`ingredient category ${name}: expected ${expectedCategory}, got ${actualCategory}`);
+}
+
 const { getDishIconSlug } = await import(pathToFileURL(dishSourcePath));
 const mappingCases = [
   ["親子丼", "oyakodon"], ["牛丼", "gyudon"], ["カツ丼", "katsudon"],
@@ -126,6 +156,7 @@ for (const [name, expected] of mappingCases) {
 
 console.log(`Dish icons: ${dishFiles.length} files / ${manifest.groups.length} groups / ${dishRuleSlugs.length} mapped`);
 console.log(`Ingredient icons: ${ingredientFiles.length} files / ${ingredientMappingSlugs.length} mapped`);
+console.log(`English ingredient mappings: ${englishIngredientCases.length} checked`);
 console.log(`New world-dish mapping cases: ${mappingCases.length - errors.filter((error) => error.startsWith("mapping ")).length}/${mappingCases.length}`);
 
 if (errors.length > 0) {

@@ -4,6 +4,9 @@ const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   reloadOnOnline: true,
+  // 多数の料理・食材画像は画面側で必要時に読み込む。初回起動時に全画像を
+  // Service Workerへ詰め込まず、アプリロゴと共通マスコットだけを先読みする。
+  globPublicPatterns: ["*.svg", "icon.png", "mascot/**/*", "ranks/**/*"],
 });
 
 /** @type {import('next').NextConfig} */

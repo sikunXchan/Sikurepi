@@ -131,7 +131,7 @@
   min-width: 0;
   align-items: center;
   gap: 9px;
-  padding: 10px 34px 10px 9px;
+  padding: 10px 9px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -158,19 +158,44 @@
   text-align: center;
 }
 
-.recentCookedDelete {
+.swipeDeleteWrapper {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  touch-action: pan-y;
+}
+
+.swipeDeleteRail {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #f57b8f, #d94e68);
+}
+
+.swipeDeleteButton {
   display: grid;
-  width: 27px;
-  height: 27px;
+  width: 76px;
+  min-height: 100%;
   place-items: center;
   border: 0;
-  border-radius: 50%;
-  background: #fff3f4;
-  color: #c75469;
-  cursor: pointer;
+  border-radius: 0;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+}
+
+.swipeDeleteButton:hover { transform: none; box-shadow: none; }
+
+.swipeDeleteSurface {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: var(--background);
 }
 
 .recipePreviewButton {
@@ -444,22 +469,6 @@
   box-shadow: 0 4px 18px rgba(32, 178, 170, 0.4);
 }
 
-.deleteBtn {
-  background: transparent;
-  color: var(--text-muted);
-  padding: 10px 14px;
-  border-radius: 12px;
-  box-shadow: none;
-  border: 1px solid var(--border);
-}
-
-.deleteBtn:hover {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.05);
-  box-shadow: none;
-}
-
 @media (max-width: 768px) {
 
   .recipeCard:hover {
@@ -467,7 +476,7 @@
     box-shadow: var(--glass-shadow);
   }
 
-  .recookBtn, .deleteBtn {
+  .recookBtn {
     min-height: 44px;
   }
 }
