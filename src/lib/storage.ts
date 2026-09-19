@@ -1,6 +1,7 @@
 // LocalStorage Unified Storage Service with JSON Backup & Restore
 
 import { toHiragana } from './kana';
+import { getIngredientCategoryForName, type IngredientIconCategory } from './ingredientIcons';
 import { normalizeGuideProgress, mergeGuideProgress, type GuideKey, type GuideProgress } from './guideProgress';
 import type { TrayThemeId } from './trayThemes';
 import {
@@ -276,7 +277,15 @@ export function inferIngredientCategory(ingredientName: string): string {
   if (!name) return 'その他';
   const normalizedName = toHiragana(name);
   const hit = NORMALIZED_CATEGORY_RULES.find(r => r.pattern.test(normalizedName));
-  return hit ? hit.category : 'その他';
+  if (hit) return hit.category;
+  const iconCategory = getIngredientCategoryForName(name);
+  const iconCategoryToInventory: Record<IngredientIconCategory, string> = {
+    vegetable: '野菜・果物', mushroom_seaweed: '野菜・果物', fruit_nut: '野菜・果物',
+    meat: '肉・魚介', seafood: '肉・魚介', egg_dairy_soy: '乳製品・卵',
+    grain: '穀物・豆・ナッツ', seasoning: '調味料', sweet: 'お菓子・飲み物',
+    drink: 'お菓子・飲み物', other: 'その他',
+  };
+  return iconCategoryToInventory[iconCategory];
 }
 
 export function isIngredientMissing(

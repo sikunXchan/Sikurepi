@@ -1,7 +1,8 @@
 import {
-  ICON_BASE_PATH,
+  ICON_THUMB_BASE_PATH,
   ICON_SLUGS,
   getIngredientIconCategory,
+  getIngredientCategoryForName,
   getIngredientIconDisplayName,
   getIngredientIconSlug,
   type IngredientIconCategory,
@@ -98,7 +99,7 @@ function createMutableEntry(slug: string | null, key: string, language: 'ja' | '
   return {
     key,
     slug,
-    imageUrl: slug ? `${ICON_BASE_PATH}${slug}.png` : null,
+    imageUrl: slug ? `${ICON_THUMB_BASE_PATH}${slug}.webp` : null,
     displayName: slug ? getIngredientIconDisplayName(slug, language) : '',
     category: slug ? getIngredientIconCategory(slug) : 'other',
     unlocked: false,
@@ -145,6 +146,7 @@ export function buildIngredientCollection(
     for (const [key, occurrence] of recordIngredients) {
       const slug = key.startsWith('slug:') ? key.slice(5) : null;
       const entry = entries.get(key) || createMutableEntry(slug, key, language);
+      if (!slug && entry.category === 'other') entry.category = getIngredientCategoryForName(occurrence.name);
       const timestamp = toTimestamp(record.date);
       entry.unlocked = true;
       entry.usageCount += 1;

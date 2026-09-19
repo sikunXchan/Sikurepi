@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Crown, Loader2, Palette, RotateCcw, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
-import type { PurchaseActionResult } from "@/lib/purchases";
+import { isRevenueCatTestStoreBuild, type PurchaseActionResult } from "@/lib/purchases";
 import styles from "./PremiumPaywall.module.css";
 
 type Props = {
@@ -37,6 +37,7 @@ function actionMessage(
 export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   const { t } = useLanguage();
   const premium = usePremium();
+  const testStoreBuild = isRevenueCatTestStoreBuild();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
@@ -96,7 +97,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
       : premium.availability === "error"
         ? t.premium.loadError
         : premium.availability === "ready" && premium.plans.length === 0
-          ? t.premium.noOffering
+          ? (testStoreBuild ? t.premium.testStoreNoOffering : t.premium.noOffering)
           : "";
 
   const paywall = (

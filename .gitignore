@@ -21,6 +21,7 @@ __pycache__/
 # next.js
 /.next/
 /out/
+/public/ingredients/thumbs/
 
 # production
 /build

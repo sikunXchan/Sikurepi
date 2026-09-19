@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Trash2, Search, X, PlayCircle, Crown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate as animateValue, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import CookingSession from "@/components/CookingSession";
 import CookedModal from "@/components/CookedModal";
 import IngredientIcon from "@/components/IngredientIcon";
@@ -37,6 +37,62 @@ import styles from "./History.module.css";
 
 // ジャンル別サムネイル(RecipeThumbnail)と同じ一覧を使い回し、追加時の二重管理を防ぐ
 const GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS);
+const DELETE_REVEAL_X = -76;
+const DELETE_REVEAL_SPRING = { type: "spring", stiffness: 500, damping: 42 } as const;
+
+function SwipeDeleteRow({
+  children,
+  isOpen,
+  onOpenChange,
+  onDelete,
+  deleteLabel,
+}: {
+  children: ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  deleteLabel: string;
+}) {
+  const x = useMotionValue(0);
+  const railOpacity = useTransform(x, [DELETE_REVEAL_X, -24, 0], [1, 0.65, 0]);
+
+  useEffect(() => {
+    if (!isOpen) animateValue(x, 0, DELETE_REVEAL_SPRING);
+  }, [isOpen, x]);
+
+  const finishSwipe = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const open = info.offset.x < -34 || info.velocity.x < -320;
+    animateValue(x, open ? DELETE_REVEAL_X : 0, DELETE_REVEAL_SPRING);
+    onOpenChange(open);
+  };
+
+  return (
+    <div className={styles.swipeDeleteWrapper}>
+      <motion.div className={styles.swipeDeleteRail} style={{ opacity: railOpacity }}>
+        <button type="button" className={styles.swipeDeleteButton} onClick={onDelete} aria-label={deleteLabel}>
+          <Trash2 size={19} />
+        </button>
+      </motion.div>
+      <motion.div
+        className={styles.swipeDeleteSurface}
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: DELETE_REVEAL_X, right: 0 }}
+        dragElastic={0.04}
+        dragDirectionLock
+        onDragEnd={finishSwipe}
+        onClickCapture={(event) => {
+          if (!isOpen) return;
+          event.preventDefault();
+          event.stopPropagation();
+          onOpenChange(false);
+        }}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
 
 export default function HistoryPage() {
   const { t, language } = useLanguage();
@@ -55,6 +111,7 @@ export default function HistoryPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [recentRecipes, setRecentRecipes] = useState<RecentRecipe[]>([]);
   const [previewRecipe, setPreviewRecipe] = useState<RecipeDetailData | null>(null);
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
 
   // 「直近のレシピ」「保存したレシピ」を縦に並べず、横スライドで切り替える
   const [activeSection, setActiveSection] = useState<'recent' | 'saved'>('recent');
@@ -72,6 +129,7 @@ export default function HistoryPage() {
     if (!el || el.clientWidth === 0) return;
     const next = el.scrollLeft >= el.clientWidth / 2 ? 'saved' : 'recent';
     setActiveSection((prev) => (prev === next ? prev : next));
+    setOpenSwipeId(null);
   };
 
   // Search/filter state
@@ -312,7 +370,18 @@ export default function HistoryPage() {
           {recentRecipes.length > 0 ? (
             <div className={styles.recentCookedGrid}>
               {recentRecipes.map((recipe) => (
-                <article key={recipe.id} className={styles.recentCookedCard}>
+                <SwipeDeleteRow
+                  key={recipe.id}
+                  isOpen={openSwipeId === `recent:${recipe.id}`}
+                  onOpenChange={(open) => setOpenSwipeId(open ? `recent:${recipe.id}` : null)}
+                  deleteLabel={t.history.deleteRecentRecipeLabel(recipe.title)}
+                  onDelete={() => {
+                    deleteLocalRecentRecipe(recipe.id);
+                    setOpenSwipeId(null);
+                    loadRecipes();
+                  }}
+                >
+                <article className={styles.recentCookedCard}>
                 <button
                   type="button"
                   className={styles.recentCookedOpen}
@@ -324,16 +393,8 @@ export default function HistoryPage() {
                   <RecipeThumbnail genre={recipe.genre || undefined} fallbackIngredientName={recipe.title} size={76} />
                   <span><strong>{recipe.title}</strong><small>{formatDate(recipe.recent_at)}</small></span>
                 </button>
-                <button
-                  type="button"
-                  className={styles.recentCookedDelete}
-                  aria-label={t.history.deleteRecentRecipeLabel(recipe.title)}
-                  onClick={() => {
-                    deleteLocalRecentRecipe(recipe.id);
-                    loadRecipes();
-                  }}
-                ><Trash2 size={15} /></button>
               </article>
+              </SwipeDeleteRow>
               ))}
             </div>
           ) : (
@@ -429,7 +490,17 @@ export default function HistoryPage() {
               })),
             };
             return (
-              <div key={recipe.id} className={styles.recipeCard}>
+              <SwipeDeleteRow
+                key={recipe.id}
+                isOpen={openSwipeId === `saved:${recipe.id}`}
+                onOpenChange={(open) => setOpenSwipeId(open ? `saved:${recipe.id}` : null)}
+                deleteLabel={t.history.deleteButtonTitle}
+                onDelete={() => {
+                  setOpenSwipeId(null);
+                  confirmDelete(recipe.id);
+                }}
+              >
+              <div className={styles.recipeCard}>
                 <div
                   className={styles.cardTopRow}
                   role="button"
@@ -506,15 +577,9 @@ export default function HistoryPage() {
                     {t.history.cookedButton}
                   </button>
 
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={(e) => { e.stopPropagation(); confirmDelete(recipe.id); }}
-                    title={t.history.deleteButtonTitle}
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               </div>
+              </SwipeDeleteRow>
             );
           })}
 

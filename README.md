@@ -89,6 +89,10 @@ Next Gen向けに実購入なしでRevenueCatの購入完了まで撮影する�
 Test Storeを許可します。通常の`iOS Unsigned Build (for Sideloadly)`はReleaseのまま、
 `test_`キーを受け付けません。
 
+Test Store Buildでは、Plus画面でプランを選び購入ボタンを押し、RevenueCatの購入モーダルで`Success`を選ぶとPlusになります。プランが表示されない場合は、RevenueCatでTest Store商品を作成し、OfferingのPackageへ紐づけてください。
+
+動画撮影用の英語アカウントデータは、既存の「バックアップを復元」から`public/demo/sikurepi-video-account.en.json`を読み込みます。専用の撮影データUIは設けていません。このバックアップ内のレシピは`npm run generate:video-backup`でSikurepiの`/api/recipes`を通して生成されます。
+
 公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。
 
 iOSアイコンは `public/icon.png` を元に `npm run prepare:ios-icon` で作成します。Codemagicもこの処理を実行し、1024px・不透明のアイコンをアセットカタログへ組み込みます。アイコン変更にはIPAの再ビルドとインストールが必要です。
