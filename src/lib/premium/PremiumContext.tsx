@@ -17,7 +17,6 @@ import {
   type PremiumAvailability,
   type PremiumPlan,
   type PurchaseActionResult,
-  isRevenueCatTestStoreBuild,
 } from "@/lib/purchases";
 import { FILMING_ACCESS_STORAGE_KEY, verifyFilmingPassword } from "@/lib/premium/filmingAccess";
 
@@ -29,7 +28,6 @@ type PremiumContextValue = {
   plans: PremiumPlan[];
   offeringId: string | null;
   busy: boolean;
-  filmingAccessAvailable: boolean;
   unlockForFilming: (password: string) => boolean;
   refresh: () => Promise<void>;
   purchase: (packageIdentifier?: string) => Promise<PurchaseActionResult>;
@@ -45,7 +43,6 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [plans, setPlans] = useState<PremiumPlan[]>([]);
   const [offeringId, setOfferingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [filmingAccessAvailable, setFilmingAccessAvailable] = useState(false);
   const [filmingPremium, setFilmingPremium] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -60,21 +57,11 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     let disposed = false;
     let unsubscribe: () => void = () => undefined;
 
-    // Retire the old unrestricted preview flag. The replacement below is available
-    // only when the native host proves this is a Debug build using Test Store.
-    const filmingAllowed = isRevenueCatTestStoreBuild();
-    setFilmingAccessAvailable(filmingAllowed);
     try {
       window.localStorage.removeItem("sikurepi_premium_test_access_v1");
-      if (filmingAllowed) {
-        setFilmingPremium(window.localStorage.getItem(FILMING_ACCESS_STORAGE_KEY) === "1");
-      } else {
-        window.localStorage.removeItem(FILMING_ACCESS_STORAGE_KEY);
-        setFilmingPremium(false);
-      }
+      setFilmingPremium(window.localStorage.getItem(FILMING_ACCESS_STORAGE_KEY) === "1");
     } catch {
-      // Storage may be unavailable. The Debug-only password still works for the
-      // current session, while the legacy flag is never read or used.
+      // Storage may be unavailable. Password access still works for this session.
     }
     void refresh();
     void subscribeToPremiumStatus((active) => {
@@ -113,7 +100,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlockForFilming = useCallback((password: string) => {
-    if (!isRevenueCatTestStoreBuild() || !verifyFilmingPassword(password)) return false;
+    if (!verifyFilmingPassword(password)) return false;
     try {
       window.localStorage.setItem(FILMING_ACCESS_STORAGE_KEY, "1");
     } catch {
@@ -129,13 +116,12 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     plans,
     offeringId,
     busy,
-    filmingAccessAvailable,
     unlockForFilming,
     refresh,
     purchase,
     restore,
     trackPaywallImpression: trackPremiumPaywallImpression,
-  }), [availability, busy, filmingAccessAvailable, filmingPremium, storePremium, offeringId, plans, purchase, refresh, restore, unlockForFilming]);
+  }), [availability, busy, filmingPremium, storePremium, offeringId, plans, purchase, refresh, restore, unlockForFilming]);
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;
 }
