@@ -1,98 +1,177 @@
-# AI Cooking App (PWA)
+# Sikurepi
 
-レシートから食材を自動抽出し、在庫を管理・AIがレシピ提案や料理相談を行うアプリケーションです。
+**Cook more. Waste less. Live healthier.**
 
-## はじめての利用と調理サポート
+Sikurepi is an AI-powered cooking companion that turns the food already in your
+pantry into practical recipes and weekly meal plans. It connects inventory,
+shopping, cooking guidance, food-rescue progress, and a friendly collection
+system in one bilingual iOS experience.
 
-初回は「今日の一品」への短い案内を表示し、各タブの「使い方」とマイページのガイド一覧から必要な説明だけ読み返せます。案内の既読状態は端末に保存し、ログイン時のバックアップにも含まれます。未登録の在庫・買い物リストへサンプル食材は挿入しません（保存済みのデータは維持）。
+[View the Shipaton project](https://devpost.com/software/sikurepi) ·
+[Open the web preview](https://sikurepi.vercel.app)
 
-クッキングモードの「困った」では、材料不足・味の濃さ・水っぽさ・焦げ・加熱不足・用語を確認できます。限定した代用候補を登録済みの食事制限と照合し、レシピや在庫は自動変更しません。このヘルプに追加のAI通信はありません。
+![Your pantry becomes tonight's dinner](public/devpost/gallery/05-pantry-to-dinner.png)
 
-生成の再試行はアプリ側で一元管理し、SDK内部の重複再試行を止めています。料理の安全・品質検証は維持し、任意の豆知識の形式不備だけでは料理全体を再生成しません。レシピは165秒、献立は285秒のサーバー予算内で処理し、タイムアウト時は回数を消費せず再試行を案内します。`Server-Timing` に全試行のAI待ち時間と合計時間を返し、献立も計測できます。
+## Why Sikurepi exists
 
-回帰テスト: `npm run test:cooking-help` / `npm run test:ai-transport`。実通信の小規模計測は開発サーバーを起動して `node scripts/smoke-generation.mjs --live`（レシピ1件・昼食1枠の2リクエスト。Geminiの利用料金が発生します）。
+Food is often wasted not because people do not care, but because deciding what
+to cook from a changing pantry is difficult. Sikurepi reduces that friction. It
+helps people use what they already have, cook with confidence, and build a
+healthier home-cooking habit without overwhelming them with options.
 
-## デプロイ手順
+## What it does
 
-### 1. GitHubへのプッシュ
-1. このプロジェクトのディレクトリで以下のコマンドを実行し、GitHubリポジトリにプッシュします。
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin <あなたのリポジトリURL>
-   git push -u origin main
-   ```
+- **Pantry-aware AI recipes** — generate a single dish or a complete set meal
+  from available ingredients, preferences, and a free-form request.
+- **Weekly meal planning** — create a balanced seven-day plan, regenerate one
+  meal at a time, and add every missing ingredient to the shopping list.
+- **Guided cooking mode** — keep ingredients and steps visible, use timers, and
+  ask the AI chef short cooking questions without leaving the recipe.
+- **Receipt scanning** — extract likely food items from a receipt, review the
+  result, and add only confirmed items to the pantry.
+- **Adaptive recipes** — change serving counts, preserve ingredient-specific
+  units, and add missing items directly to the shopping list.
+- **Dietary clarity** — show visible badges for relevant allergies, dietary
+  restrictions, and religious considerations.
+- **History and community** — revisit recent and saved recipes, track ingredient
+  coverage, share cooked recipes, and use feedback to improve future results.
+- **Food-rescue collection** — discover more than 380 original ingredient and
+  dish illustrations while recording ingredients that were used before waste.
+- **Progression** — cooking activity advances a ten-rank chef journey designed
+  to make home cooking feel rewarding.
+- **Japanese and English** — the interface, generated content, and community
+  experience support both languages.
 
-### 2. Vercelのセットアップ (データベース・現在は未使用)
-> ⚠️ **注記**: 現在アプリのデータは端末のlocalStorageのみで管理しており、以下のPostgres/`setup.sql`はどの画面からも呼び出されない未使用のコードです。将来的に整理・削除するか、アカウント連携(下記5番)の実装に置き換える想定です。
+## RevenueCat integration
 
-1. [Vercel](https://vercel.com/)のダッシュボードにログインし、「Add New...」>「Project」を選択。
-2. 先ほどプッシュしたGitHubリポジトリをインポートし、デプロイを開始します。
-3. デプロイ設定画面の「Storage」タブから「Vercel Postgres」を作成し、プロジェクトにリンクします。
-   - これにより、`POSTGRES_URL`等の環境変数が自動的にVercelに設定されます。
-4. Postgresの「Data」タブから「Query」画面を開き、このプロジェクトの `setup.sql` の内容をコピーして実行し、テーブル（`ingredients`）を作成します。
+Sikurepi Plus is backed by RevenueCat rather than a local premium flag.
 
-### 3. Vercelのセットアップ (環境変数)
-1. プロジェクトの「Settings」>「Environment Variables」に移動します。
-2. キーを `GEMINI_API_KEY` とし、値としてあなたの取得したGemini APIキーを入力して保存します。
-3. 新しい環境変数を反映させるため、再度「Deployments」から「Redeploy」を実行します。
+- A custom paywall loads the current RevenueCat Offering and packages.
+- Purchases call the native RevenueCat Capacitor SDK and unlock features from
+  verified `CustomerInfo` entitlements.
+- Restore Purchases and live entitlement updates are supported.
+- Custom paywall impressions are reported to RevenueCat.
+- Free limits and Plus access are enforced by shared domain logic.
+- A dedicated Debug build supports RevenueCat Test Store purchases for the
+  Next Gen judging path, while Release builds reject Test Store keys and use
+  platform-specific keys only.
 
-### 4. Supabaseのセットアップ (アカウント連携・任意)
-ログインして複数端末でデータを同期する機能はSupabaseを使っています。設定しなくてもアプリは今まで通りこの端末だけのゲスト利用として動作します。
+The reviewer password supplied privately in the Devpost submission is a review
+convenience for inspecting Plus-only screens. It does not replace the RevenueCat
+purchase implementation.
 
-1. [Supabase](https://supabase.com/)でプロジェクトを新規作成します。
-2. プロジェクトの「SQL Editor」を開き、このリポジトリの `supabase_schema.sql` の内容をコピーして実行します（アカウント同期・共有レシピ・評価用のテーブル、権限、DB関数が作成されます）。
-3. 「Authentication」>「Providers」で「Email」プロバイダーが有効になっていることを確認します。
-4. **「Authentication」>「Email Templates」>「Magic Link」を開き、本文に`{{ .Token }}`を含めるよう編集します**（例: `確認コード: {{ .Token }}`）。これをしないと、メールにはリンクしか入らず、アプリ側で入力してもらう6桁のコードが届きません（デフォルトのテンプレートは`{{ .ConfirmationURL }}`のみでコードが含まれていません）。
-   - ログイン方式に6桁の確認コード入力を採用しているのは、CapacitorのネイティブアプリではSafari側でリンクが開いてしまいアプリ本体のログイン状態に反映されない問題があるため（Universal Linksには有料のApple Developer Programが必要）。
-5. 「Authentication」>「URL Configuration」の「Site URL」を、デプロイ先の本番URL（例: `https://your-app.vercel.app`）に変更しておきます（コード方式では必須ではありませんが、他のメール内リンクにも影響するため）。
-6. プロジェクトの「Settings」>「API Keys」(または「Connect」ボタン)から `Project URL` と `anon public`（または`publishable`）キーを控えます。
-7. Vercelの「Settings」>「Environment Variables」に以下を追加し、再デプロイします。
-   - `NEXT_PUBLIC_SUPABASE_URL`: 控えた`Project URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 控えた`anon public`(`publishable`)キー
+## Responsible recipe generation
 
-#### 「みんなのレシピ」が反映されない既存環境
+Safety-sensitive preferences are not left to prompt wording alone. Sikurepi
+combines profile-aware generation with deterministic validation of ingredients
+and recipe output. A conflicting result is rejected instead of being presented
+as safe. The same profile is used for substitutions and cooking assistance.
 
-GitHubへのpushやVercelの再デプロイだけでは、Supabaseのテーブルは作成されません。内蔵サンプルが一覧に出ていても、共有機能の接続確認にはなりません。
+The app clearly avoids claiming religious certification or protection from
+manufacturing cross-contact. Users should always verify product labels and make
+decisions appropriate to their own medical and religious requirements.
 
-1. Vercelの `NEXT_PUBLIC_SUPABASE_URL` と同じSupabaseプロジェクトの「SQL Editor」で、新しいクエリを開きます。
-2. `supabase/migrations/202609160001_community_recipes.sql` の全体を貼り付け、実行します。既存データを削除せず、再実行できます。
-3. この変更を含むアプリをデプロイした後、アプリを開き直します。送信待ちの料理と、このバージョン以降に送信待ちへ保存された評価が再送されます。古いバージョンで失敗した評価は、対象料理で評価を押し直してください。
+## Privacy and security
 
-このSQLは共有用の3テーブルと評価保存関数を追加します。評価の自由記述を公開SELECTせず、DB関数が評価変更と順位集計を行います。成功通知はDBから保存結果を受け取った場合だけ表示します。
+- Gemini credentials remain server-side and are never exposed through a
+  `NEXT_PUBLIC_` variable.
+- Receipt uploads are restricted by file type, file count, and payload size.
+- Mutating API routes validate request origin and apply bounded request budgets.
+- Private API responses use `Cache-Control: no-store` and are excluded from the
+  service-worker cache.
+- Supabase Row Level Security protects account-owned synchronized data.
+- RevenueCat secret keys are never shipped to the client; only public SDK keys
+  are used by the native app.
+- Entitlement verification failures never unlock Plus features.
+- The production dependency audit currently reports no known vulnerabilities.
 
-`/api/community-recipes` の `sharingAvailable: true` が共有一覧の接続確認です。`COMMUNITY_SCHEMA_MISSING` はSQL未適用、`COMMUNITY_NOT_CONFIGURED` は環境変数未設定、`COMMUNITY_ACCESS_DENIED` は権限設定の不備を示します。評価送信では `accepted: true`・`rankingUpdated: true`・`recipeId` を確認してください。共有していない料理の低評価は端末内だけに残ります。
+These controls reduce risk but are not a claim of formal certification or an
+independent security audit.
 
-再送処理の回帰テスト: `npm run test:community`
+## How it is built
 
-### 5. PWAアイコンの設定
-あなたが提供した「犬のBBQ画像」ファイルを、`public/icon.png` (512x512推奨) として保存してコミットしてからプッシュしてください。PWAのアイコンとして反映されます。
+```text
+iOS app (Capacitor) / PWA
+          |
+          v
+Next.js + React interface
+    |          |          |
+    v          v          v
+Gemini AI   Supabase   RevenueCat
+recipes     sync/RLS   purchases
+    |
+    v
+Validated recipe, pantry, history, and meal-plan domain logic
+```
 
-### 6. RevenueCatのセットアップ（ネイティブアプリ課金）
+Core technologies include Next.js 16, React 19, TypeScript, Capacitor 8,
+RevenueCat Purchases, Google Gemini, Supabase, Vercel, Serwist, and Framer
+Motion.
 
-無料版は、単品レシピを1日3回（定食は3枠を使って1日1回）、週間献立を週1回、画像解析を1日1回まで利用できます。履歴は最新3件、みんなのレシピは上位1件を表示します。`premium` Entitlementが有効な利用者は生成回数・履歴・みんなのレシピが無制限になり、料理のコツ、限定トレー、自動共有OFFを利用できます。食事制限・アレルギーなどの安全機能は課金状態に関係なく利用できます。
+## Run the project
 
-1. RevenueCatでプロジェクトを作成し、App Store / Google Playのアプリと商品を登録します。通常のCodemagic IPAはRelease構成のため、Test Storeの `test_` キーは使用できません（SDKがアプリを終了します）。PlusはRevenueCatのEntitlementから判定し、端末内パスワードによる解放はありません。
-2. `premium` という識別子のEntitlementを作り、商品を紐づけます。
-3. Offeringを作成してPackageを追加し、Current Offeringに設定します。
-4. Vercelの環境変数に公開SDKキーを設定して再デプロイします。
-   - iOS: `NEXT_PUBLIC_REVENUECAT_IOS_API_KEY`（`appl_` で始まる公開SDKキー）
-   - Android: `NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY`（`goog_` で始まる公開SDKキー）
-   - 動画・審査用Debug IPA: `NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`（`test_` で始まるTest Store公開キー）
-   - ストアのSandbox購入も各プラットフォーム用キーを使います。キー未設定・種類不一致の場合はSDKを起動せず、無料プランでアプリを継続利用できます。
-5. `npm run build` の後に `npx cap sync` を実行し、iOSまたはAndroidの実機で購入・復元を確認します。
+### Requirements
 
-Next Gen向けに実購入なしでRevenueCatの購入完了まで撮影する場合は、Vercelへ
-`NEXT_PUBLIC_REVENUECAT_TEST_API_KEY`を設定して再デプロイし、Codemagicの
-`Sikurepi iOS Test Store Build`を実行します。このワークフローだけがDebug構成で
-Test Storeを許可します。通常の`iOS Unsigned Build (for Sideloadly)`はReleaseのまま、
-`test_`キーを受け付けません。
+- Node.js 24
+- npm
+- A Gemini API key for live recipe and receipt generation
+- Optional Supabase and RevenueCat projects for account sync and native purchase
+  testing
 
-Test Store Buildでは、Plus画面でプランを選び購入ボタンを押し、RevenueCatの購入モーダルで`Success`を選ぶとPlusになります。プランが表示されない場合は、RevenueCatでTest Store商品を作成し、OfferingのPackageへ紐づけてください。
+### Web development
 
-動画撮影用の英語アカウントデータは、既存の「バックアップを復元」から`public/demo/sikurepi-video-account.en.json`を読み込みます。専用の撮影データUIは設けていません。このバックアップ内のレシピは`npm run generate:video-backup`でSikurepiの`/api/recipes`を通して生成されます。
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。
+Add `GEMINI_API_KEY` to `.env.local`. The optional public configuration values
+are documented in [`.env.example`](.env.example). Never commit secret API keys.
 
-iOSアイコンは `public/icon.png` を元に `npm run prepare:ios-icon` で作成します。Codemagicもこの処理を実行し、1024px・不透明のアイコンをアセットカタログへ組み込みます。アイコン変更にはIPAの再ビルドとインストールが必要です。
+### Native iOS shell
+
+The Capacitor shell loads the deployed Sikurepi web application so server-side
+AI routes remain available:
+
+```bash
+npm ci
+npx cap sync ios
+```
+
+Open `ios/App/App.xcodeproj` in Xcode. Native purchase testing requires a Debug
+build and a RevenueCat Test Store public key. Configure Test Store products,
+attach them to an Offering, and associate the Offering with the `premium`
+entitlement. Production builds must use the Apple-specific public SDK key and
+must never contain a `test_` key.
+
+## Verification
+
+```bash
+npm run lint
+npm run build
+npm run test:purchases
+npm run test:release-safety
+npm run test:dietary
+npm run test:premium
+npm run test:community
+npm run test:recipe-quality
+```
+
+Additional focused regression commands are available in [`package.json`](package.json).
+
+## Shipaton judging path
+
+Sikurepi is submitted for the **RevenueCat Shipaton 2026 Next Gen Award**. Under
+the official Next Gen route, evaluation is based on the public source repository
+and demonstration video instead of an App Store listing. No public IPA download
+is required. The native app and RevenueCat integration are demonstrated in the
+submission materials, and the repository contains the source, assets, build
+configuration, and verification scripts needed for review.
+
+## License
+
+The source code and software documentation are available under the
+[MIT License](LICENSE). The Sikurepi name, logo, chef-bear mascot, app icons,
+original illustrations, and promotional artwork remain reserved; see the
+[Sikurepi Asset License Notice](ASSETS_LICENSE.md).
