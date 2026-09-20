@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { queueCommunityFeedback, flushCommunityFeedbackOutbox, getFeedbackSyncStatus } from '../src/lib/communityFeedbackQueue.ts';
 import { communityServiceError } from '../src/lib/communityRecipeErrors.ts';
+import { sanitizeCommunityRecipe } from '../src/lib/communityRecipeSchema.ts';
 
 const values = new Map();
 globalThis.window = new EventTarget();
 window.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
 const recipe = { title: '検証用のごはん', time: '10分', ingredients: [{ name: '米', amount: '1合' }], steps: ['炊く'], tips: '' };
 const payload = { recipe, deviceId: 'test-device', rating: 1, note: '', source: 'completion', publish: true };
+const publicRecipe = sanitizeCommunityRecipe({
+  ...recipe,
+  considerations: { dietaryRestrictions: ['ハラール（イスラム教）'], allergyAndExclusionChecked: true },
+});
+assert.equal('considerations' in publicRecipe, false, 'private dietary metadata must not enter community data');
 let refreshes = 0;
 window.addEventListener('community-recipes-changed', () => refreshes++);
 globalThis.fetch = async () => Response.json({ code: 'COMMUNITY_SCHEMA_MISSING' }, { status: 503 });

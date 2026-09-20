@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { Check, Plus } from 'lucide-react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { Check, Loader2, Plus, Send, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { cookingHelpCopy } from '@/lib/i18n/cookingHelp';
 import { COOKING_ISSUES, getCookingContext, getSafeSubstitutions, type CookingIssue } from '@/lib/cookingHelp';
@@ -17,13 +17,80 @@ export default function CookingHelp({ title, step, index, ingredients, onClose }
   const [issue, setIssue] = useState<CookingIssue>('missing');
   const [missing, setMissing] = useState('');
   const [added, setAdded] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [askError, setAskError] = useState('');
+  const [asking, setAsking] = useState(false);
+  const askAbort = useRef<AbortController | null>(null);
   const context = getCookingContext(title, step, ingredients);
-  const alternatives = getSafeSubstitutions(missing, ingredients, getLocalUserProfile(), title);
+  const profile = getLocalUserProfile();
+  const alternatives = getSafeSubstitutions(missing, ingredients, profile, title);
   const actions = issue === 'salty' ? context.soup ? copy.saltySoup : copy.saltyOther
     : issue === 'watery' ? context.deepFrying ? copy.hotOil : context.soup ? copy.waterySoup : copy.wateryOther
       : issue === 'burnt' ? copy.burntSteps : context.shellfish ? copy.shellfishSteps : copy.heatSteps;
+  useEffect(() => () => {
+    const controller = askAbort.current;
+    askAbort.current = null;
+    controller?.abort();
+  }, []);
+  const askAi = async (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = question.trim();
+    if (!trimmed || asking) return;
+    setAsking(true);
+    setAnswer('');
+    setAskError('');
+    askAbort.current?.abort();
+    const controller = new AbortController();
+    askAbort.current = controller;
+    try {
+      const response = await fetch('/api/recipes/cooking-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: trimmed,
+          title,
+          step,
+          stepNumber: index + 1,
+          ingredients,
+          language,
+          profile: {
+            dietaryRestrictions: profile.dietaryRestrictions || [],
+            excludedIngredients: profile.excludedIngredients || [],
+            allergies: profile.allergies || [],
+          },
+        }),
+        signal: controller.signal,
+      });
+      const data = await response.json();
+      if (!response.ok || typeof data.answer !== 'string') throw new Error(data.error || copy.aiError);
+      setAnswer(data.answer);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setAskError(error instanceof Error ? error.message : copy.aiError);
+    } finally {
+      if (askAbort.current === controller) {
+        askAbort.current = null;
+        setAsking(false);
+      }
+    }
+  };
+
   return <HelpDialog title={copy.title} onClose={onClose}>
     <div className={styles.context}><small>{copy.context} · {index + 1}</small><strong>{title}</strong><p>{step}</p></div>
+    <form className={styles.aiBox} onSubmit={askAi}>
+      <label htmlFor="cooking-ai-question"><Sparkles size={17} />{copy.aiTitle}</label>
+      <p>{copy.aiHint}</p>
+      <div className={styles.aiInputRow}>
+        <input id="cooking-ai-question" value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={240} placeholder={copy.aiPlaceholder} autoComplete="off" />
+        <button type="submit" disabled={asking || !question.trim()} aria-label={copy.aiAsk}>
+          {asking ? <Loader2 className="spinner" size={18} /> : <Send size={18} />}
+        </button>
+      </div>
+      {asking && <span className={styles.aiStatus} role="status">{copy.aiThinking}</span>}
+      {answer && <div className={styles.aiAnswer} role="status"><Sparkles size={16} /><p>{answer}</p></div>}
+      {askError && <p className={styles.aiError} role="alert">{askError}</p>}
+    </form>
     <p className={styles.label}>{copy.choose}</p>
     <div className={styles.issues}>{COOKING_ISSUES.map((key) => <button type="button" key={key} aria-pressed={issue === key} onClick={() => setIssue(key)}>{copy[key]}</button>)}</div>
     <div className={styles.answer}>

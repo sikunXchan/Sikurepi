@@ -10,6 +10,7 @@ import KitchenLoader from "@/components/KitchenLoader";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import PremiumPaywall from "@/components/PremiumPaywall";
 import RecipeDetailScreen, { type RecipeDetailData } from "@/components/RecipeDetailScreen";
+import RecipeConsiderationBadges from "@/components/RecipeConsiderationBadges";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -35,6 +36,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useGenerationRequest } from "@/lib/useGenerationRequest";
 import { generationCopy } from "@/lib/i18n/generation";
 import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 import styles from "./MealPlan.module.css";
 // レシピ生成ページ(recipe/page.tsx)と全く同じ見た目にするため、
 // バッジ・材料・手順・コツの表示はそちらのスタイルを直接使い回す
@@ -152,6 +154,7 @@ export default function MealPlanPage() {
     time: string;
     genre?: string | null;
     dish_badge?: string | null;
+    considerations?: RecipeConsiderations;
     ingredients: { name: string; amount: string }[];
     steps: string[];
     tips: string;
@@ -169,6 +172,7 @@ export default function MealPlanPage() {
       time: r.time,
       genre: r.genre,
       dish_badge: r.dish_badge,
+      considerations: r.considerations,
       ingredients: r.ingredients,
       steps: r.steps,
       tips: r.tips,
@@ -527,6 +531,7 @@ export default function MealPlanPage() {
                                 {entry.recipe.genre && <span className={recipeStyles.genreBadge}>{t.tagLabel[entry.recipe.genre] || entry.recipe.genre}</span>}
                                 {entry.recipe.dish_badge && <span className={recipeStyles.climateBadge}>{entry.recipe.dish_badge}</span>}
                               </div>
+                              <RecipeConsiderationBadges considerations={entry.recipe.considerations} compact />
                               <h2 className={recipeStyles.recipeTitle}>{entry.recipe.title}</h2>
                               <span className={recipeStyles.recipeTime}>
                                 <UiIcon slug="timer_clock" collection="core" size={16} alt="" />

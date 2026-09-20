@@ -13,6 +13,7 @@ import PageHeader from "@/components/PageHeader";
 import KitchenLoader from "@/components/KitchenLoader";
 import PremiumPaywall from "@/components/PremiumPaywall";
 import RecipeDetailScreen, { type RecipeDetailData } from "@/components/RecipeDetailScreen";
+import RecipeConsiderationBadges from "@/components/RecipeConsiderationBadges";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import {
@@ -553,6 +554,7 @@ export default function HistoryPage() {
                         </span>
                       )}
                     </div>
+                    <RecipeConsiderationBadges considerations={recipe.considerations} compact />
                     <div className={styles.savedDate}>
                       <UiIcon slug="calendar_date" size={15} alt="" /> {formatDate(recipe.saved_at)}
                     </div>

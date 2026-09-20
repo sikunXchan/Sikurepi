@@ -1,6 +1,8 @@
 export const cookingHelpCopy = {
   ja: {
-    open: '困った', title: '調理中のお手伝い', context: 'いまの工程', choose: 'どうしましたか？',
+    open: 'AIに聞く・困った', title: '調理中のお手伝い', context: 'いまの工程', choose: 'よくある困りごと',
+    aiTitle: 'AIシェフにひとこと質問', aiHint: 'いまの工程と材料を見て、短く答えます。',
+    aiPlaceholder: '例：もう少し焼いた方がいい？', aiAsk: 'AIに質問する', aiThinking: '答えを考えています…', aiError: '回答できませんでした。もう一度お試しください。',
     missing: '材料が足りない', salty: '味が濃い', watery: '水っぽい', burnt: '焦げそう・焦げた', heat: '火が通らない', words: '料理用語がわからない',
     ingredient: '足りない材料', select: '材料を選んでください', alternatives: '代用の候補',
     noAlternative: 'この料理・材料・食事制限の条件では、確認済みの代用候補がありません。分量や手順は変更せず、材料を買い足すか別の料理を選びましょう。',
@@ -30,7 +32,9 @@ export const cookingHelpCopy = {
     source: '加熱の目安：厚生労働省',
   },
   en: {
-    open: 'Need help?', title: 'Help while cooking', context: 'Current step', choose: 'What happened?',
+    open: 'Ask AI / Help', title: 'Help while cooking', context: 'Current step', choose: 'Quick fixes',
+    aiTitle: 'Ask the AI chef', aiHint: 'Get a brief answer based on this step and its ingredients.',
+    aiPlaceholder: 'e.g. Should I cook this a little longer?', aiAsk: 'Ask AI', aiThinking: 'Thinking…', aiError: 'Could not answer. Please try again.',
     missing: 'Missing an ingredient', salty: 'Too salty', watery: 'Too watery', burnt: 'Burning or burnt', heat: 'Not cooked through', words: 'Explain cooking terms',
     ingredient: 'Missing ingredient', select: 'Choose an ingredient', alternatives: 'Possible substitutes',
     noAlternative: 'No verified substitute matches this dish, ingredient and your restrictions. Keep the recipe unchanged and buy the ingredient or choose another dish.',

@@ -15,6 +15,7 @@ import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
 import PageHeader from "@/components/PageHeader";
 import PremiumPaywall from "@/components/PremiumPaywall";
+import RecipeConsiderationBadges from "@/components/RecipeConsiderationBadges";
 import {
   getLocalIngredients,
   getLocalUserProfile,
@@ -54,6 +55,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getTrayTheme } from "@/lib/trayThemes";
 import { setNavLocked } from "@/lib/navLock";
 import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 import styles from "./Recipe.module.css";
 
 type RecipeItem = {
@@ -67,6 +69,7 @@ type Recipe = {
   genre?: string;
   climate_badge?: string;
   dish_badge?: string;
+  considerations?: RecipeConsiderations;
   course?: string;
   ingredients: RecipeItem[];
   steps: string[];
@@ -257,6 +260,7 @@ export default function RecipePage() {
       nutrition: recipe.nutrition || null,
       genre: recipe.genre || null,
       dish_badge: recipe.dish_badge || null,
+      considerations: recipe.considerations,
       servings: recipeServings(recipe.servings),
       meal_format: recipe.meal_format,
       components: recipe.components,
@@ -456,6 +460,7 @@ export default function RecipePage() {
         nutrition: recipe.nutrition || null,
         genre: recipe.genre || null,
         dish_badge: recipe.dish_badge || null,
+        considerations: recipe.considerations,
         servings: recipeServings(recipe.servings, sessionServings),
         meal_format: recipe.meal_format,
         components: recipe.components,
@@ -1111,6 +1116,7 @@ export default function RecipePage() {
                     </span>
                   )}
                 </div>
+                <RecipeConsiderationBadges considerations={detailRecipe.considerations} />
                 <h2 className={styles.recipeTitle}>{detailRecipe.title}</h2>
                 <span className={styles.recipeTime}>
                   <UiIcon slug="timer_clock" collection="core" size={16} alt="" />

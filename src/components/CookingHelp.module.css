@@ -3,6 +3,19 @@
 .context strong { font-size: 13px; line-height: 1.5; display: block; }
 .context p { margin: 5px 0 0; font-size: 12px; line-height: 1.7; color: #526356; }
 .label { display: block; font-size: 13px; font-weight: 800; margin: 18px 0 10px; }
+.aiBox { margin-top: 16px; padding: 14px; border: 1px solid #bfe1d7; border-radius: 16px; background: linear-gradient(145deg, #edf9f5, #fffaf4); }
+.aiBox > label { display: flex; align-items: center; gap: 7px; color: #226e61; font-size: 14px; font-weight: 900; }
+.aiBox > p { margin: 5px 0 10px; color: #63736c; font-size: 12px; line-height: 1.55; }
+.aiInputRow { display: flex; align-items: stretch; gap: 8px; }
+.aiInputRow input { min-width: 0; flex: 1; min-height: 46px; padding: 10px 12px; border: 1px solid #cbdcd5; border-radius: 12px; background: white; color: #3d4037; font: inherit; font-size: 16px; }
+.aiInputRow button { display: grid; place-items: center; flex: 0 0 46px; width: 46px; min-height: 46px; padding: 0; border: 0; border-radius: 12px; background: #277d70; color: white; box-shadow: none; }
+.aiInputRow button::before { display: none; }
+.aiInputRow button:disabled { opacity: .48; }
+.aiStatus { display: block; margin-top: 9px; color: #52766c; font-size: 12px; font-weight: 700; }
+.aiAnswer { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 11px 12px; border-radius: 12px; background: white; color: #344a43; box-shadow: 0 5px 18px rgba(44, 104, 87, .08); }
+.aiAnswer svg { flex: 0 0 auto; margin-top: 3px; color: #2b8375; }
+.aiAnswer p { margin: 0; color: inherit; font-size: 13px; font-weight: 700; line-height: 1.65; }
+.aiError { margin: 9px 0 0 !important; color: #a63d4a !important; font-size: 12px !important; font-weight: 700; }
 .issues { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .issues button { min-height: 46px; padding: 9px 10px; border: 1px solid #dcded5; border-radius: 12px; background: white; color: #525c50; font-size: 12px; line-height: 1.5; box-shadow: none; }
 .issues button::before, .shopping::before { display: none; }

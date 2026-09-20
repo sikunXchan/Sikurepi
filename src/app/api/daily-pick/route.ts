@@ -18,6 +18,7 @@ import {
 import { qualityGateErrors } from '@/lib/recipeQuality';
 import type { ValidatedRecipe } from '@/lib/recipeValidation';
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
+import { buildRecipeConsiderations, type RecipeConsiderations } from '@/lib/recipeConsiderations';
 
 // ホームタブ「今日のおすすめ」用のAPI。
 // POSTは端末から渡された在庫・好みを使うパーソナライズ枠。結果はクライアント側で
@@ -41,6 +42,7 @@ export type DailyPickRecipe = {
   tips: BilingualText;
   nutrition: { calories: number; protein_g: number; fat_g: number; carbs_g: number };
   servings?: number;
+  considerations?: RecipeConsiderations;
 };
 
 type FlavorFeedbackSummary = {
@@ -372,7 +374,11 @@ export async function POST(request: Request) {
       : todayDateString();
     const personalization = parsePersonalization(body?.personalization);
     const recipe = await generateDailyPickRecipe(requestedDate, personalization);
-    return NextResponse.json({ date: requestedDate, recipe, personalized: true });
+    return NextResponse.json({
+      date: requestedDate,
+      recipe: { ...recipe, considerations: buildRecipeConsiderations(personalization) },
+      personalized: true,
+    });
   } catch (error: unknown) {
     console.error('Personalized Daily Pick Error:', error);
     return NextResponse.json(

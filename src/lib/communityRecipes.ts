@@ -1,5 +1,5 @@
 import { getOrCreateDeviceId, type RecipeFeedbackRating } from './storage';
-import { serializeCommunityRecipeIdentity, type CommunityRecipe } from './communityRecipeSchema';
+import { sanitizeCommunityRecipe, serializeCommunityRecipeIdentity, type CommunityRecipe } from './communityRecipeSchema';
 import { queueCommunityFeedback, type FeedbackSyncStatus } from './communityFeedbackQueue';
 
 export type ShareableRecipe = CommunityRecipe;
@@ -225,9 +225,14 @@ export function flushCommunityRecipeOutbox(): Promise<boolean> {
 export async function shareCookedRecipes(recipes: ShareableRecipe[]): Promise<boolean> {
   if (recipes.length === 0) return true;
 
+  // Public recipes contain only the recipe itself. Local safety-consideration
+  // metadata can reveal allergies or religious choices, so strip every unknown
+  // field before it reaches the outbox, local community mirror, or network.
+  const publicRecipes = recipes.map(sanitizeCommunityRecipe);
+
   const current = readOutbox();
   const queuedIdentities = new Set(current.map((item) => serializeCommunityRecipeIdentity(item.recipe)));
-  const queued = recipes
+  const queued = publicRecipes
     .filter((recipe) => {
       const identity = serializeCommunityRecipeIdentity(recipe);
       if (queuedIdentities.has(identity)) return false;

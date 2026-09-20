@@ -3,6 +3,7 @@ import {
   validateDietaryRestrictions,
   validateExcludedIngredients,
 } from '../src/lib/dietaryRules.ts';
+import { buildRecipeConsiderations, getConsiderationLabels, sanitizeRecipeConsiderations } from '../src/lib/recipeConsiderations.ts';
 
 const recipe = (ingredients, steps = [], title = 'Test recipe') => ({
   title,
@@ -75,5 +76,21 @@ assert.equal(validateExcludedIngredients(recipe(['shrimp']), ['えび']).length 
 assert.equal(validateExcludedIngredients(recipe(['milk']), ['牛乳']).length > 0, true);
 assert.equal(validateExcludedIngredients(recipe(['野菜'], ['仕上げにbutterを加える']), ['乳製品']).length > 0, true);
 assert.equal(validateExcludedIngredients(recipe(['mushroom']), ['ham']).length > 0, false);
+
+const considerations = buildRecipeConsiderations({
+  dietaryRestrictions: ['ハラール（イスラム教）', 'invalid', 'グルテンフリー'],
+  excludedIngredients: ['shrimp'],
+});
+assert.deepEqual(considerations, {
+  dietaryRestrictions: ['ハラール（イスラム教）', 'グルテンフリー'],
+  allergyAndExclusionChecked: true,
+});
+assert.deepEqual(getConsiderationLabels(considerations, 'en'), [
+  'Halal considered', 'Gluten-free', 'Allergies & exclusions checked',
+]);
+assert.deepEqual(sanitizeRecipeConsiderations({ dietaryRestrictions: ['ヴィーガン'], allergyAndExclusionChecked: true }), {
+  dietaryRestrictions: ['ヴィーガン'], allergyAndExclusionChecked: true,
+});
+assert.equal(buildRecipeConsiderations({}), undefined);
 
 console.log('Dietary safety rules: all tests passed.');
