@@ -4,7 +4,7 @@ import sharp from 'sharp';
 
 const ROOT = process.cwd();
 const WIDTH = 1920;
-const HEIGHT = 1080;
+const HEIGHT = 1280;
 const ingredientDirectory = path.join(ROOT, 'public', 'ingredients', 'thumbs');
 const dishDirectory = path.join(ROOT, 'public', 'dishes', 'icons');
 const mascotPath = path.join(ROOT, 'public', 'mascot', 'bear_excited.png');
@@ -52,17 +52,18 @@ const background = Buffer.from(`
       <stop offset="1" stop-color="#57c9c0"/>
     </linearGradient>
   </defs>
-  <rect width="1920" height="1080" fill="url(#bg)"/>
-  <rect width="1920" height="1080" fill="url(#rose)"/>
-  <rect width="1920" height="1080" fill="url(#mint)"/>
+  <rect width="1920" height="1280" fill="url(#bg)"/>
+  <rect width="1920" height="1280" fill="url(#rose)"/>
+  <rect width="1920" height="1280" fill="url(#mint)"/>
   <g opacity="0.18" fill="#d9b891">
     <circle cx="55" cy="58" r="5"/><circle cx="96" cy="58" r="5"/><circle cx="137" cy="58" r="5"/>
-    <circle cx="1783" cy="1012" r="5"/><circle cx="1824" cy="1012" r="5"/><circle cx="1865" cy="1012" r="5"/>
+    <circle cx="1783" cy="1212" r="5"/><circle cx="1824" cy="1212" r="5"/><circle cx="1865" cy="1212" r="5"/>
   </g>
 
-  <rect x="58" y="116" width="930" height="906" rx="54" fill="#fffefb" stroke="#f3ded5" stroke-width="3" filter="url(#shadow)"/>
-  <rect x="88" y="147" width="870" height="844" rx="38" fill="#fffaf5" stroke="#eedfd8" stroke-width="2"/>
+  <rect x="58" y="116" width="930" height="1046" rx="54" fill="#fffefb" stroke="#f3ded5" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="88" y="147" width="870" height="984" rx="38" fill="#fffaf5" stroke="#eedfd8" stroke-width="2"/>
 
+  <g transform="translate(0 100)">
   <text x="1060" y="126" fill="#17948d" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="8">SIKUREPI VISUAL LIBRARY</text>
   <text x="1052" y="372" fill="url(#number)" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="226" font-weight="900" letter-spacing="-12">535+</text>
   <text x="1062" y="478" fill="#40302c" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="83" font-weight="900" letter-spacing="1">FOOD</text>
@@ -81,6 +82,7 @@ const background = Buffer.from(`
   <rect x="1060" y="894" width="570" height="68" rx="34" fill="#e8f7f3"/>
   <text x="1100" y="939" fill="#197f79" font-family="Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="2">PANTRY  ·  RECIPE  ·  COLLECTION</text>
 
+  </g>
   <rect x="111" y="168" width="248" height="52" rx="26" fill="#17948d"/>
   <text x="145" y="203" fill="#ffffff" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="2">ALL 385 SHOWN</text>
 </svg>`);
@@ -89,10 +91,10 @@ const composites = [{ input: background, left: 0, top: 0 }];
 
 const columns = 22;
 const cellWidth = 38;
-const cellHeight = 40;
+const cellHeight = 47;
 const iconSize = 34;
 const gridLeft = 104;
-const gridTop = 228;
+const gridTop = 258;
 
 for (let index = 0; index < ingredientFiles.length; index += 1) {
   const column = index % columns;
@@ -112,7 +114,7 @@ const mascot = await sharp(mascotPath)
   .resize(170, 170, { fit: 'contain' })
   .png()
   .toBuffer();
-composites.push({ input: mascot, left: 1720, top: 820 });
+composites.push({ input: mascot, left: 1720, top: 970 });
 
 await sharp({
   create: {
@@ -125,6 +127,11 @@ await sharp({
   .composite(composites)
   .png({ compressionLevel: 9, adaptiveFiltering: true })
   .toFile(outputPath);
+
+if (process.argv[2]) {
+  await fs.mkdir(process.argv[2], { recursive: true });
+  await fs.copyFile(outputPath, path.join(process.argv[2], path.basename(outputPath)));
+}
 
 const metadata = await sharp(outputPath).metadata();
 const stat = await fs.stat(outputPath);
