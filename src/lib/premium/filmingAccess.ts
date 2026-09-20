@@ -1,8 +1,8 @@
 export const FILMING_ACCESS_STORAGE_KEY = 'sikurepi_filming_plus_v1';
 
-// This is a convenience gate for a Debug/Test Store build, not an account or
-// production authentication secret. Keep the clear text out of the bundle so it
-// is not accidentally surfaced by a simple string search in filming builds.
+// This is a convenience gate for review and filming, not an account authentication
+// secret. Keep the clear text out of the bundle so it is not accidentally surfaced
+// by a simple string search.
 function hashPassword(value: string): number {
   let hash = 2166136261;
   for (const character of value.normalize('NFKC')) {

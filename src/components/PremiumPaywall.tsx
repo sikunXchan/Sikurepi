@@ -224,26 +224,24 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   <RotateCcw size={14} />{t.premium.restore}
                 </button>
                 <p className={styles.legal}>{t.premium.legal}</p>
-                {premium.filmingAccessAvailable && (
-                  <form className={styles.filmingAccess} onSubmit={handleFilmingUnlock}>
-                    <div className={styles.filmingHeading}><KeyRound size={16} /><strong>{t.premium.filmingAccessTitle}</strong></div>
-                    <p>{t.premium.filmingAccessHint}</p>
-                    <div className={styles.filmingInputRow}>
-                      <input
-                        type="password"
-                        value={filmingPassword}
-                        onChange={(event) => setFilmingPassword(event.target.value)}
-                        placeholder={t.premium.filmingAccessPlaceholder}
-                        autoComplete="off"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                      />
-                      <button type="submit" disabled={!filmingPassword}>{t.premium.filmingAccessUnlock}</button>
-                    </div>
-                    {filmingError && <span className={styles.filmingError} role="alert">{filmingError}</span>}
-                  </form>
-                )}
+                <form className={styles.filmingAccess} onSubmit={handleFilmingUnlock}>
+                  <div className={styles.filmingHeading}><KeyRound size={16} /><strong>{t.premium.filmingAccessTitle}</strong></div>
+                  <p>{t.premium.filmingAccessHint}</p>
+                  <div className={styles.filmingInputRow}>
+                    <input
+                      type="password"
+                      value={filmingPassword}
+                      onChange={(event) => setFilmingPassword(event.target.value)}
+                      placeholder={t.premium.filmingAccessPlaceholder}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                    />
+                    <button type="submit" disabled={!filmingPassword}>{t.premium.filmingAccessUnlock}</button>
+                  </div>
+                  {filmingError && <span className={styles.filmingError} role="alert">{filmingError}</span>}
+                </form>
               </>
             )}
           </motion.section>
