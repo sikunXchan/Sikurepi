@@ -96,3 +96,14 @@ Test Store Buildでは、Plus画面でプランを選び購入ボタンを押し
 公開SDKキーはクライアントに含まれる前提のキーです。RevenueCatのSecret APIキーは`NEXT_PUBLIC_`変数やリポジトリには絶対に保存しないでください。
 
 iOSアイコンは `public/icon.png` を元に `npm run prepare:ios-icon` で作成します。Codemagicもこの処理を実行し、1024px・不透明のアイコンをアセットカタログへ組み込みます。アイコン変更にはIPAの再ビルドとインストールが必要です。
+
+## License / ライセンス
+
+The Sikurepi source code and software documentation are available under the
+[MIT License](./LICENSE). The Sikurepi name, logo, chef-bear mascot, application
+icons, and original visual assets are not covered by the MIT License; see the
+[Sikurepi Asset License Notice](./ASSETS_LICENSE.md) for details.
+
+Sikurepiのソースコードとソフトウェア文書は[MIT License](./LICENSE)で公開しています。
+Sikurepiの名称、ロゴ、シェフぐま、アプリアイコン、オリジナル画像素材はMIT Licenseの
+対象外です。詳細は[アセットライセンス](./ASSETS_LICENSE.md)を確認してください。
