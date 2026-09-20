@@ -24,6 +24,7 @@ import CookingHelp from "./CookingHelp";
 import { cookingHelpCopy } from "@/lib/i18n/cookingHelp";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { CookedRecord, NutritionData } from "@/lib/storage";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 
 type IngredientItem = {
   name: string;
@@ -38,6 +39,7 @@ type CompletionRecipe = {
   tips?: string;
   genre?: string | null;
   dish_badge?: string | null;
+  considerations?: RecipeConsiderations;
   nutrition?: NutritionData | null;
   source?: NonNullable<CookedRecord['source']>;
   sourceRecipeId?: string;

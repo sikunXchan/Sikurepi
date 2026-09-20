@@ -29,6 +29,7 @@ import {
   WeeklySlot,
 } from '@/lib/recipeQuality';
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
+import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 export const maxDuration = 300;
@@ -427,6 +428,7 @@ ${targetedRepair
         plan: planArray.map((entry) => ({
           ...(entry as Record<string, unknown>),
           servings: targetServings,
+          considerations: buildRecipeConsiderations(actualProfile),
         })),
         weeklyTargets: { calories: weeklyCalories, protein_g: weeklyProtein, fat_g: weeklyFat, carbs_g: weeklyCarbs },
       }, { headers: metrics() });

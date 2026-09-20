@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { selectRevenueCatApiKey } from '../src/lib/premium/revenueCatConfig.ts';
+import { verifyFilmingPassword } from '../src/lib/premium/filmingAccess.ts';
 
 // Exercise the real purchases entry points with a recording SDK. No store/network calls.
 const purchasesSource = readFileSync(new URL('../src/lib/purchases.ts', import.meta.url), 'utf8');
@@ -127,4 +128,7 @@ for (const platform of ['ios', 'android']) {
 const web = loadPurchases('web', { NEXT_PUBLIC_REVENUECAT_IOS_API_KEY: 'appl_example' });
 assert.equal((await web.api.getPremiumSnapshot()).availability, 'web');
 assert.equal(web.calls.length, 0);
+assert.equal(verifyFilmingPassword('Hello Sikurepi'), true);
+assert.equal(verifyFilmingPassword(' Hello Sikurepi '), true);
+assert.equal(verifyFilmingPassword('hello sikurepi'), false);
 console.log('Native purchase startup: Test Store is Debug-only; Release rejects test/wrong/missing keys; platform keys configure once.');

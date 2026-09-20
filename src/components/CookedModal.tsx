@@ -22,6 +22,7 @@ import {
   MealComponent,
   MealFormat,
 } from "@/lib/storage";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import IngredientIcon from "./IngredientIcon";
@@ -40,6 +41,7 @@ type RecipeLike = {
   tips?: string;
   genre?: string | null;
   dish_badge?: string | null;
+  considerations?: RecipeConsiderations;
   nutrition?: NutritionData | null;
   source?: NonNullable<CookedRecord['source']>;
   sourceRecipeId?: string;
@@ -208,6 +210,7 @@ export default function CookedModal({
             nutrition,
             genre: recipe.genre || null,
             dish_badge: recipe.dish_badge || null,
+            considerations: recipe.considerations,
             servings: recipe.servings,
             meal_format: recipe.meal_format,
             components: recipe.components,

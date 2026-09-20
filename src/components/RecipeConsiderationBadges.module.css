@@ -1,0 +1,31 @@
+.row {
+  display: flex;
+  gap: 7px;
+  width: 100%;
+  overflow-x: auto;
+  padding: 2px 1px 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.row::-webkit-scrollbar { display: none; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(22, 125, 105, 0.28);
+  border-radius: 999px;
+  background: #e8f7f2;
+  color: #176d65;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.compact { padding-block: 1px; }
+.compact .badge { min-height: 24px; padding: 3px 8px; font-size: 11px; }

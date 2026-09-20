@@ -4,6 +4,7 @@ import { toHiragana } from './kana';
 import { getIngredientCategoryForName, type IngredientIconCategory } from './ingredientIcons';
 import { normalizeGuideProgress, mergeGuideProgress, type GuideKey, type GuideProgress } from './guideProgress';
 import type { TrayThemeId } from './trayThemes';
+import type { RecipeConsiderations } from './recipeConsiderations';
 import {
   FREE_DAILY_RECEIPT_SCANS,
   FREE_DAILY_RECIPE_CREDITS,
@@ -100,6 +101,7 @@ export type SavedRecipe = {
   nutrition: NutritionData | null;
   genre: string | null;
   dish_badge?: string | null;
+  considerations?: RecipeConsiderations;
   servings?: number;
   meal_format?: MealFormat;
   components?: MealComponent[];
@@ -438,6 +440,7 @@ export type PlannedRecipe = {
   time: string;
   genre?: string | null;
   dish_badge?: string | null;
+  considerations?: RecipeConsiderations;
   ingredients: { name: string; amount: string }[];
   steps: string[];
   tips: string;
@@ -845,6 +848,7 @@ export type LastRecipeGeneration = {
     genre?: string;
     climate_badge?: string;
     dish_badge?: string;
+    considerations?: RecipeConsiderations;
     course?: string;
     ingredients: { name: string; amount: string }[];
     steps: string[];

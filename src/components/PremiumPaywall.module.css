@@ -216,3 +216,17 @@
 @media (prefers-reduced-motion: reduce) {
   .backdrop { backdrop-filter: none; }
 }
+.filmingAccess {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px dashed rgba(111, 83, 70, .24);
+  border-radius: 15px;
+  background: rgba(255, 250, 243, .76);
+}
+.filmingHeading { display: flex; align-items: center; gap: 7px; color: var(--ink); font-size: 13px; }
+.filmingAccess > p { margin: 5px 0 9px; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+.filmingInputRow { display: flex; gap: 8px; }
+.filmingInputRow input { min-width: 0; flex: 1; min-height: 42px; padding: 9px 11px; border: 1px solid var(--line-soft); border-radius: 11px; background: white; color: var(--ink); font-size: 16px; }
+.filmingInputRow button { min-height: 42px; padding: 8px 13px; border-radius: 11px; background: #4c8077; color: white; box-shadow: none; font-size: 12px; font-weight: 800; }
+.filmingInputRow button::before { display: none; }
+.filmingError { display: block; margin-top: 7px; color: #b13f51; font-size: 11px; font-weight: 800; }

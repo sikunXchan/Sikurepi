@@ -11,6 +11,7 @@ import NutritionChart from "./NutritionChart";
 import RecipeThumbnail from "./RecipeThumbnail";
 import UiIcon from "./UiIcon";
 import PremiumPaywall from "./PremiumPaywall";
+import RecipeConsiderationBadges from "./RecipeConsiderationBadges";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/lib/storage";
 import { recipeServings, scaleIngredientAmount } from "@/lib/servingScale";
 import { getTrayTheme } from "@/lib/trayThemes";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 import styles from "@/app/recipe/Recipe.module.css";
 
 export type RecipeDetailData = {
@@ -37,6 +39,7 @@ export type RecipeDetailData = {
   genre?: string | null;
   climate_badge?: string | null;
   dish_badge?: string | null;
+  considerations?: RecipeConsiderations;
   course?: string | null;
   ingredients: { name: string; amount: string }[];
   steps: string[];
@@ -138,6 +141,7 @@ export default function RecipeDetailScreen({
       nutrition: displayedRecipe.nutrition || null,
       genre: displayedRecipe.genre || null,
       dish_badge: displayedRecipe.dish_badge || null,
+      considerations: displayedRecipe.considerations,
       servings: displayedRecipe.servings,
       meal_format: displayedRecipe.meal_format,
       components: displayedRecipe.components,
@@ -218,6 +222,7 @@ export default function RecipeDetailScreen({
                   {displayedRecipe.climate_badge && <span className={styles.climateBadge}><UiIcon slug="clear" size={15} alt="" />{stripLeadingEmoji(displayedRecipe.climate_badge)}</span>}
                   {displayedRecipe.dish_badge && <span className={styles.climateBadge}><UiIcon slug="dishwashing" size={15} alt="" />{stripLeadingEmoji(displayedRecipe.dish_badge)}</span>}
                 </div>
+                <RecipeConsiderationBadges considerations={displayedRecipe.considerations} />
                 <h2 className={styles.recipeTitle}>{displayedRecipe.title}</h2>
                 <span className={styles.recipeTime}><UiIcon slug="timer_clock" collection="core" size={16} alt="" />{displayedRecipe.time}<span aria-hidden="true">・</span>{t.recipe.servingsUnit(servings)}</span>
                 <div className={styles.ingredientIconRow}>

@@ -44,6 +44,7 @@ import { needsCommunityTranslation } from "@/lib/communityTranslation";
 import { communityTranslationCopy } from "@/lib/i18n/community";
 import { getIngredientIconDisplayName, getIngredientIconSlug } from "@/lib/ingredientIcons";
 import { GuideButton, WelcomeGuide } from "@/components/AppGuide";
+import type { RecipeConsiderations } from "@/lib/recipeConsiderations";
 
 type BilingualText = { ja: string; en: string };
 type DailyPickRecipe = {
@@ -52,6 +53,7 @@ type DailyPickRecipe = {
   time: string;
   genre: string;
   dish_badge?: string;
+  considerations?: RecipeConsiderations;
   ingredients: { name: BilingualText; amount: BilingualText }[];
   steps: BilingualText[];
   tips: BilingualText;
@@ -211,6 +213,7 @@ export default function HomePage() {
       time: visibleDailyPick.time,
       genre: visibleDailyPick.genre,
       dish_badge: visibleDailyPick.dish_badge,
+      considerations: visibleDailyPick.considerations,
       ingredients: visibleDailyPick.ingredients.map(ing => ({
         name: pickText(ing.name, language),
         amount: pickText(ing.amount, language),

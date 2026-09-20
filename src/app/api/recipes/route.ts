@@ -29,6 +29,7 @@ import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, valid
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 import { normalizeCookingTips } from '@/lib/cookingTips';
 import { AiTimeoutError, AiUsageLimitError } from '@/lib/ai';
+import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
 
 export const maxDuration = 180;
 
@@ -436,6 +437,7 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
         recipes: recipeArray.map((recipe) => ({
           ...(recipe as Record<string, unknown>),
           servings: targetServings,
+          considerations: buildRecipeConsiderations(actualProfile),
         })),
       }, {
         headers: generationHeaders(generationStartedAt, attemptTelemetry, generationAttempts),

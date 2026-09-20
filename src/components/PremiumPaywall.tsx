@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Crown, Loader2, Palette, RotateCcw, X } from "lucide-react";
+import { Check, Crown, KeyRound, Loader2, Palette, RotateCcw, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import { isRevenueCatTestStoreBuild, type PurchaseActionResult } from "@/lib/purchases";
@@ -40,6 +40,8 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   const testStoreBuild = isRevenueCatTestStoreBuild();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [filmingPassword, setFilmingPassword] = useState("");
+  const [filmingError, setFilmingError] = useState("");
 
   const selectedPlan = useMemo(
     () => premium.plans.find((plan) => plan.id === selectedPlanId) ?? premium.plans[0] ?? null,
@@ -49,6 +51,8 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   useEffect(() => {
     if (!open) return;
     setMessage("");
+    setFilmingPassword("");
+    setFilmingError("");
     void premium.refresh();
     void premium.trackPaywallImpression();
   // 開くたびに一度だけ更新・計測する。Context関数は安定している。
@@ -88,6 +92,18 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
     setMessage("");
     const result = await premium.restore();
     finishIfActivated(result, true);
+  };
+
+  const handleFilmingUnlock = (event: React.FormEvent) => {
+    event.preventDefault();
+    setFilmingError("");
+    if (!premium.unlockForFilming(filmingPassword)) {
+      setFilmingError(t.premium.filmingAccessWrong);
+      return;
+    }
+    setMessage(t.premium.filmingAccessSuccess);
+    onActivated?.();
+    window.setTimeout(onClose, 500);
   };
 
   const unavailableMessage = premium.availability === "web"
@@ -208,6 +224,26 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   <RotateCcw size={14} />{t.premium.restore}
                 </button>
                 <p className={styles.legal}>{t.premium.legal}</p>
+                {premium.filmingAccessAvailable && (
+                  <form className={styles.filmingAccess} onSubmit={handleFilmingUnlock}>
+                    <div className={styles.filmingHeading}><KeyRound size={16} /><strong>{t.premium.filmingAccessTitle}</strong></div>
+                    <p>{t.premium.filmingAccessHint}</p>
+                    <div className={styles.filmingInputRow}>
+                      <input
+                        type="password"
+                        value={filmingPassword}
+                        onChange={(event) => setFilmingPassword(event.target.value)}
+                        placeholder={t.premium.filmingAccessPlaceholder}
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                      />
+                      <button type="submit" disabled={!filmingPassword}>{t.premium.filmingAccessUnlock}</button>
+                    </div>
+                    {filmingError && <span className={styles.filmingError} role="alert">{filmingError}</span>}
+                  </form>
+                )}
               </>
             )}
           </motion.section>
