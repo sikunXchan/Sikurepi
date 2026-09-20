@@ -48,6 +48,10 @@
   --motion-fast: 160ms;
   --motion-base: 260ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Keep the shared page shell clear of iPhone cutouts and the home indicator.
+     These resolve to 0px in ordinary desktop browsers. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* スマホ側のシステムテーマ(ダークモード)に連動して配色が変わると
@@ -84,6 +88,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -177,8 +182,8 @@ input::placeholder, textarea::placeholder {
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
-  padding: 22px clamp(16px, 4vw, 28px);
-  padding-bottom: 116px;
+  padding: calc(22px + var(--safe-area-top)) clamp(16px, 4vw, 28px)
+    calc(82px + var(--safe-area-bottom));
 }
 
 /* アプリ内素材は操作用UIの一部。長押し時にOSの画像プレビュー・保存メニューや
@@ -288,7 +293,7 @@ img {
 
 @media (max-width: 480px) {
   .container {
-    padding-top: 14px;
+    padding-top: calc(14px + var(--safe-area-top));
     padding-right: 14px;
     padding-left: 14px;
   }

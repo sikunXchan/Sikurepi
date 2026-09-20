@@ -21,9 +21,9 @@ const BEAR_POSES = [
 // アプリを開いた時(セッション中1回だけ)、これまでに1回でも自炊記録があれば登場し、
 // 定型のねぎらいメッセージを吹き出しで表示する。タップで下に降りて消える。
 export default function CookingCheerBear() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState("");
+  const [messageIndex, setMessageIndex] = useState(0);
   const [pose, setPose] = useState(BEAR_POSES[0]);
 
   useEffect(() => {
@@ -37,12 +37,11 @@ export default function CookingCheerBear() {
     const stats = getLocalUserStats();
     if (!stats.total_cooked || stats.total_cooked <= 0) return;
 
-    const messages = t.cheer.messages;
-    const chosen = messages[Math.floor(Math.random() * messages.length)];
+    const chosenIndex = Math.floor(Math.random() * t.cheer.messages.length);
     const chosenPose = BEAR_POSES[Math.floor(Math.random() * BEAR_POSES.length)];
 
     const timer = setTimeout(() => {
-      setMessage(chosen);
+      setMessageIndex(chosenIndex);
       setPose(chosenPose);
       setVisible(true);
       try {
@@ -53,8 +52,7 @@ export default function CookingCheerBear() {
     }, 700);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [language, t.cheer.messages]);
 
   const handleDismiss = () => setVisible(false);
 
@@ -75,7 +73,7 @@ export default function CookingCheerBear() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 18 }}
           >
-            {message}
+            {t.cheer.messages[messageIndex] ?? t.cheer.messages[0]}
           </motion.div>
           <motion.img
             src={`/mascot/${pose}`}

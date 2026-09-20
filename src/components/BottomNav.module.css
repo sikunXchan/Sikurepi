@@ -9,7 +9,9 @@
   display: flex;
   justify-content: space-around;
   padding: 8px max(3px, calc((100vw - 760px) / 2));
-  padding-bottom: calc(7px + env(safe-area-inset-bottom));
+  /* The inset already represents the protected home-indicator area. Adding the
+     normal 7px on top created a conspicuous empty strip in the native shell. */
+  padding-bottom: max(7px, env(safe-area-inset-bottom, 0px));
   z-index: 1000;
   box-shadow: 0 -10px 30px rgba(94, 61, 45, 0.08);
   backdrop-filter: blur(18px);
