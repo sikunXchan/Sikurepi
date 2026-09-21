@@ -151,7 +151,9 @@ export function mergeCommunityRecipesWithLocal(
         ranking_score: serverRow?.ranking_score || 0,
         created_at: serverRow?.created_at || item.createdAt,
         recipe: serverRow?.recipe || item.recipe,
-        sync_status: item.syncStatus,
+        // A lost POST response can leave the local mirror pending even though
+        // GET already confirms publication. Published rows can be translated.
+        sync_status: serverRow ? 'synced' : item.syncStatus,
       };
     });
 

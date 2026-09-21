@@ -21,6 +21,7 @@
     "test:premium": "node --no-warnings --experimental-strip-types scripts/test-premium-quota.mjs",
     "test:feedback": "node --no-warnings --experimental-strip-types scripts/test-recipe-feedback.mjs",
     "test:community": "node --no-warnings --experimental-strip-types scripts/test-community-sync.mjs",
+    "test:community-translation": "node --no-warnings --experimental-strip-types scripts/test-community-translation.mjs",
     "test:recipe-cache": "node --no-warnings --experimental-strip-types scripts/test-recipe-cache.mjs",
     "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
     "test:servings": "node --no-warnings --experimental-strip-types scripts/test-serving-scale.mjs",

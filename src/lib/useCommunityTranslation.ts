@@ -10,7 +10,10 @@ const pending = new Map<string, Promise<CommunityRecipeTranslation | null>>();
 let running = 0;
 const waiting: (() => void)[] = [];
 function readCache(): Entry[] {
-  try { const data = JSON.parse(localStorage.getItem(STORAGE) || '[]'); return Array.isArray(data) ? data.slice(-40) : []; }
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE) || '[]');
+    return Array.isArray(data) ? data.filter(entry => entry && typeof entry.key === 'string' && typeof entry.source === 'string').slice(-40) : [];
+  }
   catch { return []; }
 }
 
@@ -18,7 +21,11 @@ async function translate(id: string, recipe: CommunityRecipe, language: 'ja' | '
   const key = id + ':' + language;
   const source = translationSourceKey(recipe);
   const cached = readCache().find(entry => entry.key === key && entry.source === source);
-  if (cached) return validateCommunityTranslation(recipe, cached.translation, language);
+  if (cached) {
+    const translation = validateCommunityTranslation(recipe, cached.translation, language);
+    if (translation) return translation;
+    // A stale/invalid cache entry must not prevent a fresh translation forever.
+  }
   const requestKey = key + source;
   if (pending.has(requestKey)) return pending.get(requestKey)!;
   const task = (async () => {
@@ -27,10 +34,19 @@ async function translate(id: string, recipe: CommunityRecipe, language: 'ja' | '
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
     try {
-      const response = await fetch(`/api/community-recipes/${encodeURIComponent(id)}/translate`, {
+      const request = () => fetch(`/api/community-recipes/${encodeURIComponent(id)}/translate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language }), signal: controller.signal,
       });
+      let response = await request();
+      const retryAfter = Number(response.headers.get('Retry-After'));
+      // The server bounds concurrent translations. Retry that short busy period
+      // once, but never loop against the longer per-client usage limit.
+      if (response.status === 429 && retryAfter > 0 && retryAfter <= 10) {
+        await new Promise<void>(resolve => setTimeout(resolve, retryAfter * 1000));
+        if (controller.signal.aborted) return null;
+        response = await request();
+      }
       if (!response.ok) return null;
       const data = await response.json();
       const translation = validateCommunityTranslation(recipe, data.translation, language);
