@@ -83,7 +83,7 @@ function client(fetch, values = new Map()) {
           const i = cursor++;
           if (!(i in slots)) slots[i] = initial;
           const currentSlots = slots;
-          return [slots[i], value => { currentSlots[i] = value; }];
+          return [slots[i], value => { currentSlots[i] = typeof value === 'function' ? value(currentSlots[i]) : value; }];
         },
       };
       throw new Error(name);
@@ -152,6 +152,10 @@ release();
 await Promise.all([firstRequest, secondRequest]);
 assert.equal(first('ja').recipe.title, source.title, 'late English response cannot overwrite Japanese selection');
 assert.equal(second().missing, false);
+assert.equal(first('en').busy, false, 'switching back after completion must not leave the old request stuck');
+await first('en').ensureTranslation();
+assert.equal(first('en').missing, false, 'returning to English can use the completed translation');
+assert.equal(requests, 1, 'language round trip reuses the cached result');
 
 // Exercise the real route with a fake AI provider and published recipe lookup.
 const routeCode = compile('../src/app/api/community-recipes/[id]/translate/route.ts');

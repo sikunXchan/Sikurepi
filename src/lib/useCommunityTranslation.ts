@@ -80,8 +80,10 @@ export function useCommunityTranslation(id: string, recipe: CommunityRecipe, lan
     const translated = await translate(id, recipe, language);
     if (currentKey.current === key) {
       setResult({ key, translation: translated });
-      setBusyKey(null);
     }
+    // Finish the old language's request even when the user switched away.
+    // Otherwise switching back leaves this card permanently "translating".
+    setBusyKey(activeKey => activeKey === key ? null : activeKey);
     return translated ? { ...recipe, translations: { ...recipe.translations, [language]: translated } } : recipe;
   }, [id, recipe, language, key]);
   return { recipe: localized, ensureTranslation, missing, busy: busyKey === key, failed: result?.key === key && !translation };
