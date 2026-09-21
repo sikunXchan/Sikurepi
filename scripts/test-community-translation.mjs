@@ -124,6 +124,21 @@ for (const retryAfter of ['10', '600']) {
   assert.equal(busy().failed, retryAfter === '600');
 }
 
+for (const status of [502, 503, 504]) {
+  requests = 0;
+  const recovering = client(async () => ++requests === 1
+    ? Response.json({}, { status }) : Response.json({ translation: english }))();
+  await recovering().ensureTranslation();
+  assert.equal(requests, 2);
+  assert.equal(recovering().missing, false, 'transient service failure recovers without requiring a tap');
+}
+requests = 0;
+const unavailable = client(async () => { requests++; return Response.json({}, { status: 503 }); })();
+await unavailable().ensureTranslation();
+assert.equal(requests, 2, 'persistent failures cannot create an unlimited retry loop');
+assert.equal(unavailable().failed, true);
+assert.equal(unavailable().recipe.title, source.title, 'original remains available when the service stays unavailable');
+
 let release;
 requests = 0;
 const shared = client(async () => { requests++; return new Promise(resolve => { release = () => resolve(Response.json({ translation: english })); }); });

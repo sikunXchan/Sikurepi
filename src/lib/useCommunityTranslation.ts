@@ -40,10 +40,12 @@ async function translate(id: string, recipe: CommunityRecipe, language: 'ja' | '
       });
       let response = await request();
       const retryAfter = Number(response.headers.get('Retry-After'));
-      // The server bounds concurrent translations. Retry that short busy period
-      // once, but never loop against the longer per-client usage limit.
-      if (response.status === 429 && retryAfter > 0 && retryAfter <= 10) {
-        await new Promise<void>(resolve => setTimeout(resolve, retryAfter * 1000));
+      // Retry a short busy period or transient service failure once within the
+      // same timeout. Never loop against the longer per-client usage limit.
+      const retryDelay = response.status === 429 && retryAfter > 0 && retryAfter <= 10
+        ? retryAfter * 1000 : [502, 503, 504].includes(response.status) ? 1500 : 0;
+      if (retryDelay > 0) {
+        await new Promise<void>(resolve => setTimeout(resolve, retryDelay));
         if (controller.signal.aborted) return null;
         response = await request();
       }
