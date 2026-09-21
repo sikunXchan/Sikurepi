@@ -34,22 +34,29 @@ healthier home-cooking habit without overwhelming them with options.
 - **Dietary clarity** — show visible badges for relevant allergies, dietary
   restrictions, and religious considerations.
 - **History and community** — revisit recent and saved recipes, track ingredient
-  coverage, share cooked recipes, and use feedback to improve future results.
+  coverage, and share cooked recipes. Personal cooking feedback informs future
+  suggestions; free-text notes are not included in public recipe queries.
 - **Food-rescue collection** — discover more than 380 original ingredient and
   dish illustrations while recording ingredients that were used before waste.
 - **Progression** — cooking activity advances a ten-rank chef journey designed
   to make home cooking feel rewarding.
 - **Japanese and English** — the interface, generated content, and community
   experience support both languages.
+- **Learn as you go** — explore a first recipe before setting up the pantry,
+  use contextual guides, and revisit instructions whenever needed.
 
-## RevenueCat integration
+## Monetization with RevenueCat
 
-Sikurepi Plus is backed by RevenueCat rather than a local premium flag.
+Store purchases for Sikurepi Plus are managed through RevenueCat. The free plan
+includes the core cooking experience and the same dietary checks as Plus.
+Plus expands generation limits, history access, and customization for people
+who make Sikurepi part of their daily routine.
 
 - A custom paywall loads the current RevenueCat Offering and packages.
-- Purchases call the native RevenueCat Capacitor SDK and unlock features from
-  verified `CustomerInfo` entitlements.
-- Restore Purchases and live entitlement updates are supported.
+- Purchases call the native RevenueCat Capacitor SDK. Production access uses
+  the active `premium` entitlement in `CustomerInfo` and rejects a failed
+  entitlement-verification result.
+- The native Restore Purchases flow and live entitlement updates are implemented.
 - Custom paywall impressions are reported to RevenueCat.
 - Free limits and Plus access are enforced by shared domain logic.
 - A dedicated Debug build supports RevenueCat Test Store purchases for the
@@ -60,11 +67,16 @@ The reviewer password supplied privately in the Devpost submission is a review
 convenience for inspecting Plus-only screens. It does not replace the RevenueCat
 purchase implementation.
 
-## Responsible recipe generation
+Purchase-to-Plus activation has been verified on an iOS device using RevenueCat
+Test Store. The Restore Purchases flow is implemented; end-to-end restoration
+still requires testing with Apple Sandbox, because Test Store does not support
+that flow.
+
+## How we validate AI-generated recipes
 
 Safety-sensitive preferences are not left to prompt wording alone. Sikurepi
 combines profile-aware generation with deterministic validation of ingredients
-and recipe output. A conflicting result is rejected instead of being presented
+and recipe output. A detected conflict is rejected instead of being presented
 as safe. The same profile is used for substitutions and cooking assistance.
 
 The app clearly avoids claiming religious certification or protection from
@@ -82,8 +94,8 @@ decisions appropriate to their own medical and religious requirements.
 - Supabase Row Level Security protects account-owned synchronized data.
 - RevenueCat secret keys are never shipped to the client; only public SDK keys
   are used by the native app.
-- Entitlement verification failures never unlock Plus features.
-- The production dependency audit currently reports no known vulnerabilities.
+- Store entitlement-verification failures do not grant purchased Plus access.
+- Production dependency checks can be reproduced with `npm audit --omit=dev`.
 
 These controls reduce risk but are not a claim of formal certification or an
 independent security audit.
@@ -141,7 +153,7 @@ npx cap sync ios
 
 Open `ios/App/App.xcodeproj` in Xcode. Native purchase testing requires a Debug
 build and a RevenueCat Test Store public key. Configure Test Store products,
-attach them to an Offering, and associate the Offering with the `premium`
+attach them to an Offering, and attach the products to the `premium`
 entitlement. Production builds must use the Apple-specific public SDK key and
 must never contain a `test_` key.
 
@@ -149,8 +161,10 @@ must never contain a `test_` key.
 
 ```bash
 npm run lint
+npx tsc --noEmit
 npm run build
 npm run test:purchases
+npm run test:paywall
 npm run test:release-safety
 npm run test:dietary
 npm run test:premium
