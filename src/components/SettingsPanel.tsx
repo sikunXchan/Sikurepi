@@ -27,6 +27,7 @@ import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, M
 import IngredientIcon from "./IngredientIcon";
 import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { getCookingTipCategory } from "@/lib/cookingTips";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { TRAY_THEMES, TrayThemeId } from "@/lib/trayThemes";
 import { DIETARY_RESTRICTION_OPTIONS } from "@/lib/dietaryRules";
@@ -692,7 +693,7 @@ export default function SettingsPanel({ onSaved }: Props) {
                 <div key={tip.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '10px 12px', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: 4, marginRight: 6 }}>
-                      {tip.category}
+                      {t.recipe.tipCategories[getCookingTipCategory(tip.category)]}
                     </span>
                     <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.4 }}>
                       {tip.tip}

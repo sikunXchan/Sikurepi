@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Crown, KeyRound, Loader2, Palette, RotateCcw, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { usePremium } from "@/lib/premium/PremiumContext";
-import { isRevenueCatTestStoreBuild, type PurchaseActionResult } from "@/lib/purchases";
+import { hasRevenueCatConfiguration, isRevenueCatTestStoreBuild, type PurchaseActionResult } from "@/lib/purchases";
 import styles from "./PremiumPaywall.module.css";
 
 type Props = {
@@ -19,6 +19,7 @@ type Props = {
 function actionMessage(
   result: PurchaseActionResult,
   t: ReturnType<typeof useLanguage>["t"]["premium"],
+  restored = false,
 ): string {
   switch (result.status) {
     case "pending":
@@ -28,7 +29,7 @@ function actionMessage(
     case "unavailable":
       return t.unavailable;
     case "error":
-      return t.purchaseError;
+      return restored ? t.restoreError : t.purchaseError;
     default:
       return "";
   }
@@ -42,6 +43,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
   const [message, setMessage] = useState("");
   const [filmingPassword, setFilmingPassword] = useState("");
   const [filmingError, setFilmingError] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const selectedPlan = useMemo(
     () => premium.plans.find((plan) => plan.id === selectedPlanId) ?? premium.plans[0] ?? null,
@@ -79,7 +81,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
       window.setTimeout(onClose, 650);
       return;
     }
-    if (result.status !== "cancelled") setMessage(actionMessage(result, t.premium));
+    if (result.status !== "cancelled") setMessage(actionMessage(result, t.premium, restored));
   };
 
   const handlePurchase = async () => {
@@ -90,8 +92,13 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
 
   const handleRestore = async () => {
     setMessage("");
-    const result = await premium.restore();
-    finishIfActivated(result, true);
+    setIsRestoring(true);
+    try {
+      const result = await premium.restore();
+      finishIfActivated(result, true);
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const handleFilmingUnlock = (event: React.FormEvent) => {
@@ -115,6 +122,7 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
         : premium.availability === "ready" && premium.plans.length === 0
           ? (testStoreBuild ? t.premium.testStoreNoOffering : t.premium.noOffering)
           : "";
+  const statusMessage = message || (!premium.isPremium ? unavailableMessage : "");
 
   const paywall = (
     <AnimatePresence>
@@ -161,6 +169,10 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
               <li><Palette size={15} />{t.premium.benefitSafety}</li>
             </ul>
 
+            {statusMessage && (
+              <div className={styles.message} role="status">{statusMessage}</div>
+            )}
+
             {premium.isPremium ? (
               <div className={styles.activeState}>
                 <Crown size={18} />
@@ -199,17 +211,13 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                   </div>
                 )}
 
-                {(message || unavailableMessage) && (
-                  <div className={styles.message} role="status">{message || unavailableMessage}</div>
-                )}
-
                 <button
                   type="button"
                   onClick={handlePurchase}
                   disabled={premium.busy || premium.availability !== "ready" || !selectedPlan}
                   className={styles.purchaseButton}
                 >
-                  {premium.busy ? (
+                  {premium.busy && !isRestoring ? (
                     <><Loader2 className="spinner" size={17} />{t.premium.processing}</>
                   ) : (
                     <><Crown size={17} />{selectedPlan ? t.premium.purchaseWithPrice(selectedPlan.priceString) : t.premium.purchase}</>
@@ -218,10 +226,14 @@ export default function PremiumPaywall({ open, onClose, onActivated }: Props) {
                 <button
                   type="button"
                   onClick={handleRestore}
-                  disabled={premium.busy || premium.availability !== "ready"}
+                  disabled={premium.busy || premium.availability === "loading" || !hasRevenueCatConfiguration()}
                   className={styles.restoreButton}
                 >
-                  <RotateCcw size={14} />{t.premium.restore}
+                  {isRestoring ? (
+                    <><Loader2 className="spinner" size={14} />{t.premium.restoring}</>
+                  ) : (
+                    <><RotateCcw size={14} />{t.premium.restore}</>
+                  )}
                 </button>
                 <p className={styles.legal}>{t.premium.legal}</p>
                 <form className={styles.filmingAccess} onSubmit={handleFilmingUnlock}>

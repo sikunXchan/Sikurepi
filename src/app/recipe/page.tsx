@@ -48,6 +48,7 @@ import {
   incrementFreeRecipeGeneration,
 } from "@/lib/storage";
 import { createRecipeGenerationRequestKey } from "@/lib/recipeCache";
+import { getCookingTipCategory, type CookingTipCategory } from "@/lib/cookingTips";
 import { useGenerationRequest } from "@/lib/useGenerationRequest";
 import { generationCopy } from "@/lib/i18n/generation";
 import { usePremium } from "@/lib/premium/PremiumContext";
@@ -105,10 +106,11 @@ const COURSE_ICON_SLUGS: Record<string, string> = {
   'ご飯・主食': 'rice_staple',
 };
 
-const TIP_CATEGORY_COLORS: Record<string, string> = {
-  '保存方法': '#20b2aa',
-  '調理のコツ': '#ff6f91',
-  '栄養豆知識': '#8b5cf6',
+const TIP_CATEGORY_COLORS: Record<CookingTipCategory, string> = {
+  storage: '#20b2aa',
+  cooking: '#ff6f91',
+  nutrition: '#8b5cf6',
+  other: '#8b5cf6',
 };
 
 // Geminiの過去キャッシュにはバッジ先頭の絵文字が残っている場合がある。
@@ -988,17 +990,21 @@ export default function RecipePage() {
                 transition={{ duration: 0.2 }}
                 className={styles.cookingTipsList}
               >
-                {cookingTips.map((tip, i) => (
-                  <div key={i} className={styles.cookingTipItem}>
-                    <span
-                      className={styles.tipCategoryBadge}
-                      style={{ background: `${TIP_CATEGORY_COLORS[tip.category] || '#8b5cf6'}20`, color: TIP_CATEGORY_COLORS[tip.category] || '#8b5cf6' }}
-                    >
-                      {tip.category}
-                    </span>
-                    <p className={styles.tipText}>{tip.tip}</p>
-                  </div>
-                ))}
+                {cookingTips.map((tip, i) => {
+                  const category = getCookingTipCategory(tip.category);
+                  const color = TIP_CATEGORY_COLORS[category];
+                  return (
+                    <div key={i} className={styles.cookingTipItem}>
+                      <span
+                        className={styles.tipCategoryBadge}
+                        style={{ background: `${color}20`, color }}
+                      >
+                        {t.recipe.tipCategories[category]}
+                      </span>
+                      <p className={styles.tipText}>{tip.tip}</p>
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
           </AnimatePresence>

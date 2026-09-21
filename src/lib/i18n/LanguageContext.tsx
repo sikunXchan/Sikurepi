@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import ja from "./locales/ja";
 import en from "./locales/en";
+import { DEFAULT_LANGUAGE, parseStoredLanguage } from "./config";
 
 export type Language = "ja" | "en";
 
@@ -18,25 +19,25 @@ type LanguageContextValue = {
   t: Dictionary;
 };
 
-// SSR時とクライアント初回レンダーの不一致を避けるため、既定値は常に日本語固定。
+// SSR時とクライアント初回レンダーの不一致を避けるため、既定値は常に英語固定。
 // 実際の保存済み言語設定は useEffect 内でのみ読み込む(ChefProfileBadge等と同じパターン)。
 const LanguageContext = createContext<LanguageContextValue>({
-  language: "ja",
+  language: DEFAULT_LANGUAGE,
   setLanguage: () => {},
   toggleLanguage: () => {},
-  t: ja,
+  t: DICTIONARIES[DEFAULT_LANGUAGE],
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("ja");
+  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved === "ja" || saved === "en") setLanguageState(saved);
+        const saved = parseStoredLanguage(localStorage.getItem(STORAGE_KEY));
+        if (saved) setLanguageState(saved);
       } catch {
-        // localStorage不可の環境ではデフォルト(ja)のまま
+        // localStorage不可の環境ではデフォルト(en)のまま
       }
     }, 0);
     return () => window.clearTimeout(timer);

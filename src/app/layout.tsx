@@ -6,6 +6,7 @@ import CookingCheerBear from "@/components/CookingCheerBear";
 import SyncManager from "@/components/SyncManager";
 import ImageInteractionGuard from "@/components/ImageInteractionGuard";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import { DEFAULT_LANGUAGE } from "@/lib/i18n/config";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { PremiumProvider } from "@/lib/premium/PremiumContext";
 
@@ -34,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang={DEFAULT_LANGUAGE}>
       <body>
         <AuthProvider>
           <LanguageProvider>

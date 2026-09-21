@@ -110,13 +110,12 @@ function isPremiumCustomer(customerInfo: CustomerInfo, purchasedProductIdentifie
   if (entitlement?.isActive) return true;
 
   // Test Storeは商品をEntitlementへ紐づけ忘れていても購入自体は成功する。
-  // 動画・審査用Debug IPAに限り、SDKが返した購入商品またはCustomerInfo内の
-  // テスト購入履歴をPlusとして扱う。本番キーではこのフォールバックを使わない。
+  // Debug IPAでは購入直後の結果または有効なサブスクリプションを許容する。
+  // 過去の購入履歴だけでは、期限切れの購入まで復元されるため解放しない。
+  // 本番キーではこのフォールバックを使わない。
   return isTestStoreBuild() && Boolean(
     purchasedProductIdentifier
-    || customerInfo.activeSubscriptions?.length
-    || customerInfo.allPurchasedProductIdentifiers?.length
-    || customerInfo.nonSubscriptionTransactions?.length,
+    || customerInfo.activeSubscriptions?.length,
   );
 }
 

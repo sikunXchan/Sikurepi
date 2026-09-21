@@ -16,11 +16,13 @@ function loadPurchases(platform, env = {}, debug = false, options = {}) {
   const Purchases = new Proxy({}, {
     get: (_, method) => async (methodOptions) => {
       calls.push({ method, options: methodOptions });
+      if (options.errors?.[method]) throw options.errors[method];
       switch (method) {
         case 'isConfigured': return { isConfigured: false };
         case 'getCustomerInfo': return { customerInfo };
         case 'getOfferings': return options.offerings || { current: null, all: {} };
         case 'purchasePackage': return options.purchaseResult || { customerInfo, productIdentifier: 'test_plus_monthly' };
+        case 'restorePurchases': return options.restoreResult || { customerInfo };
         case 'addCustomerInfoUpdateListener': return 'listener';
         default: return undefined;
       }
@@ -35,7 +37,8 @@ function loadPurchases(platform, env = {}, debug = false, options = {}) {
       } };
       if (id === '@revenuecat/purchases-capacitor') return {
         Purchases, ENTITLEMENT_VERIFICATION_MODE: { INFORMATIONAL: 'INFORMATIONAL' },
-        VERIFICATION_RESULT: { FAILED: 'FAILED' }, PACKAGE_TYPE: {}, PURCHASES_ERROR_CODE: {},
+        VERIFICATION_RESULT: { FAILED: 'FAILED' }, PACKAGE_TYPE: {},
+        PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: 'CANCELLED', PAYMENT_PENDING_ERROR: 'PENDING' },
       };
       if (id === '@/lib/user') return { getOrCreateClientUserId: () => 'test-client' };
       if (id === '@/lib/premium/revenueCatConfig') return { selectRevenueCatApiKey };
@@ -127,8 +130,65 @@ for (const platform of ['ios', 'android']) {
 }
 const web = loadPurchases('web', { NEXT_PUBLIC_REVENUECAT_IOS_API_KEY: 'appl_example' });
 assert.equal((await web.api.getPremiumSnapshot()).availability, 'web');
+assert.equal((await web.api.restorePremiumPurchases()).status, 'unavailable');
 assert.equal(web.calls.length, 0);
+
+for (const platform of ['ios', 'android']) {
+  for (const debug of [false, true]) {
+    const env = {
+      NEXT_PUBLIC_REVENUECAT_TEST_API_KEY: 'test_showcase',
+      NEXT_PUBLIC_REVENUECAT_IOS_API_KEY: 'appl_example',
+      NEXT_PUBLIC_REVENUECAT_ANDROID_API_KEY: 'goog_example',
+    };
+    const active = { entitlements: {
+      active: { premium: { isActive: true, verification: 'VERIFIED' } },
+      verification: 'VERIFIED',
+    } };
+    const expired = {
+      entitlements: { active: {}, verification: 'VERIFIED' },
+      activeSubscriptions: [], allPurchasedProductIdentifiers: ['test_plus_monthly'],
+      nonSubscriptionTransactions: [],
+    };
+    const cases = [
+      ['active Plus', active, 'success'],
+      ['no purchase', { entitlements: { active: {} } }, 'not-entitled'],
+      ['expired purchase history', expired, 'not-entitled'],
+      ['failed entitlement verification', { entitlements: {
+        active: { premium: { isActive: true, verification: 'FAILED' } },
+        verification: 'VERIFIED',
+      } }, 'not-entitled'],
+      ['failed CustomerInfo verification', { entitlements: {
+        active: active.entitlements.active, verification: 'FAILED',
+      } }, 'not-entitled'],
+      ['active Test Store subscription without entitlement', {
+        ...expired, activeSubscriptions: ['test_plus_monthly'],
+      }, debug ? 'success' : 'not-entitled'],
+    ];
+    for (const [label, customerInfo, expectedStatus] of cases) {
+      const { api, calls } = loadPurchases(platform, env, debug, { customerInfo });
+      const result = await api.restorePremiumPurchases();
+      assert.equal(result.status, expectedStatus, `${platform}/${debug}: restore ${label}`);
+      assert.equal(result.isPremium, expectedStatus === 'success');
+      assert.equal(calls.filter(call => call.method === 'restorePurchases').length, 1);
+      assert.equal(calls.some(call => ['getOfferings', 'purchasePackage'].includes(call.method)), false,
+        'restoring neither loads products nor starts a new purchase');
+    }
+    for (const [error, expectedStatus] of [
+      [{ code: 'NETWORK_ERROR', message: 'Offline' }, 'error'],
+      [{ code: 'CANCELLED', userCancelled: true }, 'cancelled'],
+    ]) {
+      const { api } = loadPurchases(platform, env, debug, { errors: { restorePurchases: error } });
+      const result = await api.restorePremiumPurchases();
+      assert.equal(result.status, expectedStatus);
+      assert.equal(result.isPremium, false);
+    }
+    const { api } = loadPurchases(platform, env, debug, { customerInfo: expired });
+    assert.equal((await api.getPremiumSnapshot()).isPremium, false,
+      'refresh must not reactivate an expired subscription from historical purchases');
+  }
+}
 assert.equal(verifyFilmingPassword('Hello Sikurepi'), true);
 assert.equal(verifyFilmingPassword(' Hello Sikurepi '), true);
 assert.equal(verifyFilmingPassword('hello sikurepi'), false);
 console.log('Native purchase startup: Test Store is Debug-only; Release rejects test/wrong/missing keys; platform keys configure once.');
+console.log('Restore: active access, missing/expired purchases, verification failures, cancellation, and network errors passed for iOS/Android and Test Store.');
