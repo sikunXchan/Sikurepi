@@ -5,11 +5,19 @@ type UnitRule = {
 };
 
 const VAGUE_AMOUNT = /^(?:適量|少々|ひとつまみ|一つまみ|お好みで?|必要量|to taste|as needed|a pinch)$/i;
-const UNIT_TOKEN = /大さじ|小さじ|カップ|キューブ|合|丁|片|かけ|切れ|切|尾|匹|枚|本|個|コ|玉|束|株|房|袋|パック|缶|杯|膳|食分|人分|人前|ml|mL|cc|l|L|kg|g|mg|oz|lb|cups?|tablespoons?|tbsp|teaspoons?|tsp|cloves?|fillets?|slices?|pieces?|heads?|bunch(?:es)?|packs?|cans?|servings?|cubes?/gi;
+// Short units must be complete tokens: the "l" in "whole" or "large"
+// is not a litre, and "lb" must not be read as "l".
+const UNIT_TOKEN = /大さじ|小さじ|カップ|キューブ|合|丁|片|かけ|切れ|切|尾|匹|枚|本|個|コ|玉|束|株|房|袋|パック|缶|杯|膳|食分|人分|人前|(?<![a-z])(?:ml|cc|kg|mg|g|oz|lb|l|cups?|tablespoons?|tbsp|teaspoons?|tsp|cloves?|fillets?|slices?|pieces?|wedges?|heads?|bunch(?:es)?|packs?|cans?|servings?|cubes?)(?![a-z])/gi;
 
 // 上にある規則ほど優先する。「鶏がらスープ」を肉、「オリーブ油」を実として
 // 誤判定しないため、加工品・液体を生鮮食材より先に置く。
 const UNIT_RULES: UnitRule[] = [
+  {
+    // Pepper as a spice is not a bell pepper counted as a vegetable.
+    label: 'こしょう',
+    ingredient: /こしょう|コショウ|胡椒|\b(?:(?:ground\s+)?(?:black|white)\s+pepper|peppercorns?)\b|^pepper$/i,
+    allowed: /^(?:g|kg|mg|大さじ|小さじ|tablespoons?|tbsp|teaspoons?|tsp|oz|lb)$/i,
+  },
   {
     label: '缶詰',
     ingredient: /缶詰|水煮缶|トマト缶|ツナ缶|さば缶|鯖缶|canned/i,
@@ -27,7 +35,7 @@ const UNIT_RULES: UnitRule[] = [
   },
   {
     label: '卵',
-    ingredient: /卵|たまご|玉子|うずら卵|eggs?/i,
+    ingredient: /卵|たまご|玉子|うずら卵|\beggs?\b/i,
     allowed: /^(?:個|コ|玉|g|mg|pieces?)$/i,
   },
   {
@@ -58,7 +66,17 @@ const UNIT_RULES: UnitRule[] = [
   {
     label: 'にんにく',
     ingredient: /にんにく|ニンニク|garlic/i,
-    allowed: /^(?:片|かけ|個|コ|g|mg|cloves?|pieces?)$/i,
+    allowed: /^(?:片|かけ|個|コ|g|mg|大さじ|小さじ|cloves?|pieces?|tablespoons?|tbsp|teaspoons?|tsp)$/i,
+  },
+  {
+    label: '粉・おろしたチーズ',
+    ingredient: /粉チーズ|パルメザン|(?:grated|shredded|powdered) cheese|parmesan/i,
+    allowed: /^(?:g|kg|mg|大さじ|小さじ|カップ|cups?|tablespoons?|tbsp|teaspoons?|tsp|oz|lb)$/i,
+  },
+  {
+    label: '香草',
+    ingredient: /パセリ|バジル|パクチー|コリアンダー|オレガノ|タイム|ローズマリー|ディル|\b(?:parsley|basil|cilantro|coriander|oregano|thyme|rosemary|dill)\b/i,
+    allowed: /^(?:束|袋|パック|株|本|枚|g|kg|大さじ|小さじ|カップ|cups?|tablespoons?|tbsp|teaspoons?|tsp|bunch(?:es)?|packs?|heads?)$/i,
   },
   {
     label: '葉物野菜',
@@ -78,7 +96,7 @@ const UNIT_RULES: UnitRule[] = [
   {
     label: '個で数える野菜・果物',
     ingredient: /じゃがいも|さつまいも|里芋|トマト|ピーマン|パプリカ|りんご|林檎|レモン|ライム|オレンジ|キウイ|potato|tomato|pepper|apple|lemon|lime|orange|kiwi/i,
-    allowed: /^(?:個|コ|本|袋|パック|g|kg|pieces?|packs?)$/i,
+    allowed: /^(?:個|コ|本|枚|切れ|切|袋|パック|g|kg|pieces?|slices?|wedges?|packs?)$/i,
   },
   {
     label: 'きのこ',
@@ -114,7 +132,7 @@ export function validateIngredientUnit(name: string, amount: string): string | n
   const rule = UNIT_RULES.find((candidate) => candidate.ingredient.test(normalizedName));
   if (!rule) return null;
   const units = normalizedUnits(normalizedAmount);
-  if (units.length === 0 || units.some((unit) => rule.allowed.test(unit))) return null;
+  if (units.length === 0 || units.every((unit) => rule.allowed.test(unit))) return null;
   return `${name} is categorized as ${rule.label}, but its unit is unsuitable: ${amount}`;
 }
 

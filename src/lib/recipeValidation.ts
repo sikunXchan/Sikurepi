@@ -4,7 +4,7 @@
 // 検出し、採用前に再生成・修正させる。
 
 import { isPantryStaple } from "@/lib/storage";
-import { toHiragana } from "@/lib/kana";
+import { ingredientNamesMatch } from "./ingredientMatching.ts";
 import { validateDietaryRestrictions, validateExcludedIngredients } from "@/lib/dietaryRules";
 
 export type ValidatedIngredient = { name: string; amount: string };
@@ -88,20 +88,10 @@ export function validateRecipeShape(value: unknown, pathPrefix = "recipe"): stri
 
 // --- 2. 料理としての論理検証 --------------------------------------------------
 
-// カタカナをひらがなに正規化してから比較する(「エビ」除外指定 vs 「えび」と
-// AIが表記したケースのような、かな表記ゆれでアレルギー等の除外チェックが
-// すり抜けないようにするため)
-const normalize = (s: string) => toHiragana(s.trim().toLowerCase());
-
-// storage.tsのisIngredientMissingと同じ「部分一致で表記ゆれを許容する」判定を、
-// ここでも(在庫食材との照合に)使う
+// Pantry names retain the language in which they were entered; recipe names
+// follow the current UI language. Compare known food identities across both.
 function fuzzyIncludes(haystack: string[], needle: string): boolean {
-  const target = normalize(needle);
-  if (!target) return true;
-  return haystack.some((h) => {
-    const hn = normalize(h);
-    return hn.includes(target) || target.includes(hn);
-  });
+  return haystack.some((name) => ingredientNamesMatch(name, needle));
 }
 
 // 「スイーツ」「鍋・スープ」のように、料理カテゴリそのものを絶対条件として
@@ -114,11 +104,11 @@ export const TEMPLATE_CATEGORY_CHECKS: Record<
   sweets: {
     label: "スイーツ",
     mustMatch:
-      /スイーツ|デザート|ケーキ|プリン|ゼリー|クッキー|タルト|パイ|アイス|パフェ|ようかん|羊羹|団子|だんご|わらび餅|大福|どら焼き|マフィン|ドーナツ|ワッフル|ババロア|ムース|チョコ|クレープ|パンケーキ|ホットケーキ|フルーツポンチ|あんみつ|白玉|ぜんざい|甘/,
+      /スイーツ|デザート|ケーキ|プリン|ゼリー|クッキー|タルト|パイ|アイス|パフェ|ようかん|羊羹|団子|だんご|わらび餅|大福|どら焼き|マフィン|ドーナツ|ワッフル|ババロア|ムース|チョコ|クレープ|パンケーキ|ホットケーキ|フルーツポンチ|あんみつ|白玉|ぜんざい|甘|\b(?:desserts?|sweets?|cakes?|pancakes?|puddings?|jell(?:y|ies)|cookies?|tarts?|pies?|ice cream|parfaits?|muffins?|doughnuts?|donuts?|waffles?|mousse|chocolate|cr[eê]pes?|brownies?|custard|sorbet|daifuku|dorayaki|mochi)\b/i,
   },
   soup: {
     label: "鍋・スープ",
-    mustMatch: /鍋|スープ|汁|ポトフ|シチュー|おでん|だし|出汁|ブロス|チャウダー|味噌汁/,
+    mustMatch: /鍋|スープ|汁|ポトフ|シチュー|おでん|だし|出汁|ブロス|チャウダー|味噌汁|\b(?:soups?|stews?|hot[- ]?pot|broth|chowder|pot-au-feu|oden|bisque|gazpacho|consomm[eé])\b/i,
   },
 };
 
@@ -179,7 +169,7 @@ export function validateRecipeLogic(
       if (!context.assumeSeasoningsAvailable) {
         // 調味料を常備前提にしない設定でも、水と最小限の塩・こしょうだけは
         // プロンプト側が例外的に許可しているのでそれに合わせる。
-        if (/^(水|湯|お湯|water|hot water|塩|しお|こしょう|コショウ|胡椒)$/i.test(name.trim())) return false;
+        if (/^(水|湯|お湯|water|hot water|塩|しお|こしょう|コショウ|胡椒|salt|(?:black |white |ground )?pepper)$/i.test(name.trim())) return false;
       }
       return true;
     });

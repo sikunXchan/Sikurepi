@@ -1,5 +1,6 @@
 import type { ValidatedRecipe } from './recipeValidation';
 import { validateIngredientUnits } from './ingredientUnits.ts';
+import { ingredientNamesMatch } from './ingredientMatching.ts';
 
 function toHiragana(value: string): string {
   return value.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
@@ -38,8 +39,8 @@ const normalize = (value: string) => toHiragana(value.normalize('NFKC').trim().t
 const DESSERT = /スイーツ|デザート|菓子|ケーキ|プリン|ゼリー|クッキー|タルト|パイ|アイス|パフェ|団子|だんご|餅|大福|どら焼き|マフィン|ドーナツ|ワッフル|ムース|チョコ|クレープ|パンケーキ|ホットケーキ|dessert|cake|pudding|cookie|tart|pie|ice cream|muffin|donut|waffle|chocolate/i;
 const SEASONING = /塩|しお|胡椒|こしょう|醤油|しょうゆ|味噌|みそ|砂糖|糖|酢|油|オイル|だし|出汁|コンソメ|ソース|ケチャップ|マヨ|みりん|酒|ワイン|にんにく|生姜|しょうが|ねぎ|葱|ハーブ|バジル|パセリ|レモン|ライム|酢|スパイス|カレー粉|唐辛子|ごま|胡麻|バター|クリーム|チーズ|はちみつ|蜂蜜|シロップ|salt|pepper|soy|miso|sugar|vinegar|oil|stock|broth|sauce|ketchup|mayonnaise|mirin|sake|wine|garlic|ginger|herb|basil|parsley|lemon|lime|spice|chili|sesame|butter|cream|cheese|honey|syrup/i;
 const AUXILIARY = /水|湯|氷|片栗粉|小麦粉|薄力粉|強力粉|パン粉|粉|でんぷん|starch|flour|water|ice/i;
-const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|(?:ひと|ふた|みっ|[一二三四五六七八九十])(?:つまみ|振り)|少々|適量|お好み|\b(?:one|half|quarter|pinch|handful|to taste|as needed)\b/i;
-const VAGUE_ONLY = /^(適量|少々|お好みで?|必要量|ひとつまみ|一つまみ|to taste|as needed|some|a little)$/i;
+const MEASURABLE = /\d|[０-９]|½|⅓|¼|半(?:分)?|(?:ひと|ふた|みっ|[一二三四五六七八九十])(?:つまみ|振り)|少々|適量|お好み|\b(?:one|half|quarter|pinch|dash|handful|to taste|as needed)\b/i;
+const VAGUE_ONLY = /^(適量|少々|お好みで?|必要量|ひとつまみ|一つまみ|to taste|as needed|some|a little|(?:a )?(?:pinch|dash))$/i;
 const HEAT_ACTION = /焼|炒|煮|茹|ゆで|蒸|揚|炊|加熱|火にかけ|電子レンジ|レンジ|オーブン|トースター|沸騰|温め|sear|saute|sauté|fry|boil|simmer|steam|bake|roast|grill|microwave|heat|cook/i;
 const TIME_OR_CUE = /\d+\s*(秒|分|時間|sec|second|min|minute|hour)|弱火|中火|強火|予熱|沸騰|きつね色|透明|しんなり|とろみ|香り|焼き色|火が通|中心まで|泡立|固ま|soft|tender|golden|bubbl|fragrant|translucent|cooked through|no longer pink|until set|low heat|medium heat|high heat/i;
 const SAFE_DONENESS = /75\s*℃|75\s*度|中心.{0,8}(火|加熱|75)|中まで.{0,8}(火|加熱)|肉汁.{0,8}(透明|澄)|赤み.{0,8}(なく|消)|ピンク色.{0,8}(なく|消)|完全に火|十分に加熱|火が通るまで|火を通す|内部温度|中心温度|cooked through|no longer pink|clear juices|internal temperature|165\s*°?f|74\s*°?c|75\s*°?c/i;
@@ -167,7 +168,7 @@ function energyDifference(recipe: ValidatedRecipe): number | null {
 
 function parseQuantity(value: string): number | null {
   const text = value.normalize('NFKC').toLowerCase();
-  const mixedFraction = text.match(/(\d+(?:\.\d+)?)\s*(?:と|and)\s*(\d+)\s*\/\s*(\d+)/);
+  const mixedFraction = text.match(/(\d+(?:\.\d+)?)\s*(?:と|and|\s)\s*(\d+)\s*\/\s*(\d+)/);
   if (mixedFraction) return Number(mixedFraction[1]) + Number(mixedFraction[2]) / Number(mixedFraction[3]);
   const fraction = text.match(/(\d+)\s*\/\s*(\d+)/);
   if (fraction) return Number(fraction[1]) / Number(fraction[2]);
@@ -178,14 +179,26 @@ function parseQuantity(value: string): number | null {
 }
 
 function seasoningBaseAmount(amount: string): number | null {
-  const quantity = parseQuantity(amount);
+  const text = amount
+    .replace(/(\d)([½⅓¼⅔¾⅛⅜⅝⅞])/g, '$1 $2')
+    .normalize('NFKC').toLowerCase().replace(/⁄/g, '/');
+  const number = '(?:\\d+\\s*(?:と|and|\\s)\\s*\\d+\\s*/\\s*\\d+|\\d+\\s*/\\s*\\d+|\\d+(?:\\.\\d+)?|半|half)';
+  // Bind the quantity to its own unit, not to any unit later in the string:
+  // "15 g (1 tbsp)" means 15 g, never 15 tbsp. Accept Japanese prefix units.
+  const measurement = text.match(new RegExp(
+    `(大さじ|小さじ|カップ)\\s*(${number})|(${number})\\s*(キログラム|kg|グラム|mg|g|ミリリットル|ml|cc|カップ|cups?|tablespoons?|tbsp|teaspoons?|tsp)(?![a-z])`,
+    'i',
+  ));
+  if (!measurement) return null;
+  const quantity = parseQuantity(measurement[2] || measurement[3]);
   if (quantity === null) return null;
-  const text = amount.normalize('NFKC').toLowerCase();
-  if (/大さじ|tbsp|tablespoon/.test(text)) return quantity * 15;
-  if (/小さじ|tsp|teaspoon/.test(text)) return quantity * 5;
-  if (/カップ|\bcups?\b/.test(text)) return quantity * 200;
-  if (/kg|キロ/.test(text)) return quantity * 1000;
-  if (/g\b|グラム|ml|cc|ミリリットル/.test(text)) return quantity;
+  const unit = measurement[1] || measurement[4];
+  if (/大さじ|tbsp|tablespoon/.test(unit)) return quantity * 15;
+  if (/小さじ|tsp|teaspoon/.test(unit)) return quantity * 5;
+  if (/カップ|cup/.test(unit)) return quantity * 200;
+  if (/kg|キロ/.test(unit)) return quantity * 1000;
+  if (unit === 'mg') return quantity / 1000;
+  if (/g|グラム|ml|cc|ミリリットル/.test(unit)) return quantity;
   return null;
 }
 
@@ -339,13 +352,10 @@ export function qualityGateErrors(
   path = 'recipe',
 ): string[] {
   const assessment = assessRecipeQuality(recipe, context);
-  const errors = assessment.errors.map((error) => `${path}: ${error}`);
-  const minimumScore = context.mealStyle === 'set' ? 80 : 85;
-  if (assessment.score < minimumScore) {
-    errors.push(...assessment.warnings.map((warning) => `${path}: ${warning}`));
-    errors.push(`${path}: overall reproducibility/flavor score is too low (${assessment.score}/100)`);
-  }
-  return errors;
+  // Warnings reflect wording/flavor heuristics, not a failed safety or shape
+  // check. Combining several must not turn a valid simple dish into a 422.
+  // Concrete amounts, safe cooking, dietary rules and nutrition still gate.
+  return assessment.errors.map((error) => `${path}: ${error}`);
 }
 
 function dominantProtein(recipe: ValidatedRecipe): string | null {
@@ -424,9 +434,7 @@ export function validateSetMeal(
 }
 
 function fuzzyIngredientIncludes(actual: string, expected: string): boolean {
-  const a = normalize(actual);
-  const e = normalize(expected);
-  return Boolean(a && e && (a.includes(e) || e.includes(a)));
+  return ingredientNamesMatch(actual, expected);
 }
 
 export function validateRequiredIngredients(

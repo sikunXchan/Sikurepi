@@ -99,8 +99,29 @@ const flatFlavor = {
   nutrition: { calories: 180, protein_g: 16, fat_g: 10, carbs_g: 7 },
 };
 assert.equal(assessRecipeQuality(flatFlavor).errors.length, 0);
-assert.equal(qualityGateErrors(flatFlavor).some((error) => error.includes('overall reproducibility/flavor score')), true);
-assert.equal(qualityGateErrors(flatFlavor, { mealStyle: 'set' }).some((error) => error.includes('overall reproducibility/flavor score')), false);
+assert.ok(assessRecipeQuality(flatFlavor).warnings.length >= 3, 'wording improvements remain available as warnings');
+assert.deepEqual(qualityGateErrors(flatFlavor), [], 'flavor wording alone must not reject a reproducible recipe');
+assert.deepEqual(qualityGateErrors(flatFlavor, { mealStyle: 'set' }), []);
+
+for (const [name, amount] of [
+  ['バター', '15g（大さじ1）'], ['Butter', '15 g (1 tbsp)'],
+  ['Butter', '1 tbsp (15g)'], ['Salt', '2g (about 1/3 tsp)'],
+  ['塩', '小さじ1/4（約1.5g）'], ['Salt', '500 mg'],
+  ['Soy sauce', '1 1/2 tbsp'], ['Soy sauce', '1½ tbsp'], ['醤油', '大さじ1と1/2'],
+  ['Black pepper', 'a dash'],
+]) {
+  assert.deepEqual(qualityGateErrors({
+    ...goodChicken, ingredients: [...goodChicken.ingredients, { name, amount }],
+  }), [], `${name} ${amount} must use the quantity paired with its unit`);
+}
+for (const amount of ['15g (1 tbsp)', '大さじ2', '10 g', '10000 mg']) {
+  assert.ok(qualityGateErrors({
+    ...goodChicken, ingredients: [...goodChicken.ingredients, { name: 'Salt', amount }],
+  }).some(error => error.includes('salt amount')), `excessive salt still rejected: ${amount}`);
+}
+assert.ok(qualityGateErrors({
+  ...goodChicken, ingredients: [{ name: '鶏むね肉', amount: 'a dash' }, ...goodChicken.ingredients.slice(1)],
+}).some(error => error.includes('concrete amount')), 'a dash is only acceptable for seasoning, not a main ingredient');
 
 const englishChicken = {
   ...goodChicken,

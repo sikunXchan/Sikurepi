@@ -24,6 +24,7 @@
     "test:community-translation": "node --no-warnings --experimental-strip-types scripts/test-community-translation.mjs",
     "test:recipe-cache": "node --no-warnings --experimental-strip-types scripts/test-recipe-cache.mjs",
     "test:recipe-quality": "node --no-warnings --experimental-strip-types scripts/test-recipe-quality.mjs",
+    "test:recipe-generation": "node --no-warnings --experimental-strip-types scripts/test-recipe-generation.mjs",
     "test:servings": "node --no-warnings --experimental-strip-types scripts/test-serving-scale.mjs",
     "test:ingredient-units": "node --no-warnings --experimental-strip-types scripts/test-ingredient-units.mjs",
     "test:cooking-help": "node --no-warnings --experimental-strip-types scripts/test-cooking-help.mjs",
