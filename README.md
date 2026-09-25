@@ -1,23 +1,23 @@
 # Sikurepi
 
-**Cook more. Waste less. Live healthier.**
+Sikurepi is an AI-powered cooking app for everyday home cooking. It connects
+pantry management and recipe generation with weekly meal planning, shopping,
+cooking assistance, and cooking records. The app supports Japanese and English.
 
-Sikurepi is an AI-powered cooking companion that turns the food already in your
-pantry into practical recipes and weekly meal plans. It connects inventory,
-shopping, cooking guidance, food-rescue progress, and a friendly collection
-system in one bilingual iOS experience.
-
-[View the Shipaton project](https://devpost.com/software/sikurepi) ·
+[View the Shipaton project](https://devpost.com/software/sikurepi)
 [Open the web preview](https://sikurepi.vercel.app)
 
 ![Your pantry becomes tonight's dinner](public/devpost/gallery/05-pantry-to-dinner.png)
 
 ## Why Sikurepi exists
 
-Food is often wasted not because people do not care, but because deciding what
-to cook from a changing pantry is difficult. Sikurepi reduces that friction. It
-helps people use what they already have, cook with confidence, and build a
-healthier home-cooking habit without overwhelming them with options.
+I want to make it easier to decide what to cook and use ingredients before they
+are forgotten. My goal is to help people around the world enjoy cooking at home
+more often, improving their health while reducing food waste.
+
+I built Sikurepi to follow what happens before and after a recipe is chosen,
+from buying ingredients through cooking and recording the result. That record
+then helps shape the next suggestion.
 
 ## What it does
 
@@ -49,39 +49,38 @@ healthier home-cooking habit without overwhelming them with options.
 
 Store purchases for Sikurepi Plus are managed through RevenueCat. The free plan
 includes the core cooking experience and the same dietary checks as Plus.
-Plus expands generation limits, history access, and customization for people
-who make Sikurepi part of their daily routine.
+Plus expands generation limits and access to history and Community Recipes,
+along with customization options for people who use Sikurepi regularly.
 
 - A custom paywall loads the current RevenueCat Offering and packages.
-- Purchases call the native RevenueCat Capacitor SDK. Production access uses
-  the active `premium` entitlement in `CustomerInfo` and rejects a failed
-  entitlement-verification result.
-- The native Restore Purchases flow and live entitlement updates are implemented.
+- Purchases use RevenueCat through its Capacitor SDK. For store-backed
+  purchases, Plus access is determined by the active `premium` entitlement in
+  `CustomerInfo`. A failed entitlement-verification result does not grant access.
+- The Restore Purchases action calls the RevenueCat SDK's restore method.
+- Entitlement updates refresh Plus access.
 - Custom paywall impressions are reported to RevenueCat.
 - Free limits and Plus access are enforced by shared domain logic.
 - A dedicated Debug build supports RevenueCat Test Store purchases for the
   Next Gen judging path, while Release builds reject Test Store keys and use
   platform-specific keys only.
 
-The reviewer password supplied privately in the Devpost submission is a review
-convenience for inspecting Plus-only screens. It does not replace the RevenueCat
-purchase implementation.
+A reviewer password is provided privately in the Devpost submission so reviewers
+can try Plus features without completing a store purchase. This review access
+is separate from the RevenueCat purchase flow.
 
 Purchase-to-Plus activation has been verified on an iOS device using RevenueCat
-Test Store. The Restore Purchases flow is implemented; end-to-end restoration
-still requires testing with Apple Sandbox, because Test Store does not support
-that flow.
+Test Store.
 
-## How we validate AI-generated recipes
+## How I validate AI-generated recipes
 
 Safety-sensitive preferences are not left to prompt wording alone. Sikurepi
 combines profile-aware generation with deterministic validation of ingredients
 and recipe output. A detected conflict is rejected instead of being presented
 as safe. The same profile is used for substitutions and cooking assistance.
 
-The app clearly avoids claiming religious certification or protection from
-manufacturing cross-contact. Users should always verify product labels and make
-decisions appropriate to their own medical and religious requirements.
+Sikurepi cannot verify product labels, manufacturing cross-contact, religious
+certification, or the user's cooking environment. For serious allergies and
+religious requirements, the app asks users to perform a final check themselves.
 
 ## Privacy and security
 
@@ -93,17 +92,26 @@ decisions appropriate to their own medical and religious requirements.
   service-worker cache.
 - Supabase Row Level Security protects account-owned synchronized data.
 - RevenueCat secret keys are never shipped to the client; only public SDK keys
-  are used by the native app.
+  are used by the Capacitor build.
 - Store entitlement-verification failures do not grant purchased Plus access.
 - Production dependency checks can be reproduced with `npm audit --omit=dev`.
 
-These controls reduce risk but are not a claim of formal certification or an
-independent security audit.
+## Design decisions
+
+To build Sikurepi, I studied UI/UX design, human-computer interaction (HCI), and
+behavioral economics, then applied what I learned to the app. The introduction
+is short, with guides available in individual tabs when people need them.
+Cooking ranks and the ingredient collection let people see their progress and
+get a small sense of achievement from cooking another meal or using an
+ingredient that might otherwise go to waste.
 
 ## How it is built
 
+Sikurepi is built as a web app, with Capacitor used to package it for iOS and
+Android. I tested the iOS build by installing it directly on an iPhone.
+
 ```text
-iOS app (Capacitor) / PWA
+PWA / iOS device build (Capacitor)
           |
           v
 Next.js + React interface
@@ -127,7 +135,7 @@ Motion.
 - Node.js 24
 - npm
 - A Gemini API key for live recipe and receipt generation
-- Optional Supabase and RevenueCat projects for account sync and native purchase
+- Optional Supabase and RevenueCat projects for account sync and iOS purchase
   testing
 
 ### Web development
@@ -141,7 +149,7 @@ npm run dev
 Add `GEMINI_API_KEY` to `.env.local`. The optional public configuration values
 are documented in [`.env.example`](.env.example). Never commit secret API keys.
 
-### Native iOS shell
+### iOS build for device testing
 
 The Capacitor shell loads the deployed Sikurepi web application so server-side
 AI routes remain available:
@@ -151,11 +159,16 @@ npm ci
 npx cap sync ios
 ```
 
-Open `ios/App/App.xcodeproj` in Xcode. Native purchase testing requires a Debug
-build and a RevenueCat Test Store public key. Configure Test Store products,
+Open `ios/App/App.xcodeproj` in Xcode. For RevenueCat Test Store testing, use a
+Debug build and a Test Store public key. Configure Test Store products,
 attach them to an Offering, and attach the products to the `premium`
 entitlement. Production builds must use the Apple-specific public SDK key and
 must never contain a `test_` key.
+
+RevenueCat Test Store simulates purchases without charging real money. It does
+not support `restorePurchases` or `syncPurchases`. To test restoration of Apple
+purchases, use Apple Sandbox with an Apple-specific public SDK key. See the
+[RevenueCat Test Store restore guidance](https://community.revenuecat.com/sdks-51/are-syncpurchases-and-restorepurchases-sdk-calls-meant-to-work-on-the-revenuecat-test-store-7779?sort=oldestFirst).
 
 ## Verification
 
@@ -179,9 +192,8 @@ Additional focused regression commands are available in [`package.json`](package
 Sikurepi is submitted for the **RevenueCat Shipaton 2026 Next Gen Award**. Under
 the official Next Gen route, evaluation is based on the public source repository
 and demonstration video instead of an App Store listing. No public IPA download
-is required. The native app and RevenueCat integration are demonstrated in the
-submission materials, and the repository contains the source, assets, build
-configuration, and verification scripts needed for review.
+is required. The repository contains the source, assets, build configuration,
+and verification scripts for reviewing the app and its RevenueCat integration.
 
 ## License
 
