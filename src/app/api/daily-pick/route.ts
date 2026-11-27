@@ -253,7 +253,7 @@ ${buildGenreChoiceInstruction(recipeStyle)}値は必ず日本語表記のまま�
       ? `\n前回の出力は次の理由で不採用です。すべて修正してください:\n${lastErrors.map((error) => `- ${error}`).join('\n')}\n`
       : '';
     const models = [...DAILY_PICK_MODEL_ORDER[attempt]];
-    // 3.8 FlashはMINIMALを受け付けないため、フォールバックでも通るLOW以上を使う。
+    // 3.8 FlashはMINIMALを受け付けないため、LOW以上を使う。
     const thinkingLevel = attempt === 0 ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: `${prompt}${retryNote}` }] }],

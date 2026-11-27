@@ -22,7 +22,7 @@ import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
 import {
   qualityGateErrors,
-  reconcileRecipeTime,
+  repairRecipeDeterministically,
   sanitizeServings,
   validateWeeklyPlan,
   WeeklyRecipe,
@@ -40,7 +40,7 @@ import {
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 export const maxDuration = 300;
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
-// 全試行でHydrogenを主軸にし、障害時だけ3.8 Flashへフォールバックする。
+// 全試行で主軸モデル(3.8 Flash)を使い、障害時だけフォールバックする。
 const WEEKLY_PLAN_MODEL_ORDER = [
   [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
   [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
@@ -419,10 +419,16 @@ ${targetedRepair
       planArray = planArray.map((entry) => {
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
         const recipe = entry as Partial<ValidatedRecipe>;
-        if (typeof recipe.time !== 'string' || !Array.isArray(recipe.steps) || !recipe.steps.every((step) => typeof step === 'string')) {
+        if (
+          typeof recipe.time !== 'string'
+          || !Array.isArray(recipe.steps)
+          || !recipe.steps.every((step) => typeof step === 'string')
+          || !Array.isArray(recipe.ingredients)
+        ) {
           return entry;
         }
-        return reconcileRecipeTime(entry as ValidatedRecipe);
+        // 時間・絵文字・ジャンル・カロリー計算の形式的な不備は、再生成せずにここで補正する
+        return repairRecipeDeterministically(entry as ValidatedRecipe);
       });
 
       const validationErrors = validateCandidatePlan(planArray);

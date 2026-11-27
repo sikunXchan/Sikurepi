@@ -119,6 +119,55 @@ export function reconcileRecipeTime(recipe: ValidatedRecipe): ValidatedRecipe {
   };
 }
 
+const EMOJI_GLOBAL = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu;
+
+function stripEmoji(value: string): string {
+  return value.replace(EMOJI_GLOBAL, '').replace(/[ \t]{2,}/g, ' ').trim();
+}
+
+/**
+ * AIを呼び直さなくても機械的に直せる不備を補正する。品質ゲートで不合格→再生成になると
+ * モデル呼び出しが倍になるため、料理の中身に関わらない形式上の不備はここで吸収する。
+ * - 工程時間の合計と矛盾する調理時間を引き上げる
+ * - 絵文字を取り除く
+ * - 対応リスト外のジャンルを「その他」にする
+ * - PFCと大きく食い違うカロリーをPFCからの計算値に揃える
+ * 食材・手順・安全性など中身の問題は補正せず、従来どおり検証で再生成させる。
+ */
+export function repairRecipeDeterministically<T extends ValidatedRecipe>(recipe: T): T {
+  let repaired: T = reconcileRecipeTime(recipe) as T;
+  const strip = (value: unknown) => (typeof value === 'string' && EMOJI.test(value) ? stripEmoji(value) : value);
+  // 形式検証前のデータにも使うため、要素がnull等でも落ちないJSON文字列で判定する
+  if (EMOJI.test(JSON.stringify(repaired))) {
+    const record = repaired as T & Record<string, unknown>;
+    repaired = {
+      ...record,
+      title: strip(record.title),
+      tips: strip(record.tips),
+      climate_badge: strip(record.climate_badge),
+      dish_badge: strip(record.dish_badge),
+      steps: record.steps.map((step) => strip(step) as string),
+      ingredients: record.ingredients.map((item) => (item && typeof item === 'object'
+        ? { ...item, name: strip(item.name) as string, amount: strip(item.amount) as string }
+        : item)),
+    } as T;
+  }
+  if (repaired.genre && !RECIPE_GENRES.includes(repaired.genre as typeof RECIPE_GENRES[number])) {
+    repaired = { ...repaired, genre: 'その他' };
+  }
+  const difference = energyDifference(repaired);
+  if (repaired.nutrition && difference !== null && difference > Math.max(120, repaired.nutrition.calories * 0.35)) {
+    const { protein_g, fat_g, carbs_g } = repaired.nutrition;
+    if ([protein_g, fat_g, carbs_g].every((value) => Number.isFinite(value) && value >= 0)) {
+      repaired = {
+        ...repaired,
+        nutrition: { ...repaired.nutrition, calories: Math.round(protein_g * 4 + fat_g * 9 + carbs_g * 4) },
+      };
+    }
+  }
+  return repaired;
+}
+
 function ingredientMentioned(name: string, stepsText: string): boolean {
   const englishTokens = name
     .normalize('NFKC')

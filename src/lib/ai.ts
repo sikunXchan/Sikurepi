@@ -35,6 +35,24 @@ export function buildSeasoningSection(
   } else {
     seasonings.push('卵不使用マヨネーズ');
   }
+  // 日本の家庭の台所に常備されている粉類・合わせ調味料。食事制限で使えないものは
+  // 最初から候補に入れず、生成後の食事制限検証で不合格→再生成になるのを防ぐ。
+  const animalFree = restricted.has('ヴィーガン') || restricted.has('ベジタリアン');
+  const noAlcohol = restricted.has('アルコール不可') || restricted.has('ハラール（イスラム教）');
+  const glutenFree = restricted.has('グルテンフリー');
+  seasonings.push('片栗粉');
+  if (!glutenFree) seasonings.push('小麦粉');
+  if (!animalFree && !restricted.has('ハラール（イスラム教）') && !restricted.has('コーシャ（ユダヤ教）')) {
+    seasonings.push('顆粒コンソメ・鶏がらスープの素');
+  }
+  // めんつゆ・ポン酢は醤油(大豆・小麦)、かつおだし、みりんを含む
+  if (!animalFree && !noAlcohol && !glutenFree && !restricted.has('大豆不使用') && !restricted.has('魚介類不使用')) {
+    seasonings.push('めんつゆ・ポン酢');
+  }
+  // オイスターソースは牡蠣エキスに加え、小麦・大豆を含む製品が多い
+  if (!animalFree && !glutenFree && !restricted.has('大豆不使用') && !restricted.has('魚介類不使用') && !restricted.has('コーシャ（ユダヤ教）')) {
+    seasonings.push('オイスターソース');
+  }
   if (restricted.has('ヴィーガン') || restricted.has('ベジタリアン')) {
     seasonings.push('昆布だし・野菜だし');
   } else if (!restricted.has('魚介類不使用')) {

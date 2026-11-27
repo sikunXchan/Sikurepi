@@ -25,7 +25,7 @@ import {
 } from '@/lib/recipeValidation';
 import { parseAiJson } from '@/lib/aiJson';
 import { validateDietaryRestrictions, validateExcludedIngredients } from '@/lib/dietaryRules';
-import { qualityGateErrors, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
+import { qualityGateErrors, repairRecipeDeterministically, sanitizeServings, validateRequiredIngredients, validateSetMeal } from '@/lib/recipeQuality';
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 import { normalizeCookingTips } from '@/lib/cookingTips';
 import { AiTimeoutError, AiUsageLimitError } from '@/lib/ai';
@@ -39,8 +39,8 @@ import {
 
 export const maxDuration = 180;
 
-// 味の質を優先し、どの試行もHydrogenを主軸にする。3.8 Flashは
-// Hydrogenが障害・タイムアウトのときだけ使うフォールバック。
+// 味の質を優先し、どの試行も主軸モデル(3.8 Flash)を使う。フォールバックは
+// 主軸が障害・タイムアウトのときだけ使う。
 const RECIPE_MODEL_ORDER = [
   [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
   [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
@@ -315,7 +315,7 @@ ${buildGenreChoiceInstruction(recipeStyle)}${language === 'en' ? '（genreの値
       const prompt = attempt === 0 ? basePrompt : `${basePrompt}\n${buildValidationRetryNote(lastErrors)}`;
 
       const models = [...RECIPE_MODEL_ORDER[attempt]];
-      // フォールバック先の3.8 FlashはMINIMALを受け付けない。再試行時だけ少し深く考えさせる。
+      // 3.8 FlashはMINIMALを受け付けない。再試行時だけ少し深く考えさせる。
       const thinkingLevel = attempt === 0 ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
       const callStartedAt = Date.now();
       const response = await generateWithRetry(ai, {
@@ -383,7 +383,7 @@ ${buildGenreChoiceInstruction(recipeStyle)}${language === 'en' ? '（genreの値
         }, { headers: generationHeaders(generationStartedAt, attemptTelemetry, generationAttempts) });
       }
 
-      const recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
+      let recipeArray: unknown[] = Array.isArray(json.recipes) ? json.recipes : [];
       const shapeErrors = recipeArray.length > 0
         ? recipeArray.flatMap((r: unknown, i: number) => validateRecipeShape(r, `recipes[${i}]`))
         : ['recipes must be a non-empty array'];
@@ -406,6 +406,9 @@ ${buildGenreChoiceInstruction(recipeStyle)}${language === 'en' ? '（genreの値
         generationAttempts.push(latestAttemptTelemetry);
         continue;
       }
+
+      // 時間・絵文字・ジャンル・カロリー計算の形式的な不備は、再生成せずにここで補正する
+      recipeArray = (recipeArray as ValidatedRecipe[]).map((recipe) => repairRecipeDeterministically(recipe));
 
       const logicErrors = (recipeArray as ValidatedRecipe[]).flatMap((r) => validateRecipeLogic(r, feasibilityContext));
       logicErrors.push(...(recipeArray as ValidatedRecipe[]).flatMap((recipe, index) =>

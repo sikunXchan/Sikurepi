@@ -200,9 +200,13 @@ export const PANTRY_STAPLES = [
   '水', '湯', '塩', 'こしょう', '胡椒', '砂糖', '醤油', 'しょうゆ', '味噌', 'みそ', 'みりん', '酒',
   '酢', 'サラダ油', 'ごま油', 'バター', 'だし', 'コンソメ', '鶏がらスープ',
   'ケチャップ', 'マヨネーズ', 'にんにく', 'ニンニク', 'しょうが', '生姜',
+  // 日本の家庭で常備されている粉類・合わせ調味料(AIプロンプトの常備調味料と対応)
+  '片栗粉', '小麦粉', '薄力粉', 'めんつゆ', 'ポン酢', 'ぽん酢', 'オイスターソース',
   'water', 'hot water', 'salt', 'pepper', 'sugar', 'soy sauce', 'miso', 'mirin', 'cooking sake', 'vinegar',
   'vegetable oil', 'salad oil', 'cooking oil', 'sesame oil', 'butter', 'stock', 'broth', 'bouillon', 'ketchup',
   'mayonnaise', 'garlic', 'ginger',
+  'potato starch', 'cornstarch', 'corn starch', 'flour', 'mentsuyu', 'noodle soup base',
+  'ponzu', 'oyster sauce',
 ];
 
 export function isPantryStaple(ingredientName: string): boolean {
