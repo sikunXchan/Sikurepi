@@ -32,6 +32,7 @@ import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
 import {
   buildGenreChoiceInstruction,
+  buildRecentHistorySection,
   buildRecipeStyleSection,
   filterGenresForStyle,
   normalizeRecipeStyle,
@@ -198,9 +199,7 @@ export async function POST(req: Request) {
     const targetServings = sanitizeServings(actualProfile?.servings, 2);
     const servingsSection = `\n【分量指定】\nすべてのレシピの材料・分量は ${targetServings}人分 で記載してください。\n`;
 
-    const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
-      ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
-      : '';
+    const historyNote = buildRecentHistorySection(recentHistory, recipeStyle);
 
     const { dailyCalories, dailyProtein, dailyFat, dailyCarbs } = computeDailyTargets(actualProfile);
     const perMealCalories = Math.round(dailyCalories / 3);

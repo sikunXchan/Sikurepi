@@ -495,6 +495,7 @@ const KEYS = {
   LAST_RECIPE_GENERATION: 'lily_app_last_recipe_generation',
   RECIPE_GENERATION_CACHE: 'lily_app_recipe_generation_cache_v2',
   RECIPE_FEEDBACK: 'lily_app_recipe_feedback_v1',
+  TASTE_CHECK_DISMISSED: 'sikurepi_taste_check_dismissed_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -1059,6 +1060,72 @@ export function recordLocalCookingDone(
   };
   setStorage(KEYS.STATS, updated);
   return updated;
+}
+
+// --- 食べた後の味の振り返り ---
+// 「作った」記録の時点ではまだ食べていないことが多く、味の感想が空のまま残りやすい。
+// 作ってから数日以内で感想の無い記録をホームで1件だけ聞き直し、学習データを増やす。
+const TASTE_CHECK_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+const TASTE_CHECK_DISMISSED_LIMIT = 50;
+
+function cookedRecordKey(record: Pick<CookedRecord, 'date' | 'recipeTitle'>): string {
+  return `${record.date}|${record.recipeTitle}`;
+}
+
+function hasCookingFeedback(feedback: CookingFeedback | undefined): boolean {
+  return Boolean(feedback && (
+    (Array.isArray(feedback.tags) && feedback.tags.length > 0)
+    || feedback.wouldCookAgain === true
+    || feedback.rating
+    || feedback.note?.trim()
+    || feedback.comment?.trim()
+  ));
+}
+
+export type PendingTasteCheck = { key: string; recipeTitle: string; date: string };
+
+export function getPendingTasteCheck(now: Date = new Date()): PendingTasteCheck | null {
+  const dismissed = new Set(getStorage<string[]>(KEYS.TASTE_CHECK_DISMISSED, []));
+  const records = getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS).cooked_records || [];
+  const candidate = records
+    .filter((record) => {
+      const cookedAt = Date.parse(record.date);
+      if (!Number.isFinite(cookedAt)) return false;
+      const age = now.getTime() - cookedAt;
+      return age >= 0 && age <= TASTE_CHECK_WINDOW_MS
+        && !hasCookingFeedback(record.feedback)
+        && !dismissed.has(cookedRecordKey(record));
+    })
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))[0];
+  return candidate
+    ? { key: cookedRecordKey(candidate), recipeTitle: candidate.recipeTitle, date: candidate.date }
+    : null;
+}
+
+export function dismissTasteCheck(key: string): void {
+  const dismissed = getStorage<string[]>(KEYS.TASTE_CHECK_DISMISSED, []).filter((item) => item !== key);
+  setStorage(KEYS.TASTE_CHECK_DISMISSED, [key, ...dismissed].slice(0, TASTE_CHECK_DISMISSED_LIMIT));
+}
+
+/** 既存の自炊記録に、あとから味の感想を付ける。回数・栄養などの集計値は変えない。 */
+export function saveCookedRecordFeedback(key: string, feedback: Pick<CookingFeedback, 'tags' | 'wouldCookAgain'>): boolean {
+  const stats = getStorage<UserStats>(KEYS.STATS, DEFAULT_USER_STATS);
+  const records = stats.cooked_records || [];
+  const index = records.findIndex((record) => cookedRecordKey(record) === key);
+  if (index < 0) return false;
+  const previous = records[index].feedback;
+  const nextRecords = [...records];
+  nextRecords[index] = {
+    ...records[index],
+    feedback: {
+      ...previous,
+      tags: [...new Set([...(previous?.tags || []), ...feedback.tags])],
+      wouldCookAgain: previous?.wouldCookAgain === true || feedback.wouldCookAgain,
+    },
+  };
+  const saved = setStorage(KEYS.STATS, { ...stats, cooked_records: nextRecords });
+  if (saved) dismissTasteCheck(key);
+  return saved;
 }
 
 export function getRecentFlavorFeedbackSummary(limit = 12): {

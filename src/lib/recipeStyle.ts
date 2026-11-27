@@ -83,3 +83,18 @@ export function buildRecipeStyleSection(style: RecipeStyle): string {
 export function buildGenreChoiceInstruction(style: RecipeStyle): string {
   return `genreは${allowedGenresForStyle(style).map((genre) => `「${genre}」`).join('')}から選んでください。`;
 }
+
+// 「定番」は同じ料理を繰り返し作るのが自然なので、マンネリ防止は直近数件と
+// まったく同じ料理を避ける程度にゆるめる。それ以外は従来どおり直近と違う料理にする。
+const CLASSIC_HISTORY_LIMIT = 3;
+
+export function buildRecentHistorySection(history: unknown, style: RecipeStyle): string {
+  const names = Array.isArray(history)
+    ? history.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    : [];
+  if (names.length === 0) return '';
+  if (style === 'classic') {
+    return `\n【直近の料理履歴】\n${names.slice(0, CLASSIC_HISTORY_LIMIT).join('、')}\nこれらとまったく同じ料理は避けてください。ただし定番料理は繰り返し作るものなので、同じ食材や同じ系統の味付けの定番料理を選ぶのは問題ありません。\n`;
+  }
+  return `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${names.join('、')}\n`;
+}

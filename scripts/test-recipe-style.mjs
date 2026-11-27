@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   allowedGenresForStyle,
   buildGenreChoiceInstruction,
+  buildRecentHistorySection,
   buildRecipeStyleSection,
   filterGenresForStyle,
   normalizeRecipeStyle,
@@ -39,5 +40,15 @@ assert.ok(buildRecipeStyleSection('adventurous').includes('日本のスーパー
 for (const style of ['classic', 'balanced', 'adventurous']) {
   assert.ok(buildRecipeStyleSection(style).includes('醤油・みりん・酒'));
 }
+
+// 定番では直近3件の完全一致だけ避け、他は従来どおり履歴全体と違う料理にする
+const history = ['生姜焼き', '肉じゃが', '親子丼', 'ハンバーグ', '麻婆豆腐'];
+const classicHistory = buildRecentHistorySection(history, 'classic');
+assert.ok(classicHistory.includes('親子丼') && !classicHistory.includes('ハンバーグ'));
+assert.ok(classicHistory.includes('まったく同じ料理は避け'));
+assert.ok(buildRecentHistorySection(history, 'balanced').includes('麻婆豆腐'));
+assert.ok(buildRecentHistorySection(history, 'balanced').includes('異なる料理'));
+assert.equal(buildRecentHistorySection([], 'classic'), '');
+assert.equal(buildRecentHistorySection('not-an-array', 'balanced'), '');
 
 console.log('Recipe style settings and prompt sections: passed.');

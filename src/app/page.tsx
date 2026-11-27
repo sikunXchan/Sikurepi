@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Crown, ChevronRight } from "lucide-react";
 import ChefProfileBadge from "@/components/ChefProfileBadge";
 import CommunityRecipesScreen, { CommunityRecipeRowCard, type CommunityRecipeRow } from "@/components/CommunityRecipesScreen";
+import TasteCheckCard from "@/components/TasteCheckCard";
 import IngredientIcon from "@/components/IngredientIcon";
 import RecipeThumbnail from "@/components/RecipeThumbnail";
 import UiIcon from "@/components/UiIcon";
@@ -293,6 +294,8 @@ export default function HomePage() {
           <span><strong>{t.home.quickAddIngredient}</strong><small>STOCK</small></span>
         </Link>
       </div>
+
+      <TasteCheckCard />
 
       {rescueTarget ? (
         <section className={`${styles.card} ${styles.cardRescue}`}>

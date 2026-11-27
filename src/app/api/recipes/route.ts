@@ -32,6 +32,7 @@ import { AiTimeoutError, AiUsageLimitError } from '@/lib/ai';
 import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
 import {
   buildGenreChoiceInstruction,
+  buildRecentHistorySection,
   buildRecipeStyleSection,
   filterGenresForStyle,
   normalizeRecipeStyle,
@@ -220,9 +221,7 @@ export async function POST(req: Request) {
     const profileSection = buildProfileSection(actualProfile);
     const seasoningSection = buildSeasoningSection(assumeSeasoningsAvailable, dietaryRestrictions);
 
-    const historyNote = Array.isArray(recentHistory) && recentHistory.length > 0
-      ? `\n【直近の料理履歴（マンネリ防止のため、これらと異なる料理を提案してください）】\n${recentHistory.join('、')}\n`
-      : '';
+    const historyNote = buildRecentHistorySection(recentHistory, recipeStyle);
 
     // ユーザーが「気に入って保存した」レシピの履歴から、好みの傾向をAIに学習させる。
     // 同じ料理を繰り返させるのではなく、傾向（ジャンル・味付けの系統）を汲み取って
