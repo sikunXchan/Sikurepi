@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
 
 export { DIETARY_RESTRICTION_INSTRUCTIONS } from '@/lib/dietaryRules';
-export { generateWithRetry, getAiCallTelemetry, AiTimeoutError, AiUsageLimitError, FAST_AI_MODEL, QUALITY_AI_MODEL, DEFAULT_AI_MODELS } from './aiTransport';
+export { generateWithRetry, getAiCallTelemetry, AiTimeoutError, AiUsageLimitError, FAST_AI_MODEL, QUALITY_AI_MODEL, DEFAULT_AI_MODELS, RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL, RECIPE_AI_MODELS } from './aiTransport';
 export type { AiCallTelemetry, AiRequestPolicy } from './aiTransport';
 export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -35,6 +35,24 @@ export function buildSeasoningSection(
   } else {
     seasonings.push('卵不使用マヨネーズ');
   }
+  // 日本の家庭の台所に常備されている粉類・合わせ調味料。食事制限で使えないものは
+  // 最初から候補に入れず、生成後の食事制限検証で不合格→再生成になるのを防ぐ。
+  const animalFree = restricted.has('ヴィーガン') || restricted.has('ベジタリアン');
+  const noAlcohol = restricted.has('アルコール不可') || restricted.has('ハラール（イスラム教）');
+  const glutenFree = restricted.has('グルテンフリー');
+  seasonings.push('片栗粉');
+  if (!glutenFree) seasonings.push('小麦粉');
+  if (!animalFree && !restricted.has('ハラール（イスラム教）') && !restricted.has('コーシャ（ユダヤ教）')) {
+    seasonings.push('顆粒コンソメ・鶏がらスープの素');
+  }
+  // めんつゆ・ポン酢は醤油(大豆・小麦)、かつおだし、みりんを含む
+  if (!animalFree && !noAlcohol && !glutenFree && !restricted.has('大豆不使用') && !restricted.has('魚介類不使用')) {
+    seasonings.push('めんつゆ・ポン酢');
+  }
+  // オイスターソースは牡蠣エキスに加え、小麦・大豆を含む製品が多い
+  if (!animalFree && !glutenFree && !restricted.has('大豆不使用') && !restricted.has('魚介類不使用') && !restricted.has('コーシャ（ユダヤ教）')) {
+    seasonings.push('オイスターソース');
+  }
   if (restricted.has('ヴィーガン') || restricted.has('ベジタリアン')) {
     seasonings.push('昆布だし・野菜だし');
   } else if (!restricted.has('魚介類不使用')) {
@@ -45,10 +63,11 @@ export function buildSeasoningSection(
 }
 export const DISH_LOAD_INSTRUCTION = `【洗い物量の見積もり】各レシピについて、使用する鍋・フライパン・ボウル・まな板など「洗う必要のある調理器具・食器の点数」を見積もり、"dish_badge"に文字だけの短いタグで示してください（例：「洗い物少なめ（2点）」「洗い物やや多め（5点）」）。絵文字や装飾記号は含めないでください。ワンパン・電子レンジのみ・ボウル1つ等で完結する場合は積極的に「少なめ」と評価してください。`;
 
-// 「味を濃くする = 塩分を増やす」にならないよう、味の輪郭を旨味・酸味・香り・
-// 食感まで含めて組み立てる。最後に少量ずつ調整する手順も必須にし、家庭での
-// 再現性とおいしさを両立する。
-export const FLAVOR_INTENSITY_INSTRUCTION = `\n【最優先で厳守：味の設計】一口目から味の輪郭が分かる家庭料理にしてください。ただし、塩・醤油・味噌を単純に増やして濃くするのは禁止です。主となる塩味・旨味を1つ決め、酸味または自然な甘味、にんにく・しょうが・香辛料・ハーブ等の香り、食感の対比を料理に合う範囲で重ねてください。調味料は人数に合わせた再現可能な数値で示し、仕上げ前に味見して、塩味は小さじ1/8程度ずつ、酸味や香りも少量ずつ調整する手順またはコツを含めてください。ユーザーが「うす味・減塩」等を指定した場合はそれを最優先し、香り・酸味・旨味で満足感を補ってください。\n`;
+// 「味を濃くする = 塩分を増やす」にならないよう、味の輪郭は定番の下ごしらえと
+// 比率で作る。一方で酸味・香辛料・食感を「何にでも重ねる」と日本の家庭の
+// 味覚から外れた凝りすぎの料理になるため、料理に本来合う場合だけに限定する。
+// 最後に少量ずつ調整する手順も必須にし、家庭での再現性とおいしさを両立する。
+export const FLAVOR_INTENSITY_INSTRUCTION = `\n【最優先で厳守：味の設計】一口目から味の輪郭が分かる家庭料理にしてください（おかずならご飯が進む味に）。ただし、塩・醤油・味噌を単純に増やして濃くするのは禁止です。まず味の軸（甘辛、塩、味噌、ケチャップ、クリーム等）を1つ決め、下味・焼き色・香味野菜（にんにく・しょうが・ねぎ等）といった定番の手法で旨味と香りを引き出してください。酸味・香辛料・ハーブ・食感の対比は、その料理に本来合う場合だけ加え、何でも重ねて複雑にしないでください。調味料は人数に合わせた再現可能な数値で示し、仕上げ前に味見して、塩味は小さじ1/8程度ずつ調整する手順またはコツを含めてください。ユーザーが「うす味・減塩」等を指定した場合はそれを最優先し、だしの旨味や香りで満足感を補ってください。\n`;
 
 export type FlavorFeedbackSummary = {
   recipeTitle: string;
@@ -70,6 +89,7 @@ export type RecipeProfile = {
   assumeSeasoningsAvailable?: boolean;
   dietaryRestrictions?: string[];
   preferredGenres?: string[];
+  recipeStyle?: string;
   flavorFeedback?: FlavorFeedbackSummary[];
 };
 

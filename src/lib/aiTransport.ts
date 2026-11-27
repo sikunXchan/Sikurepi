@@ -3,6 +3,18 @@ import type { GenerateContentParameters, GenerateContentResponse } from '@google
 export const FAST_AI_MODEL = 'models/gemini-3.5-flash-lite';
 export const QUALITY_AI_MODEL = 'models/gemini-3.5-flash';
 export const DEFAULT_AI_MODELS = [FAST_AI_MODEL, QUALITY_AI_MODEL];
+// レシピ・献立・今日のおすすめの生成はおいしさが価値の中心なので、軽量モデルではなく
+// 3.8 Flash を主軸にし、障害時だけ 3.5 Flash へフォールバックする。
+// 3.8 Flash は thinkingLevel に MINIMAL を受け付けないため、設定は LOW 以上にする。
+// モデル比較のため、環境変数 RECIPE_AI_MODEL / RECIPE_AI_FALLBACK_MODEL で差し替えられる。
+const envModel = (value: string | undefined) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith('models/') ? trimmed : `models/${trimmed}`;
+};
+export const RECIPE_PRIMARY_MODEL = envModel(process.env.RECIPE_AI_MODEL) ?? 'models/gemini-3.8-flash';
+export const RECIPE_FALLBACK_MODEL = envModel(process.env.RECIPE_AI_FALLBACK_MODEL) ?? QUALITY_AI_MODEL;
+export const RECIPE_AI_MODELS = [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL];
 
 type Client = { models: { generateContent: (params: GenerateContentParameters) => Promise<GenerateContentResponse> } };
 export type AiCallTelemetry = {

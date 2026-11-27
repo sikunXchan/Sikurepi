@@ -4,6 +4,7 @@ import {
   parseRecipeMinutes,
   qualityGateErrors,
   reconcileRecipeTime,
+  repairRecipeDeterministically,
   sanitizeServings,
   validateRequiredIngredients,
   validateSetMeal,
@@ -42,6 +43,25 @@ assert.equal(reconcileRecipeTime({
   time: '45分',
   steps: ['米を30分浸水させてから炊飯器で55分炊く。'],
 }).time, '85分');
+
+// 形式上の不備は再生成せずに補正し、補正後は品質ゲートを通る
+const sloppy = {
+  ...goodChicken,
+  title: '鶏もも肉の照り焼き 🍗',
+  genre: '創作料理',
+  steps: goodChicken.steps.map((step, index) => index === 0 ? `${step}✨` : step),
+  nutrition: { calories: 900, protein_g: 36, fat_g: 18, carbs_g: 46 },
+};
+assert.ok(qualityGateErrors(sloppy, { servings: 2 }).length > 0);
+const repaired = repairRecipeDeterministically(sloppy);
+assert.equal(repaired.title, '鶏もも肉の照り焼き');
+assert.equal(repaired.genre, 'その他');
+assert.equal(repaired.nutrition.calories, 36 * 4 + 18 * 9 + 46 * 4);
+assert.deepEqual(qualityGateErrors(repaired, { servings: 2 }), []);
+// 問題のないレシピは同じ内容のまま
+assert.deepEqual(repairRecipeDeterministically(goodChicken), goodChicken);
+// 形式検証前の壊れたデータでも落ちない
+assert.doesNotThrow(() => repairRecipeDeterministically({ ...goodChicken, ingredients: [null, '🍗'] }));
 
 const goodAssessment = assessRecipeQuality(goodChicken, { servings: 2 });
 assert.deepEqual(goodAssessment.errors, []);
