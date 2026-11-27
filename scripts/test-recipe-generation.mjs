@@ -121,7 +121,7 @@ async function request(payload, outputs) {
   const route = loadSource('src/app/api/recipes/route.ts', {
     'next/server': { NextResponse: { json: (value, options) => Response.json(value, options) } },
     '@/lib/ai': {
-      ai: {}, FAST_AI_MODEL: 'fast', QUALITY_AI_MODEL: 'quality',
+      ai: {}, RECIPE_PRIMARY_MODEL: 'primary', RECIPE_FALLBACK_MODEL: 'fallback',
       generateWithRetry: async () => ({ text: outputs[Math.min(calls++, outputs.length - 1)] }),
       getAiCallTelemetry: () => null,
       buildProfileSection: () => '', buildClimateSection: () => '', buildSeasoningSection: () => '',

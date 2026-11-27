@@ -5,6 +5,7 @@ import { getIngredientCategoryForName, type IngredientIconCategory } from './ing
 import { normalizeGuideProgress, mergeGuideProgress, type GuideKey, type GuideProgress } from './guideProgress';
 import type { TrayThemeId } from './trayThemes';
 import type { RecipeConsiderations } from './recipeConsiderations';
+import type { RecipeStyle } from './recipeStyle';
 import {
   FREE_DAILY_RECEIPT_SCANS,
   FREE_DAILY_RECIPE_CREDITS,
@@ -178,6 +179,9 @@ export type UserProfile = {
   // 優先的に食べたい料理ジャンル。dietaryRestrictionsと違い「絶対」ではなく
   // 「できれば優先して」というやわらかい希望としてAIに伝える。デフォルトは未選択。
   preferredGenres: string[];
+  // レシピの方向性(定番 / 定番ベースのちょいアレンジ / 世界の料理にも冒険)。
+  // 旧データには存在しないため任意項目とし、未定義は 'balanced' として扱う。
+  recipeStyle?: RecipeStyle;
   // レシピ結果で使う配膳トレー。旧データには存在しないため任意項目として扱う。
   trayTheme?: TrayThemeId;
   // 実際に作ったレシピ本文だけを「みんなのレシピ」へ自動共有する。Plus利用者は
@@ -1325,6 +1329,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   assumeSeasoningsAvailable: true,
   dietaryRestrictions: [],
   preferredGenres: [],
+  recipeStyle: 'balanced',
   trayTheme: 'wood',
   shareGeneratedRecipes: true,
   ignoredForgottenIngredientIds: [],

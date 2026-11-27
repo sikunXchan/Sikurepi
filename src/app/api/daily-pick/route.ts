@@ -3,10 +3,18 @@ import { ThinkingLevel } from '@google/genai';
 import {
   ai,
   generateWithRetry,
-  FAST_AI_MODEL,
-  QUALITY_AI_MODEL,
+  RECIPE_PRIMARY_MODEL,
+  RECIPE_FALLBACK_MODEL,
   FLAVOR_INTENSITY_INSTRUCTION,
 } from '@/lib/ai';
+import {
+  buildGenreChoiceInstruction,
+  buildRecipeStyleSection,
+  DEFAULT_RECIPE_STYLE,
+  filterGenresForStyle,
+  normalizeRecipeStyle,
+  type RecipeStyle,
+} from '@/lib/recipeStyle';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { parseAiJson } from '@/lib/aiJson';
 import {
@@ -61,6 +69,7 @@ type DailyPickPersonalization = {
   cookingStyles: string[];
   dietaryRestrictions: string[];
   preferredGenres: string[];
+  recipeStyle: RecipeStyle;
   kitchenAppliances: string[];
   targetCalories: number | null;
   targetProtein: number | null;
@@ -68,8 +77,8 @@ type DailyPickPersonalization = {
 };
 
 const DAILY_PICK_MODEL_ORDER = [
-  [FAST_AI_MODEL, QUALITY_AI_MODEL],
-  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
 ] as const;
 const MAX_VALIDATION_ATTEMPTS = DAILY_PICK_MODEL_ORDER.length;
 
@@ -142,6 +151,7 @@ function parsePersonalization(value: unknown): DailyPickPersonalization {
       ? Math.round(source.targetProtein)
       : null;
 
+  const recipeStyle = normalizeRecipeStyle(source.recipeStyle);
   return {
     inventory: cleanStringList(source.inventory, 40),
     tastePreferences: cleanStringList(source.tastePreferences, 12),
@@ -149,7 +159,8 @@ function parsePersonalization(value: unknown): DailyPickPersonalization {
     allergies: cleanStringList(source.allergies, 20),
     cookingStyles: cleanStringList(source.cookingStyles, 12),
     dietaryRestrictions: cleanStringList(source.dietaryRestrictions, 12),
-    preferredGenres: cleanStringList(source.preferredGenres, 12),
+    preferredGenres: filterGenresForStyle(cleanStringList(source.preferredGenres, 12), recipeStyle),
+    recipeStyle,
     kitchenAppliances: cleanStringList(source.kitchenAppliances, 16),
     targetCalories: calories,
     targetProtein: protein,
@@ -200,6 +211,7 @@ ${JSON.stringify(personalization)}
 条件:
 - 在庫に食材があれば、そのうち1つ以上を主材料として優先する。
 - excludedIngredients、allergies、dietaryRestrictionsは必ず守り、該当する食材を含めない。
+- recipeStyleは後述の「レシピの方向性」に対応する設定値である。
 - tastePreferences、cookingStyles、preferredGenres、kitchenAppliancesは可能な範囲で優先する。
 - targetCaloriesは1日分の目標なので、指定されていれば1人分をその約3分の1に近づける。
 - targetProteinも1日分の目標なので、指定されていれば1人分をその約3分の1に近づける。
@@ -208,10 +220,11 @@ ${dietaryDetails ? `\n食事制限の具体的な定義:\n${dietaryDetails}\n` :
 `
     : '';
 
-  const prompt = `あなたはプロの管理栄養士兼シェフです。${personalization
+  const recipeStyle = personalization?.recipeStyle ?? DEFAULT_RECIPE_STYLE;
+  const prompt = `あなたは日本の家庭料理に精通したプロの管理栄養士兼料理人です。${personalization
     ? 'このユーザーの在庫と好みに合う、季節感があり作りやすい家庭料理を「今日のおすすめ」として1品だけ考案してください。'
     : '特定のユーザーの在庫には縛られず、アプリの「今日のおすすめ」として誰にでもおすすめできる、季節感があり作りやすい家庭料理を1品だけ考案してください。'}
-${personalizationSection}
+${personalizationSection}${buildRecipeStyleSection(recipeStyle)}
 ${FLAVOR_INTENSITY_INSTRUCTION}${buildIngredientUnitInstruction('ja')}${buildIngredientUnitInstruction('en')}
 
 材料は2人分の具体的な分量にしてください。各手順に火加減・時間・見た目の目安を入れ、材料を手順から漏らさないでください。鶏肉・豚肉・ひき肉・内臓を使う場合は、中心75℃で1分以上または同等に十分加熱する指示を含めてください。提出前に分量、工程時間、PFCとcaloriesの整合、味・香り・食感を自己監査してください。
@@ -232,7 +245,7 @@ JSON形式のみで、日本語(ja)と英語(en)の両方の文言を必ず含�
   "tips": { "ja": "調理のコツ・豆知識", "en": "cooking tip" },
   "nutrition": { "calories": 420, "protein_g": 28, "fat_g": 14, "carbs_g": 35 }
 }
-genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選び、値は必ず日本語表記のまま出力してください。`;
+${buildGenreChoiceInstruction(recipeStyle)}値は必ず日本語表記のまま出力してください。`;
 
   let lastErrors: string[] = [];
   for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt++) {
@@ -240,7 +253,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       ? `\n前回の出力は次の理由で不採用です。すべて修正してください:\n${lastErrors.map((error) => `- ${error}`).join('\n')}\n`
       : '';
     const models = [...DAILY_PICK_MODEL_ORDER[attempt]];
-    const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
+    // 3.8 FlashはMINIMALを受け付けないため、フォールバックでも通るLOW以上を使う。
+    const thinkingLevel = attempt === 0 ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
     const response = await generateWithRetry(ai, {
       contents: [{ role: 'user', parts: [{ text: `${prompt}${retryNote}` }] }],
       config: {

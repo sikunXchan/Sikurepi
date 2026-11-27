@@ -3,6 +3,12 @@ import type { GenerateContentParameters, GenerateContentResponse } from '@google
 export const FAST_AI_MODEL = 'models/gemini-3.5-flash-lite';
 export const QUALITY_AI_MODEL = 'models/gemini-3.5-flash';
 export const DEFAULT_AI_MODELS = [FAST_AI_MODEL, QUALITY_AI_MODEL];
+// レシピ・献立・今日のおすすめの生成はおいしさが価値の中心なので、軽量モデルではなく
+// Gemini 4 Hydrogen を主軸にし、障害時だけ 3.8 Flash へフォールバックする。
+// 3.8 Flash は thinkingLevel に MINIMAL を受け付けないため、両方で使う設定は LOW 以上にする。
+export const RECIPE_PRIMARY_MODEL = 'models/gemini-4-hydrogen';
+export const RECIPE_FALLBACK_MODEL = 'models/gemini-3.8-flash';
+export const RECIPE_AI_MODELS = [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL];
 
 type Client = { models: { generateContent: (params: GenerateContentParameters) => Promise<GenerateContentResponse> } };
 export type AiCallTelemetry = {

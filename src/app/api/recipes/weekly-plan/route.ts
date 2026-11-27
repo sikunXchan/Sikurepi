@@ -6,8 +6,8 @@ import {
   getAiCallTelemetry,
   AiTimeoutError,
   AiUsageLimitError,
-  FAST_AI_MODEL,
-  QUALITY_AI_MODEL,
+  RECIPE_PRIMARY_MODEL,
+  RECIPE_FALLBACK_MODEL,
   buildProfileSection,
   buildClimateSection,
   buildSeasoningSection,
@@ -30,15 +30,22 @@ import {
 } from '@/lib/recipeQuality';
 import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
+import {
+  buildGenreChoiceInstruction,
+  buildRecipeStyleSection,
+  filterGenresForStyle,
+  normalizeRecipeStyle,
+} from '@/lib/recipeStyle';
 
 const SLOT_LABEL: Record<string, string> = { lunch: '昼', dinner: '夜' };
 export const maxDuration = 300;
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'];
+// 全試行でHydrogenを主軸にし、障害時だけ3.8 Flashへフォールバックする。
 const WEEKLY_PLAN_MODEL_ORDER = [
-  [FAST_AI_MODEL, QUALITY_AI_MODEL],
-  [QUALITY_AI_MODEL, FAST_AI_MODEL],
-  [FAST_AI_MODEL, QUALITY_AI_MODEL],
-  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
 ] as const;
 const MAX_VALIDATION_ATTEMPTS = WEEKLY_PLAN_MODEL_ORDER.length;
 
@@ -141,7 +148,12 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const actualProfile = userProfile || profile;
+    const rawProfile = userProfile || profile;
+    const recipeStyle = normalizeRecipeStyle(rawProfile?.recipeStyle);
+    // 方向性の範囲外の優先ジャンルはAIに渡さない(保存値は端末側に残る)
+    const actualProfile = rawProfile
+      ? { ...rawProfile, preferredGenres: filterGenresForStyle(rawProfile.preferredGenres, recipeStyle) }
+      : rawProfile;
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
     const dietaryRestrictions: string[] = Array.isArray(actualProfile?.dietaryRestrictions) ? actualProfile.dietaryRestrictions : [];
     const excludedIngredients: string[] = [...new Set([
@@ -214,13 +226,13 @@ export async function POST(req: Request) {
     const languageSection = buildLanguageSection(language);
     const unitSection = buildIngredientUnitInstruction(language);
 
-    const prompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。以下の日付・食事枠それぞれに、昼は作りやすさと多様性のある一食、夜は主菜・副菜・汁物・主食を組み合わせた定食を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
+    const prompt = `あなたは日本の家庭料理に精通した、経験豊富なプロの管理栄養士兼料理人です。以下の日付・食事枠それぞれに、昼は作りやすさと多様性のある一食、夜は主菜・副菜・汁物・主食を組み合わせた定食を提案し、1週間を通してPFCバランスの取れた献立プランを組んでください。
 
 【生成が必要な日付・食事枠一覧（合計${requestedSlots.length}件）】
 ${slotLines}
 
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
+${seasoningSection}${buildRecipeStyleSection(recipeStyle)}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${pinnedSection}${climateSection}${profileSection}${servingsSection}${historyNote}${pfcSection}${languageSection}
 【重要・厳守事項】
 0. 週間献立は自由作成です。在庫外の食材も使えます。在庫食材は、品質や栄養バランスを損なわない範囲で優先してください。
 1. 上記の日付・食事枠それぞれに必ず1食ずつ、過不足なくレシピを割り当ててください。昼は一皿料理または定食、夜は必ず主菜・副菜・汁物・主食を含む定食にしてください。
@@ -260,7 +272,7 @@ ${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${pinnedSection}
     }
   ]
 }
-genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
+${buildGenreChoiceInstruction(recipeStyle)}${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
     // 自由作成として扱いつつ、通常レシピと同じ食事制限・安全性・品質の
     // 各ゲートを週間献立にも適用する。
@@ -350,11 +362,12 @@ ${buildValidationRetryNote(lastErrors)}
 前回案は次のJSONです。
 ${JSON.stringify({ plan: previousPlan })}
 ${targetedRepair
-  ? `品質検証に合格済みの料理は変更せず、次の${repairEntries.length}食だけを修正してください。前回案全体との料理ジャンル・主材料・PFCのバランスも保ってください。\n修正対象: ${JSON.stringify(repairEntries.map((entry) => ({ date: (entry as Record<string, unknown>)?.date, meal_slot: (entry as Record<string, unknown>)?.meal_slot })))}\n出力するplan配列には修正対象の${repairEntries.length}食だけを、同じdateとmeal_slotで格納してください。合格済みの料理は出力しないでください。\n各修正レシピは提出前に、(1)材料欄の全食材名が手順内に明記されている、(2)各加熱工程に火加減・時間・見た目の完了条件がある、(3)肉類には中心75℃で1分以上または同等の安全確認がある、(4)塩味だけに頼らず酸味または自然な甘味・香り・食感の設計がある、の4点を一つずつ照合してください。`
+  ? `品質検証に合格済みの料理は変更せず、次の${repairEntries.length}食だけを修正してください。前回案全体との料理ジャンル・主材料・PFCのバランスも保ってください。\n修正対象: ${JSON.stringify(repairEntries.map((entry) => ({ date: (entry as Record<string, unknown>)?.date, meal_slot: (entry as Record<string, unknown>)?.meal_slot })))}\n出力するplan配列には修正対象の${repairEntries.length}食だけを、同じdateとmeal_slotで格納してください。合格済みの料理は出力しないでください。\n各修正レシピは提出前に、(1)材料欄の全食材名が手順内に明記されている、(2)各加熱工程に火加減・時間・見た目の完了条件がある、(3)肉類には中心75℃で1分以上または同等の安全確認がある、(4)味付けが塩味の足し増しではなく、日本の家庭料理の基本比率に沿っている、の4点を一つずつ照合してください。`
   : `前回案全体を、上記の不採用理由をすべて解消するよう修正してください。出力するplan配列には依頼された${requestedSlots.length}食すべてを格納してください。`}`;
 
       const models = [...WEEKLY_PLAN_MODEL_ORDER[attempt]];
-      const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
+      // 3.8 FlashはMINIMALを受け付けない。週間献立は出力が長く時間制限が厳しいためLOWで統一する。
+      const thinkingLevel = ThinkingLevel.LOW;
       validationAttempts = attempt + 1;
       const callStartedAt = Date.now();
       model = models[0];

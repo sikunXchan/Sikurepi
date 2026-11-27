@@ -152,6 +152,7 @@ export default function HomePage() {
           cookingStyles: profile.cookingStyles,
           dietaryRestrictions: profile.dietaryRestrictions,
           preferredGenres: profile.preferredGenres,
+          recipeStyle: profile.recipeStyle,
           kitchenAppliances: profile.kitchenAppliances,
           targetCalories: profile.targetCalories,
           targetProtein: profile.targetProtein,

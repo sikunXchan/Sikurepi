@@ -303,6 +303,51 @@
   font-weight: 700;
 }
 
+/* レシピの方向性：説明文付きの単一選択 */
+.styleOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.styleOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  width: 100%;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.styleOption strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: #374151;
+}
+
+.styleOption small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.styleOptionActive {
+  background: rgba(255, 111, 145, 0.1);
+  border: 2px solid #ff6f91;
+  padding: 9px 11px;
+}
+
+.styleOptionActive strong {
+  color: #ea580c;
+}
+
 .input {
   width: 100%;
   padding: 10px 14px;

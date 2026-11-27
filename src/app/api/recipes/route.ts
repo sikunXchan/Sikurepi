@@ -4,8 +4,8 @@ import {
   ai,
   generateWithRetry,
   getAiCallTelemetry,
-  FAST_AI_MODEL,
-  QUALITY_AI_MODEL,
+  RECIPE_PRIMARY_MODEL,
+  RECIPE_FALLBACK_MODEL,
   buildProfileSection,
   buildClimateSection,
   buildSeasoningSection,
@@ -30,14 +30,20 @@ import { buildIngredientUnitInstruction } from '@/lib/ingredientUnits';
 import { normalizeCookingTips } from '@/lib/cookingTips';
 import { AiTimeoutError, AiUsageLimitError } from '@/lib/ai';
 import { buildRecipeConsiderations } from '@/lib/recipeConsiderations';
+import {
+  buildGenreChoiceInstruction,
+  buildRecipeStyleSection,
+  filterGenresForStyle,
+  normalizeRecipeStyle,
+} from '@/lib/recipeStyle';
 
 export const maxDuration = 180;
 
-// 初回生成は低遅延のFlash-Liteを使い、品質検証で不採用になった場合だけ
-// Flashへ昇格する。無条件に重いモデルを複数回呼ばない。
+// 味の質を優先し、どの試行もHydrogenを主軸にする。3.8 Flashは
+// Hydrogenが障害・タイムアウトのときだけ使うフォールバック。
 const RECIPE_MODEL_ORDER = [
-  [FAST_AI_MODEL, QUALITY_AI_MODEL],
-  [QUALITY_AI_MODEL, FAST_AI_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
+  [RECIPE_PRIMARY_MODEL, RECIPE_FALLBACK_MODEL],
 ] as const;
 const MAX_VALIDATION_ATTEMPTS = RECIPE_MODEL_ORDER.length;
 
@@ -63,7 +69,7 @@ function generationHeaders(
   return {
     'Server-Timing': `ai;dur=${aiDuration}, total;dur=${Date.now() - startedAt}`,
     'X-Sikurepi-AI-Model': attempt.model.replace(/^models\//, ''),
-    'X-Sikurepi-AI-Rescue': String(attempt.attempt > 1 || attempt.model === QUALITY_AI_MODEL),
+    'X-Sikurepi-AI-Rescue': String(attempt.attempt > 1 || attempt.model === RECIPE_FALLBACK_MODEL),
     'X-Sikurepi-Validation-Attempts': String(attempt.attempt),
   };
 }
@@ -79,7 +85,7 @@ function logRecipeGeneration(
     outcome,
     totalDurationMs: Date.now() - startedAt,
     usedFlashRescue: attempts.some((attempt) =>
-      attempt.attempt > 1 || attempt.model === QUALITY_AI_MODEL
+      attempt.attempt > 1 || attempt.model === RECIPE_FALLBACK_MODEL
     ),
     attempts,
   }));
@@ -110,7 +116,12 @@ export async function POST(req: Request) {
     } = body;
     language = body.language === 'en' ? 'en' : 'ja';
 
-    const actualProfile = userProfile || profile;
+    const rawProfile = userProfile || profile;
+    const recipeStyle = normalizeRecipeStyle(rawProfile?.recipeStyle);
+    // 方向性の範囲外の優先ジャンル(例:「定番」なのにエチオピア料理)はAIに渡さない
+    const actualProfile = rawProfile
+      ? { ...rawProfile, preferredGenres: filterGenresForStyle(rawProfile.preferredGenres, recipeStyle) }
+      : rawProfile;
     const isFreeMode = mode === 'free';
     const isSetMeal = mealStyle === 'set';
     const assumeSeasoningsAvailable = actualProfile?.assumeSeasoningsAvailable !== false;
@@ -189,7 +200,7 @@ export async function POST(req: Request) {
     }
 
     const ingredientsSection = isFreeMode
-      ? `【作成方針】\n冷蔵庫の在庫に縛られず、自由でおいしく栄養バランスの良いレシピを提案してください。\n`
+      ? `【作成方針】\n冷蔵庫の在庫に縛られず、おいしく栄養バランスの良いレシピを提案してください。\n`
       : `【現在の在庫食材(これが全てです)】\n${ingredients.join(', ')}\n\n【最優先で厳守：在庫食材だけで完成させる】ユーザーは「今ある食材だけで作れるレシピ」を求めています。上記リストに無い食材を、肉・魚・野菜・主食・卵・乳製品などの主要な具材として勝手に追加するのは絶対にやめてください。品数が少なく見えても、在庫食材の分量調整・切り方・調理法の工夫だけで1品を完成させてください。\n・追加してよいのは、下記【調味料・味付けの前提】で許可された基本調味料だけです。それ以外の食材(在庫にない野菜・肉・魚・加工品・薬味・トッピングを含む)は、少量・彩り・栄養調整という理由でも一切追加しないでください。成立しない場合は無理に生成せず、検証で不採用になります。\n`;
 
     const pinnedSection = !isFreeMode && pinnedIngredients && pinnedIngredients.length > 0
@@ -239,9 +250,11 @@ export async function POST(req: Request) {
       ? `\n【重要：定食セット構成】\n単品の料理候補を複数出すのではなく、主菜1品・副菜1〜2品・汁物1品（和食以外のジャンルなら、それに相当する主菜・副菜・スープ等の構成でよい）からなる、レストランの定食のような統一感のある「1組のセット」を提案してください。全体で1食分として栄養バランスが良くなるよう調整してください。各レシピの"course"には「主菜」「副菜」「汁物」「ご飯・主食」のいずれかを必ず指定してください${language === 'en' ? '（courseの値は必ずこの日本語表記のまま出力し、翻訳しないでください。表示側で翻訳します）' : ''}。\n【最優先で厳守：セット内の変化・メリハリ】「統一感」は食卓としての相性の良さを指すのであって、似た味・似た食材を繰り返すことではありません。以下を必ず守ってください。\n・主菜で使うメインの調味料・味の系統（醤油ベース、味噌ベース、塩・酸味系、スパイシー系など）を、副菜・汁物ではそのまま繰り返さず、意図的に変えてください（例：主菜が醤油だれの照り焼きなら、副菜は塩味や酢の物、汁物は味噌汁ではなく澄まし汁や別の出汁にするなど）。\n・主菜で使うメイン食材（肉・魚など）を副菜・汁物でそのまま主役として重複させないでください。食感も、主菜がジューシー・こってり系なら副菜はシャキシャキ・さっぱり系にするなど、セット全体で単調にならないようにしてください。\n・こうすることで、一口ごとに違う美味しさが感じられる「メリハリのある定食」に仕上げてください。\n`
       : '';
 
-    const basePrompt = `あなたは経験豊富なプロの管理栄養士兼シェフです。${isFreeMode ? 'おすすめの絶品料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みにぴったりな形で家庭で再現できるよう提案してください。
+    const styleSection = buildRecipeStyleSection(recipeStyle);
+
+    const basePrompt = `あなたは日本の家庭料理に精通した、経験豊富なプロの管理栄養士兼料理人です。${isFreeMode ? 'おすすめの料理' : '以下の在庫食材を使った料理'}を、現在の気候やユーザーの好みに合わせ、日本の家庭で再現できるよう提案してください。
 ${ingredientsSection}
-${seasoningSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
+${seasoningSection}${styleSection}${FLAVOR_INTENSITY_INSTRUCTION}${unitSection}${templateSection}${pinnedSection}${climateSection}${profileSection}${conditionsSection}${servingsSection}${instruction ? `\n【ユーザーからの追加指示】\n${instruction}\n` : ''}${historyNote}${tasteLearningSection}${languageSection}${feasibilityLanguageSection}${mealStyleSection}
 
 【重要・厳守事項】
 ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいのは、在庫食材リストにある食材と、常備調味料の前提で許可されている基本調味料だけです。在庫にない主要な具材(肉・魚・野菜・主食・卵・乳製品など)を1つでも追加した場合、それはユーザーの意図に反する失敗作とみなされます。\n'}1. ピン留め食材がある場合、それらを「主役」として扱うか、レシピに「必ず」組み込んでください。
@@ -249,7 +262,7 @@ ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいの�
 3. 【絶対除外食材】が指定されている場合は、該当食材やその類縁食材を一切使用しないでください。
 4. 【栄養バランス】すべてのレシピでPFCバランス（タンパク質・脂質・炭水化物）を計算し、1人分あたりの推定栄養価（カロリー, タンパク質g, 脂質g, 炭水化物g）を算出してください。
 5. 【手順の具体性】各ステップには必ず「中火で3分」「表面がこんがりきつね色になるまで」など、温度・火加減・時間・視覚的なキューを含めてください。
-6. 【本当に美味しい仕上がりへのこだわり】提案する前に、実際に味見したときの味を頭の中で具体的に想像してください。甘味・塩味・酸味・苦味・旨味のバランス、香りの立たせ方（仕上げのひと振り・香味油・薬味など）、食感のコントラスト（カリカリ×とろとろ等）のうち最低1つは意識的に取り入れ、単に食材を組み合わせただけの平凡な一皿ではなく「これは美味しそう」と一目で伝わる工夫を必ず盛り込んでください。
+6. 【本当に美味しい仕上がりへのこだわり】提案する前に、実際に食べたときの味を頭の中で具体的に想像し、日本の家庭の食卓で「おいしい」「また食べたい」と思える味かを確認してください。おいしさは奇抜な組み合わせではなく、適切な味付けの比率と、下味・水気を拭く・焼き色をつける・余熱を使うなどの基本の下ごしらえと火加減で作ってください。
 7. ${DISH_LOAD_INSTRUCTION}
 8. 【提出前の自己監査】材料の全てが手順内で使われているか、人数分の分量が具体的か、調理時間と各工程の時間が矛盾しないか、PFCから計算される熱量とcaloriesが大きく矛盾しないかを確認してください。鶏肉・豚肉・ひき肉・内臓は中心75℃で1分以上または同等に十分加熱する指示を含めてください。味は塩分量だけに頼らず、旨味・酸味・香り・食感を確認してからJSONを確定してください。
 9. ${isSetMeal
@@ -284,7 +297,7 @@ ${isFreeMode ? '' : '0. 【最優先】"ingredients"配列に載せてよいの�
     { "category": "栄養豆知識", "tip": "食材や栄養に関する豆知識" }
   ]
 }
-genreは「和食」「洋食」「中華」「アジア料理」「韓国料理」「タイ料理」「インド料理」「メキシコ料理」「中東料理」「イタリアン」「フレンチ」「スペイン料理」「ギリシャ料理」「ドイツ・中欧料理」「北欧料理」「ロシア・東欧料理」「ベトナム料理」「台湾料理」「インドネシア・マレーシア料理」「アメリカ南部料理」「モロッコ・北アフリカ料理」「エチオピア料理」「ジャマイカ・カリブ料理」「ペルー料理」「ブラジル料理」「シンガポール料理」「その他」から選んでください。${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
+${buildGenreChoiceInstruction(recipeStyle)}${language === 'en' ? '（genreの値は必ずこの日本語表記のまま出力し、翻訳しないでください）' : ''}`;
 
     // --- 生成 + 生成後検証(JSON構造 + 料理としての論理検証)。要件10 ---
     const feasibilityContext: FeasibilityContext = {
@@ -302,7 +315,8 @@ genreは「和食」「洋食」「中華」「アジア料理」「韓国料理
       const prompt = attempt === 0 ? basePrompt : `${basePrompt}\n${buildValidationRetryNote(lastErrors)}`;
 
       const models = [...RECIPE_MODEL_ORDER[attempt]];
-      const thinkingLevel = attempt === 0 ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW;
+      // フォールバック先の3.8 FlashはMINIMALを受け付けない。再試行時だけ少し深く考えさせる。
+      const thinkingLevel = attempt === 0 ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
       const callStartedAt = Date.now();
       const response = await generateWithRetry(ai, {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

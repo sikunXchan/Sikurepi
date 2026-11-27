@@ -25,7 +25,6 @@ import {
 } from "@/lib/storage";
 import { Download, Upload, Check, Trash2, Activity, Lightbulb, User, Database, Mail, LogOut, EyeOff, RotateCcw, Crown } from "lucide-react";
 import IngredientIcon from "./IngredientIcon";
-import { GENRE_ICON_SLUGS } from "./RecipeThumbnail";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getCookingTipCategory } from "@/lib/cookingTips";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -35,6 +34,7 @@ import { FREE_HISTORY_ITEMS } from "@/lib/premiumQuota";
 import { usePremium } from "@/lib/premium/PremiumContext";
 import PremiumPaywall from "./PremiumPaywall";
 import { applyProfileChange, parseExcludedIngredients, type ProfileChange } from "@/lib/profileSettings";
+import { RECIPE_STYLES, normalizeRecipeStyle, preferredGenreOptionsForStyle } from "@/lib/recipeStyle";
 import styles from "./ProfileSettingsModal.module.css";
 
 const RECORD_SWIPE_OPEN_X = -68;
@@ -97,10 +97,6 @@ function SwipeableRecordRow({
     </div>
   );
 }
-
-// 優先ジャンル選択の選択肢。ジャンル別サムネイルと同じ一覧を使い回して二重管理を防ぐ
-// (「その他」はジャンルとして選ぶ意味が薄いため除外)
-const PREFERRED_GENRE_OPTIONS = Object.keys(GENRE_ICON_SLUGS).filter(g => g !== "その他");
 
 const TASTE_OPTIONS = [
   "うす味・減塩",
@@ -309,6 +305,13 @@ export default function SettingsPanel({ onSaved }: Props) {
     // 成功時はuseAuthのsessionが更新され、ログイン後の画面に自動で切り替わる
   };
 
+  // 優先ジャンルの選択肢は「レシピの方向性」で許可されたジャンルだけを出す。
+  // 範囲外の選択済みジャンルは保存値に残し、「冒険」に戻したときに再び有効になる。
+  const recipeStyle = normalizeRecipeStyle(profile.recipeStyle);
+  const preferredGenreOptions = preferredGenreOptionsForStyle(recipeStyle);
+  const hiddenPreferredGenreCount = (profile.preferredGenres || [])
+    .filter(genre => !preferredGenreOptions.includes(genre)).length;
+
   return (
     <>
       <div className={styles.tabRow}>
@@ -479,9 +482,33 @@ export default function SettingsPanel({ onSaved }: Props) {
           </div>
 
           <div className={styles.section}>
+            <label className={styles.sectionLabel} id="recipe-style-label">{t.settings.recipeStyleLabel}</label>
+            <div className={styles.styleOptionList} role="radiogroup" aria-labelledby="recipe-style-label">
+              {RECIPE_STYLES.map(option => {
+                const active = recipeStyle === option;
+                const copy = t.settings.recipeStyleOptions[option];
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    className={`${styles.styleOption} ${active ? styles.styleOptionActive : ""}`}
+                    onClick={() => updateProfile({ recipeStyle: option })}
+                  >
+                    <strong>{active ? `✓ ${copy.label}` : copy.label}</strong>
+                    <small>{copy.description}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <span className={styles.hint}>{t.settings.recipeStyleHint}</span>
+          </div>
+
+          <div className={styles.section}>
             <label className={styles.sectionLabel}>{t.settings.preferredGenresLabel}</label>
             <div className={styles.tagGrid}>
-              {PREFERRED_GENRE_OPTIONS.map(genre => {
+              {preferredGenreOptions.map(genre => {
                 const active = (profile.preferredGenres || []).includes(genre);
                 const label = t.tagLabel[genre] || genre;
                 return (
@@ -497,6 +524,9 @@ export default function SettingsPanel({ onSaved }: Props) {
               })}
             </div>
             <span className={styles.hint}>{t.settings.preferredGenresHint}</span>
+            {hiddenPreferredGenreCount > 0 && (
+              <span className={styles.hint}>{t.settings.preferredGenresHiddenHint(hiddenPreferredGenreCount)}</span>
+            )}
           </div>
 
           <div className={styles.section}>
